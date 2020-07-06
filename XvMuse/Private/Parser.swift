@@ -8,7 +8,6 @@
 
 import Foundation
 import XvUtils
-import XvFFT
 
 class Parser {
     
@@ -26,20 +25,6 @@ class Parser {
     }
     
     //MARK: - EEG -
-    
-    fileprivate var _fft:FFT = FFT() //runs fft operations on eeg data
-    
-    internal func parse(eegPacket:XvMuseEEGPacket) -> FFTResult? {
-        
-        //send it into the fft process (which buffers it into a data stream, creates an epoch, then applies FFT
-        if let fftResult:FFTResult = _fft.process(eegPacket: eegPacket) {
-            
-            //and return
-            return fftResult
-        }
-        //return nil while buffer and epoch's are being built
-        return nil
-    }
     
     internal func getEEGSamples(fromBytes:[UInt8]) -> [Double] {
         
