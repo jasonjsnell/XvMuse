@@ -12,14 +12,14 @@ class FrequencyManager {
     
     public var bins:[[Int]] = []
     
-    fileprivate var frequencies:[Double]
+    fileprivate var frequencies:[Float]
     
     init(){
         
-        let freqInc:Double = XvMuseConstants.SAMPLING_RATE / Double(XvMuseConstants.FFT_BINS)
+        let freqInc:Float = XvMuseConstants.SAMPLING_RATE / Float(XvMuseConstants.FFT_BINS)
         let freqRange:Array<Int> = Array(0...XvMuseConstants.FFT_BINS/2)
         
-        frequencies = freqRange.map { Double($0) * freqInc }
+        frequencies = freqRange.map { Float($0) * freqInc }
         
         //put calculated bins into a public array
         bins = [
@@ -35,7 +35,7 @@ class FrequencyManager {
     }
     
     //get indexes for an incoming frequency range
-    public func getIndexesFor(frequencyRange:[Double]) -> [Int] {
+    public func getIndexesFor(frequencyRange:[Float]) -> [Int] {
         
         var indexes:[Int] = []
         
@@ -48,15 +48,9 @@ class FrequencyManager {
     
     
     //get an index of a frequency
-    fileprivate func getIndexFor(frequency:Double) -> Int {
+    fileprivate func getIndexFor(frequency:Float) -> Int {
         
-        let closest:EnumeratedSequence<[Double]>.Element = frequencies.enumerated().min( by: { abs($0.1 - frequency) < abs($1.1 - frequency) } )!
+        let closest:EnumeratedSequence<[Float]>.Element = frequencies.enumerated().min( by: { abs($0.1 - frequency) < abs($1.1 - frequency) } )!
         return closest.offset
-        
     }
-    
-  
-
-    
-
 }

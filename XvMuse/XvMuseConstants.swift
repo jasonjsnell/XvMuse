@@ -53,14 +53,26 @@ public class XvMuseConstants {
     
     //MARK: EEG
     //Muse bands: https://web.archive.org/web/20181105231756/http://developer.choosemuse.com/tools/available-data#Absolute_Band_Powers
-    public static let FREQUENCY_BAND_DELTA:[Double] = [1,  3]
-    public static let FREQUENCY_BAND_THETA:[Double] = [4,  7]
-    public static let FREQUENCY_BAND_ALPHA:[Double] = [8,  12]
-    public static let FREQUENCY_BAND_BETA:[Double]  = [13, 29]
-    public static let FREQUENCY_BAND_GAMMA:[Double] = [30, 44]
+    public static let FREQUENCY_BAND_DELTA:[Float] = [1,  3]
+    public static let FREQUENCY_BAND_THETA:[Float] = [4,  7]
+    public static let FREQUENCY_BAND_ALPHA:[Float] = [8,  12]
+    public static let FREQUENCY_BAND_BETA:[Float]  = [13, 29]
+    public static let FREQUENCY_BAND_GAMMA:[Float] = [30, 44]
+    
+    //order of sensors as the data comes in from muse
+    public static let TP9:Int  = 2 //left ear
+    public static let TP10:Int = 0 //right ear
+    public static let AF7:Int  = 3 //left forehead
+    public static let AF8:Int  = 1 //right forehead
+    
+    //same list as locations on the head
+    public static let EEG_SENSOR_EAR_L:Int      = 2 //left ear
+    public static let EEG_SENSOR_EAR_R:Int      = 0 //right ear
+    public static let EEG_SENSOR_FOREHEAD_L:Int = 3 //left forehead
+    public static let EEG_SENSOR_FOREHEAD_R:Int = 1 //right forehead
     
     //MARK: FFT
-    public static let SAMPLING_RATE:Double = 256
+    public static let SAMPLING_RATE:Float = 220.0
     public static let FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     

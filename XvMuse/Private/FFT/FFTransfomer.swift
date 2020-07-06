@@ -24,14 +24,14 @@ class FFTransformer {
     
     //MARK: - Vars
     
-    public var magnitudes:[Double] = []
-    public var decibels:[Double] = []
+    public var magnitudes:[Float] = []
+    public var decibels:[Float] = []
     
-    fileprivate var fftSetup:FFTSetupD
+    fileprivate var fftSetup:FFTSetup
     fileprivate var N:Int
     fileprivate var N2:UInt
     fileprivate var LOG_N:UInt
-    fileprivate var hammingWindow:[Double] = []
+    fileprivate var hammingWindow:[Float] = []
     
     
     //MARK: - Init
@@ -49,7 +49,7 @@ class FFTransformer {
 
         //set up FFT
         //The calls are expensive and should be performed rarely.
-        fftSetup = vDSP_create_fftsetupD(LOG_N, FFTRadix(kFFTRadix2))!
+        fftSetup = vDSP_create_fftsetup(LOG_N, FFTRadix(kFFTRadix2))!
     }
     
     deinit {
@@ -64,7 +64,7 @@ class FFTransformer {
         
         //MARK: Validation
         //validate incoming samples
-        var samples:[Double] = validate(samples: epoch.samples)
+        var samples:[Float] = validate(samples: epoch.samples)
         
         
         //MARK: Apply Hamming window
@@ -72,28 +72,28 @@ class FFTransformer {
         //Muse docs: We use a Hamming window of 256 samples(at 220Hz),
         //init if empty
         if hammingWindow.isEmpty {
-            hammingWindow = [Double](repeating: 0.0, count: N)
-            vDSP_hamm_windowD(&hammingWindow, UInt(N), 0)
+            hammingWindow = [Float](repeating: 0.0, count: N)
+            vDSP_hamm_window(&hammingWindow, UInt(N), 0)
         }
         
         // Apply the window to incoming samples
-        vDSP_vmulD(samples, 1, hammingWindow, 1, &samples, 1, UInt(samples.count))
+        vDSP_vmul(samples, 1, hammingWindow, 1, &samples, 1, UInt(samples.count))
         
         
         // MARK: Create the split complex buffer
         
         // one for real numbers (x-axis)
         // and one for imaginary numbere (y-axis)
-        var realComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
-        var imagComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
+        var realComplexBuffer:[Float] = [Float](repeating: 0.0, count: N/2)
+        var imagComplexBuffer:[Float] = [Float](repeating: 0.0, count: N/2)
         
-        var splitComplex:DSPDoubleSplitComplex?
+        var splitComplex:DSPSplitComplex?
 
         //Safe way to create these is with buffer pointers
         realComplexBuffer.withUnsafeMutableBufferPointer { realBP in
             imagComplexBuffer.withUnsafeMutableBufferPointer { imagBP in
                 
-                splitComplex = DSPDoubleSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
+                splitComplex = DSPSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
             }
         }
         
@@ -102,28 +102,28 @@ class FFTransformer {
             //MARK: Real array to even-odd array
             // This formats the array for the FFT
             
-            var valuesAsComplex:UnsafeMutablePointer<DSPDoubleComplex>? = nil
+            var valuesAsComplex:UnsafeMutablePointer<DSPComplex>? = nil
             
             samples.withUnsafeMutableBytes {
-                valuesAsComplex = $0.baseAddress?.bindMemory(to: DSPDoubleComplex.self, capacity: N)
+                valuesAsComplex = $0.baseAddress?.bindMemory(to: DSPComplex.self, capacity: N)
             }
             
-            vDSP_ctozD(valuesAsComplex!, 2, &splitComplex!, 1, N2) //TODO: try N instead of N2
+            vDSP_ctoz(valuesAsComplex!, 2, &splitComplex!, 1, N2)
 
             // MARK: Perform forward FFT
             // The Accelerate FFT is packed, meaning that all FFT results after the frequency N/2 are automatically discarded
             // N bins becomes N/2 + 1 bins
             // 256 --> 128 + 1 = 129 bins
-            vDSP_fft_zripD(fftSetup, &splitComplex!, 1, LOG_N, FFTDirection(FFT_FORWARD))
+            vDSP_fft_zrip(fftSetup, &splitComplex!, 1, LOG_N, FFTDirection(FFT_FORWARD))
             
             //print("")
-            magnitudes = [Double](repeating: 0.0, count: N/2)
+            magnitudes = [Float](repeating: 0.0, count: N/2)
             
             //Sample-Hold
             //https://github.com/Sample-Hold/SimpleSpectrumAnalyzer
             
             //MARK: Calculate amplitude
-            vDSP_zvabsD(&splitComplex!, 1, &magnitudes, 1, N2)
+            vDSP_zvabs(&splitComplex!, 1, &magnitudes, 1, N2)
             // Note: same as vDSP.absolute(splitComplex!, result: &magnitudes) https://stackoverflow.com/questions/60120842/how-to-use-apples-accelerate-framework-in-swift-in-order-to-compute-the-fft-of
             //print("MAG:", magnitudes[64])
             //range: 0-250,000
@@ -134,21 +134,21 @@ class FFTransformer {
             decibels = magnitudes
             
             
-            vDSP_vsdivD(decibels, 1, [Double(N/2)], &decibels, 1, N2);
+            vDSP_vsdiv(decibels, 1, [Float(N/2)], &decibels, 1, N2);
             //print("DIV:", magnitudes[64])
             //range: 0-1500
             //average: 2-3
             
             
             //MARK: Convert to DB
-            // Converts double-precision power or amplitude values to decibel values
+            // Converts amplitude values to decibel values
             //Muse docs: Each array contains 129 decimal values with a range of roughly -40.0 to 20.0.
             
-            vDSP_vdbconD(decibels, 1, [Double(1)], &decibels, 1, N2, 1);
+            vDSP_vdbcon(decibels, 1, [Float(1)], &decibels, 1, N2, 1);
         
             // db correction considering window
-            var fGainOffset = 1.0 //kHammingFactor
-            vDSP_vsaddD(decibels, 1, &fGainOffset, &decibels, 1, N2);
+            var fGainOffset:Float = 1.0 //kHammingFactor
+            vDSP_vsadd(decibels, 1, &fGainOffset, &decibels, 1, N2);
             
             //print("DB :", magnitudes[64])
             //range: -52 to 64
@@ -168,16 +168,16 @@ class FFTransformer {
     
      //MARK: - HELPERS
     
-    /*fileprivate func _average(_ x:[Double]) -> [Double] {
+    /*fileprivate func _average(_ x:[Float]) -> [Float] {
         
         let sum = x.reduce(0, +)
-        let averageValue:Double = Double(sum) / Double(x.count)
+        let averageValue:Float = Float(sum) / Float(x.count)
         return x.map { $0-averageValue }
     }*/
     
-    fileprivate func validate(samples:[Double]) -> [Double] {
+    fileprivate func validate(samples:[Float]) -> [Float] {
         
-        var validSamples:[Double] = samples
+        var validSamples:[Float] = samples
         
         //validate length
         if (samples.count != N){

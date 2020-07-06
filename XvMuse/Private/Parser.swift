@@ -20,19 +20,20 @@ class Parser {
         if let index:UInt16 = Hex.getUInt16(fromHex: hex) {
             return index
         } else {
+            print("EEG:Parser: Unable to get packet index from bytes")
             return 0
         }
     }
     
     //MARK: - EEG -
     
-    internal func getEEGSamples(fromBytes:[UInt8]) -> [Double] {
+    internal func getEEGSamples(fromBytes:[UInt8]) -> [Float] {
         
         //convert UInt8 array into a UInt12 array
         let UInt12Samples:[UInt16] = Bytes.constructUInt12Array(fromUInt8Array: fromBytes)
         
         //process these samples into the correct range
-        return UInt12Samples.map { 0.48828125 * Double(Int($0) - 2040) }
+        return UInt12Samples.map { 0.48828125 * Float(Int($0) - 2040) }
     }
     
     //MARK: - ACCEL -

@@ -17,9 +17,9 @@ public class XvMuseEEGSensor {
     public var beta:XvMuseEEGBand  { get { return _bands[3] } }
     public var gamma:XvMuseEEGBand { get { return _bands[4] } }
 
-    public var magnitudes:[Double] = []
-    public var decibels:[Double] = []
-    public var epoch:[Double] = []
+    public var magnitudes:[Float] = []
+    public var decibels:[Float] = []
+    public var epoch:[Float] = []
     
     internal var _bands:[XvMuseEEGBand]
     
