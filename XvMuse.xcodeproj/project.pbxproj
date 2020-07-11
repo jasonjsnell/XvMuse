@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		BB0962FC24B287F600D516D5 /* XvMuseEEGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */; };
+		BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */; };
 		BB1E249924AE0FBF00DEBD9E /* XvUtils.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1E249724AE0FB300DEBD9E /* XvUtils.framework */; };
 		BB1E24B424AE88A500DEBD9E /* XvBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1E24B324AE889400DEBD9E /* XvBluetooth.framework */; };
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
@@ -42,6 +43,7 @@
 
 /* Begin PBXFileReference section */
 		BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGSensor.swift; sourceTree = "<group>"; };
+		BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGWave.swift; sourceTree = "<group>"; };
 		BB1E249124AE0FB300DEBD9E /* XvUtils.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvUtils.xcodeproj; path = ../../../UTILS/XvUtils/XvUtils.xcodeproj; sourceTree = "<group>"; };
 		BB1E24AE24AE889400DEBD9E /* XvBluetooth.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvBluetooth.xcodeproj; path = ../../../EXTERNAL_COMM/XvBluetooth/XvBluetooth.xcodeproj; sourceTree = "<group>"; };
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
@@ -80,13 +82,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		BB1E249824AE0FBF00DEBD9E /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		BB1E24AF24AE889400DEBD9E /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -99,7 +94,6 @@
 			isa = PBXGroup;
 			children = (
 				BB57F88A2496B01C003DB78A /* XvMuse */,
-				BB1E249824AE0FBF00DEBD9E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -117,6 +111,7 @@
 			children = (
 				BB57F8952496B05F003DB78A /* XvMuse.swift */,
 				BB8B857824B118E200376FD4 /* XvMuseEEG.swift */,
+				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
 				BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */,
 				BB57F8A02496B268003DB78A /* XvMuseConstants.swift */,
 				BB57F8942496B04B003DB78A /* Private */,
@@ -138,9 +133,9 @@
 		BB57F8942496B04B003DB78A /* Private */ = {
 			isa = PBXGroup;
 			children = (
+				BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */,
 				BBAA8F0A2499086600DE3691 /* Parser.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
-				BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */,
 				BB8B857124B0E81E00376FD4 /* FFT */,
 				BB57F8932496B035003DB78A /* Basics */,
 				BB57F8892496B01B003DB78A /* Products */,
@@ -268,6 +263,7 @@
 			files = (
 				BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */,
 				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
+				BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
 				BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */,
 				BB8B856D24B0E81700376FD4 /* FFT.swift in Sources */,
@@ -334,7 +330,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -391,7 +387,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;

@@ -18,13 +18,16 @@ public protocol MuseBluetoothObserver:class {
 public class MuseBluetooth:XvBluetoothObserver {
     
     public var observer:MuseBluetoothObserver?
+    fileprivate var deviceID:CBUUID?
     
-    public init() {
+    public init(deviceCBUUID:CBUUID?) {
+        
+        deviceID = deviceCBUUID
         
         //add bluetooth listeners
         XvBluetooth.sharedInstance.addListener(
             observer: self,
-            deviceUUID: XvMuseConstants.DEVICE_ID,
+            deviceUUID: deviceCBUUID,
             serviceUUID: XvMuseConstants.SERVICE_ID,
             characteristicsUUIDs: [
                 XvMuseConstants.CHAR_CONTROL,
@@ -34,37 +37,58 @@ public class MuseBluetooth:XvBluetoothObserver {
                 XvMuseConstants.CHAR_TP10,
                 //XvMuseConstants.CHAR_RAUX,
                 //XvMuseConstants.CHAR_GYRO,
-                //XvMuseConstants.CHAR_ACCEL,
-                //XvMuseConstants.CHAR_BATTERY,
+                XvMuseConstants.CHAR_ACCEL,
+                XvMuseConstants.CHAR_BATTERY,
                 //XvMuseConstants.CHAR_PPG1,
                 //XvMuseConstants.CHAR_PPG2,
                 //XvMuseConstants.CHAR_PPG3
             ]
         )
-        
     }
     
     
     //MARK: Updates from the Muse headband via Bluetooth
     public func update(state: String) {
-        print("MUSE: State:", state)
+        print("XvMuse: State:", state)
     }
     
-    public func discovered(device: CBPeripheral) {
-        print("MUSE: Discovered device:", device.identifier.uuidString, device.name ?? "No Name")
+    public func discovered(targetDevice: CBPeripheral) {
+        print("XvMuse: Discovered target device:", targetDevice.identifier.uuidString)
+    }
+    
+    public func discovered(nearbyDevice: CBPeripheral) {
+        
+        //does the nearby device have a name with "Muse" in the string?
+        if nearbyDevice.name?.contains("Muse") ?? false {
+            
+            //if so, print results and init instructions
+            print("")
+            print("----------------------------")
+            print("")
+            print("Discovered", nearbyDevice.name!, "headband with CBUUID:", nearbyDevice.identifier.uuidString)
+            print("")
+            print("Use the line below to intialize the XvMuse framework with this Muse device.")
+            print("")
+            print("let muse:XvMuse = XvMuse(deviceCBUUID: CBUUID(string: \"\(nearbyDevice.identifier.uuidString)\"))")
+            print("")
+            print("----------------------------")
+            print("")
+        }
+        print("Discovered non-Muse Bluetooth device:", nearbyDevice.identifier.uuidString)
+        
     }
     
     public func discovered(service: CBService) {
-        print("MUSE: Discovered service:", service.uuid)
+        print("XvMuse: Discovered service:", service.uuid)
     }
     
     public func discovered(characteristic: CBCharacteristic) {
-        print("MUSE: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
+        print("XvMuse: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
     }
     
     //this is the bridge between the XvBluetooth framework and this class
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
-        //print("MUSE: Received value:", valueFromCharacteristic)
+        //print("XvMuse: Received value:", valueFromCharacteristic)
         observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
     }
     
@@ -113,12 +137,19 @@ public class MuseBluetooth:XvBluetoothObserver {
     //sub routine
     fileprivate func sendControlCommand(data:Data) {
         
-        XvBluetooth.sharedInstance.write(
-            data:data,
-            toDeviceWithID: XvMuseConstants.DEVICE_ID,
-            forCharacteristicWithID: XvMuseConstants.CHAR_CONTROL,
-            withType: .withoutResponse
-        )
+        if (deviceID != nil) {
+            
+            XvBluetooth.sharedInstance.write(
+                data:data,
+                toDeviceWithID: deviceID!,
+                forCharacteristicWithID: XvMuseConstants.CHAR_CONTROL,
+                withType: .withoutResponse
+            )
+            
+        } else {
+            print("MuseBluetooth: Error: Attempting to send a control command to a nil device")
+        }
+        
     }
     
     

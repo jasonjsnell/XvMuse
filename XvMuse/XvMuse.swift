@@ -46,15 +46,13 @@ public struct XvMuseBattery {
 }
 
 
-public class XvMuse:NSObject, MuseBluetoothObserver {
-    
-
+public class XvMuse:MuseBluetoothObserver {
     
     //MARK: - VARS -
     
     //MARK: Public
     /* Receives commands from the view controller (like keyDown), translates and sends them to the Muse, and receives data back via parse(bluetoothCharacteristic func */
-    public var bluetooth:MuseBluetooth = MuseBluetooth()
+    public var bluetooth:MuseBluetooth
     
     //the view controller that receives EEG, accel, PPG, etc updates
     public weak var observer:XvMuseObserver?
@@ -76,9 +74,9 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
     fileprivate let debug:Bool = true
     
     //MARK: - INIT -
-    public override init() {
+    public init(deviceCBUUID:CBUUID? = nil) {
 
-        super.init()
+        bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.observer = self
         
     }
@@ -87,13 +85,9 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
     public func getCustomEEGBand(signal:[Double], low:Double, high:Double) {
         
     }
-   
-   
     
     //MARK: - DATA PROCESSING -
-    
-    
-    
+
     public func parse(bluetoothCharacteristic: CBCharacteristic) {
         
         if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
@@ -131,6 +125,7 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
                 eeg order: tp10 af8 tp9 af7
                 */
                 
+                //MARK: EEG
                 //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the XvMuseEEG object
             case XvMuseConstants.CHAR_TP10:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
@@ -145,6 +140,7 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  observer?.didReceiveUpdate(from: _eeg)
                 
+                //MARK: PPG
             case XvMuseConstants.CHAR_PPG1:
                 
                 //https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6651860/
@@ -174,6 +170,7 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
                 
             case XvMuseConstants.CHAR_ACCEL:
                 
+                //MARK: Accel
                 /*
                  pattern = "int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16"
                  Int16 9 xyz samples (x,y,z,x,y,z,x,y,z)
@@ -191,6 +188,7 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
                 
             case XvMuseConstants.CHAR_BATTERY:
                
+                //MARK: Battery
                 /*
                  pattern = "uint:16,uint:16,uint:16,uint:16"
                  UInt16 battery / 512
@@ -210,6 +208,7 @@ public class XvMuse:NSObject, MuseBluetoothObserver {
 
             case XvMuseConstants.CHAR_CONTROL:
                 
+                //MARK: Control Commands
                 //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
                 //getting device info or a control status send back JSON dictionaries with several vars
                 //note: this package does not use packetIndex, so pass in the raw charactersitic value

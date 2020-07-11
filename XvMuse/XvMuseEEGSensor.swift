@@ -8,24 +8,33 @@
 
 import Foundation
 
+/*
+ instead of linking to Wave Object, which could cause a circular reference
+ (delta.TP9.delta.TP9.etc...)
+ this is a simpler Wave Value Object, which has the sensor's delta values
+ example: eeg.TP9.delta.magnitude
+ */
+
+public class XvMuseEEGWaveValue:EEGValuePair {
+    public var history:XvMuseEEGValueHistory = XvMuseEEGValueHistory()
+}
+
+//object accessed directly from FFT Result
+//has each brainwave value, or entire PSD as magnitudes or decibels
 public class XvMuseEEGSensor {
     
-    //each band on this sensor
-    public var delta:XvMuseEEGBand { get { return _bands[0] } }
-    public var theta:XvMuseEEGBand { get { return _bands[1] } }
-    public var alpha:XvMuseEEGBand { get { return _bands[2] } }
-    public var beta:XvMuseEEGBand  { get { return _bands[3] } }
-    public var gamma:XvMuseEEGBand { get { return _bands[4] } }
+    //each wave value on this sensor
+    public var waves:[XvMuseEEGWaveValue]
+    public var delta:XvMuseEEGWaveValue { get { return waves[0] } }
+    public var theta:XvMuseEEGWaveValue { get { return waves[1] } }
+    public var alpha:XvMuseEEGWaveValue { get { return waves[2] } }
+    public var beta:XvMuseEEGWaveValue  { get { return waves[3] } }
+    public var gamma:XvMuseEEGWaveValue { get { return waves[4] } }
 
-    public var magnitudes:[Float] = []
-    public var decibels:[Float] = []
-    public var epoch:[Float] = []
-    
-    internal var _bands:[XvMuseEEGBand]
+    //entire PSD spectrum magnitudes and decibels
+    public var psd:XvMuseEEGPsd = XvMuseEEGPsd()
     
     init(){
-        
-        _bands = [XvMuseEEGBand(), XvMuseEEGBand(), XvMuseEEGBand(), XvMuseEEGBand(), XvMuseEEGBand()]
-        
+        waves = [XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue()]
     }
 }

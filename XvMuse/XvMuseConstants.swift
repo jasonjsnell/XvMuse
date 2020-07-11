@@ -15,7 +15,6 @@ public class XvMuseConstants {
     
     //MARK: DEVICE & SERVICE -
     
-    public static let DEVICE_ID:CBUUID    = CBUUID(string: "8CDFEA1B-F9D5-4684-B9F4-CBC094CE1A0E")
     public static let SERVICE_ID:CBUUID   = CBUUID(string: "0xfe8d")
     
     //MARK: CHARACTERISTICS -
