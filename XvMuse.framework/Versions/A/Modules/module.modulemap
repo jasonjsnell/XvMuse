@@ -1,0 +1,11 @@
+framework module XvMuse {
+  umbrella header "XvMuse.h"
+
+  export *
+  module * { export * }
+}
+
+module XvMuse.Swift {
+    header "XvMuse-Swift.h"
+    requires objc
+}
