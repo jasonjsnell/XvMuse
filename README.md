@@ -228,7 +228,7 @@ let relativeDeltaForEntireHead:Double = eeg.delta.relative
 
 ### History ###
 
-Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the beginning of the array, the oldest value is at the end. Having these values can be useful for rendering a wave's values on a graphic display.
+Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the beginning of the array, the oldest value is at the end. Having these values can be useful for rendering a wave's recent values on a graphic display.
 
 Examples:
 ```
@@ -238,11 +238,41 @@ let historyOfDeltaMagnitudeValuesForLeftForehead:[Double] = eeg.leftForehead.del
 
 To change the length of the wave's history, call
 ```
-eeg.set(historyLength: 150)
+eeg.set(historyLength: 150) // default is 75.
 ```
 
-The default is 75.
+In the history object, you can access a few properties about it.
 
+#### Highest ####
+This returns the highest decibel or magnitude from the history array.
+```
+let highestRecentDeltaDecibelForEntireHead:Double = eeg.delta.history.highest.decibel
+```
+#### Lowest ####
+This returns the lowest decibel or magnitude from the history array.
+```
+let lowestRecentAlphaMagnitudeForEntireHead:Double = eeg.alpha.history.lowest.magnitude
+```
+#### Range ####
+This returns the range of decibels or magnitudes in the history array (i.e. highest-lowest values)
+```
+let rangeOfRecentBetaDecibelsForLeftEarSensor:Double = eeg.leftEar.beta.history.range.decibel
+```
+#### Sum ####
+This returns the sum of the history array, in decibels or magnitudes.
+```
+let sumOfRecentGammaMagnitudesForForeheadSensors:Double = eeg.front.gamma.history.sum.magnitude
+```
+#### Average ####
+This returns the average value of the history array, in decibels or magnitudes.
+```
+let averageOfRecentThetaDecibelsForTP10Sensor:Double = eeg.TP10.theta.average.decibel
+```
+#### Percent ####
+This returns the average value divided by the highest value. "Percent" isn't the perfect word for this value, but it can be a useful for calculating how the wave is performing overall compared to it's most recent peak.
+```
+let deltaHistoryPercent:Double = eeg.sides.delta.history.percent
+```
 
 ### Custom Frequency Bands ###
 
