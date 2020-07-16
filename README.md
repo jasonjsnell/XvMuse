@@ -109,35 +109,46 @@ let rightForeheadMagnitudes:[Double] = eeg.rightForehead.magnitude
 
 These gives you the full frequency spectrum (called a Power Spectral Density) of the sensor.
 
-
 Besides accessing individual sensors, you can access an averaged readout for a region.
 
 ##### Left Side of the Head #####
+```
 eeg.left
+```
 
 ##### Right Side of the Head #####
+```
 eeg.right
+```
 
 ##### Front of the Head (Forehead) #####
+```
 eeg.front
+```
 
 ##### Sides of the Head (Ears) #####
+```
 eeg.sides
+```
 
-###### Examples: ######
+##### Examples: #####
+```
 let leftSideOfHeadDecibels:[Double] = eeg.left.decibels
 let frontOfHeadMagnitudes:[Double] = eeg.front.magnitudes
-
+```
 
 Finally, you can access all the sensors averaged together.
 
 ##### Entire Head #####
+```
 eeg
+```
 
-###### Examples: ######
+##### Examples: #####
+```
 let allSensorsAveragedInDecibels:[Double] = eeg.decibels
 let allSensorsAveragedInMagnitudes:[Double] = eeg.magnitudes
-
+```
 
 Again, all the examples above give you access to the full frequency spectrum of the sensor data. Next is how to access commonly-used frequency bands such as delta, alpha, etc...
 
@@ -146,11 +157,11 @@ Again, all the examples above give you access to the full frequency spectrum of 
 
 The full frequency spectrum's output is 0-110Hz. The commonly-used bands are at these frequencies:
 
-Delta:    1-4Hz
-Theta:    4-8Hz
-Alpha:    7.5-13Hz
-Beta:     13-30Hz
-Gamma:    30-44Hz
+> Delta:    1-4Hz
+> Theta:    4-8Hz
+> Alpha:    7.5-13Hz
+> Beta:     13-30Hz
+> Gamma:    30-44Hz
 
 You can access these values for each sensor, region, or for the entire headband. The accessors are
 
