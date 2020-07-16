@@ -296,6 +296,7 @@ let customDecibelSliceOfSpectrum:[Double] = eeg.getDecibelSlice(fromBinRange: my
 let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromBinRange: myCustomBins)
 ```
 <hr>
+
 ## EEG Packet ##
 
 The majority of users won't need this update since you can get the processed EEG data from the XvMuseEEG update above. However, if someone wants to process their own Fast Fourier Transform from the Muse's raw EEG data, it can be done with these packets.
