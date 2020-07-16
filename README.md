@@ -164,21 +164,23 @@ The full frequency spectrum's output is 0-110Hz. The commonly-used bands are at 
 > Gamma:    30-44Hz
 
 You can access these values for each sensor, region, or for the entire headband. The accessors are
-
+```
 .delta
 .theta
 .alpha
 .beta
 .gamma
-
+```
 
 ##### By Sensor #####
 
 To access the brainwave from a specific sensor, you have two options. You can start with the sensor or the brainwave.
 
-###### Examples: ######
+##### Examples: #####
+```
 let leftForeheadDelta:Double = eeg.leftForehead.delta.decibel
 let deltaOfLeftForehead:Double = eeg.delta.leftForehead.decibel //same value as above
+```
 
 These give you the same value. The two routes to the same data are just a matter of preference and what works for your project.
 
@@ -187,40 +189,47 @@ These give you the same value. The two routes to the same data are just a matter
 
 To access the averaged brainwave level from a region of sensors, you have two options. You can start with the region or the brainwave. The two examples below output the same value.
 
-###### Examples: ######
+##### Examples: #####
+```
 let frontOfHeadDelta:Double = eeg.front.delta.decibel
 let deltaOfFrontOfHead:Double = eeg.delta.front.decibel
-
+```
 
 ##### By Entire Headband #####
 
 To access the averaged brainwave level of the entire headband, just target the wave directly.
 
-###### Examples: ######
+##### Examples: #####
+```
 let deltaAverageDecibelValueForEntireHead:Double = eeg.delta.decibel
 let deltaAverageMagnitudeValueForEntireHead:Double = eeg.delta.magnitude
-
+```
 
 #### Relative Values ####
 
 Relative values of the brainwaves can be accessed by sensor, region, or from the whole headband. A relative value is a percentage (range: 0.0-1.0) strength of a brainwave compared to the other brainwaves of that reading.
 
-###### Examples: ######
+##### Examples: #####
+```
 let relativeAlphaForRightForehead:Double = eeg.rightForehead.alpha
 let relativeBetaForFrontOfHead:Double = eee.front.beta
 let relativeDeltaForEntireHead:Double = eeg.delta.relative
-
+```
 
 #### History ####
 
 Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the beginning of the array, the oldest value is at the end. Having these values can be useful for rendering a wave's values on a graphic display.
 
-###### Examples: ######
+##### Examples: #####
+```
 let historyOfDeltaDecibelValuesForEntireHead:[Double] = eeg.delta.history.decibels
 let historyOfDeltaMagnitudeValuesForLeftForehead:[Double] = eeg.leftForehead.delta.history.magnitudes
+```
 
 To change the length of the wave's history, call
+```
 eeg.set(historyLength: 150)
+```
 
 The default is 75.
 
@@ -231,34 +240,38 @@ If you want to get data from from the frequency spectrum besides the presets (de
 
 
 ##### By Frequency Range #####
-
+```
 getDecibel(fromFrequencyRange:[Double]) -> Double
 getMagnitude(fromFrequencyRange:[Double]) -> Double
+```
 
 You can pass in an array of two frequencies and get back the averaged decibel or magnitude for that range. All values must be below 110Hz, since that is the range of the Muse headband's output.
 
-###### Examples: ######
+##### Examples: #####
+```
 let customBandDecibelAverageForLeftEarSensor:Double = eeg.leftEar.getDecibel(fromFrequencyRange[4.5, 8.0])
 let customBandDecibelAverageForFrontOfHead:Double = eeg.front.getDecibel(fromFrequencyRange[85.0, 60.0])
 let custonBandMagnitudeAverageForEntireHead:[Double] = eeg.getMagnitude(fromFrequencyRange[33.0, 37.0])
-
+```
 
 ##### By Bin Range #####
 
 Calculating the frequency range repeatedly can slow things down, so you can calculate the frequencis into it "bin" numbers. This finds the bin location of your frequency in the spectrum and returns results faster.
 
 To get your custom bin range:
+```
 let myCustomBins:[Int] = eeg.getBins(fromFrequencyRange: [4.5, 8.0])
+```
 
 Then you can get the averaged decibel or magnitude for that bin range.
 
+```
 let customBandDecibelAverageForLeftEarSensor:Double = eeg.getDecibel(fromBinRange: myCustomBins)
 let customBandDecibelAverageForFrontOfHead:Double = eeg.front.getDecibel(fromBinRange: myCustomBins)
 let custonBandMagnitudeAverageForEntireHead:Double = eeg.getMagnitude(fromBinRange: myCustomBins)
-
+```
 
 Again, this is computationally faster, so it can be worth calculating your bins once, and using those to get the decibel and magnitude values each time the headband refreshes.
-
 
 #### Spectrum Slices ####
 Instead of getting an averaged value from a custom frequency slice, you can access the slice yourself for data processing or graphic display.
@@ -267,18 +280,21 @@ Instead of getting an averaged value from a custom frequency slice, you can acce
 ##### By Frequency Range #####
 You can get a slice of the frequency spectrum in decibels or magnitudes by passing in a frequency range.
 
-###### Examples: ######
+##### Examples: #####
+```
 let customDecibelSliceOfSpectrum:[Double] = eeg.getDecibelSlice(fromFrequencyRange: [18.0, 23.0])
 let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromFrequencyRange: [8.5, 10.3])
-
+```
 
 ##### By Bin Range #####
 
 And similar to above, you can calcuate the bins of your frequency range, and use the bin range get a spectrum slice
 
+```
 let myCustomBins:[Int] = eeg.getBins(fromFrequencyRange: [4.5, 8.0])
 let customDecibelSliceOfSpectrum:[Double] = eeg.getDecibelSlice(fromBinRange: myCustomBins)
 let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromBinRange: myCustomBins)
+```
 
 ## EEG Packet ##
 
