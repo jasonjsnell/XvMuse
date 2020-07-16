@@ -269,7 +269,7 @@ This returns the average value of the history array, in decibels or magnitudes.
 let averageOfRecentThetaDecibelsForTP10Sensor:Double = eeg.TP10.theta.average.decibel
 ```
 #### Percent ####
-This returns the average value divided by the highest value. "Percent" isn't the perfect word for this value, but it can be a useful for calculating how the wave is performing overall compared to it's most recent peak.
+This returns the average value divided by the highest value. "Percent" isn't the perfect word for this value, but it can be a useful for calculating how the wave is performing overall compared to it's most recent peak. This is not in decibels or magnitudes, but a 0.0-1.0 percentage range.
 ```
 let deltaHistoryPercent:Double = eeg.sides.delta.history.percent
 ```
