@@ -325,13 +325,16 @@ Sensor 3 is AF7, the left forehead<br>
 
 These time-based packets that can be loaded into a buffer, sliced into epochs, processed through a Fast Fourier Transform, and output as frequency-based spectrum data. This is all being done in the framework and output as the XvMuseEEG updates above. So, again, most users won't need to use this XvMuseEEGPacket update.
 
-
+<hr>
 
 ## PPG ##
 
 In development.
 
+<hr>
+
 ## Accelerometer ##
+
 The accelerometer updates frequently and registers headband movement. Each update contains 3 x, y, z readings. When the XvMuseAccelerometer object comes in, it has the following attributes:
 
 ```
@@ -348,7 +351,10 @@ accelerometer.z
 The format of the raw array is: [x1, y1, z1, x2, y2, z2, x3, y3, z3]<br>
 .x .y and .z are the averaged values of the raw array.
 
+<hr>
+
 ## Battery ##
+
 The updates from the battery are the least frequent, about every 30 seconds or so. When the XvMuseBattery object comes in, it has the following attributes:
 
 ```
