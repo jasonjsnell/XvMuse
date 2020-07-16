@@ -157,10 +157,10 @@ Again, all the examples above give you access to the full frequency spectrum of 
 
 The full frequency spectrum's output is 0-110Hz. The commonly-used bands are at these frequencies:
 
-> Delta:    1-4Hz
-> Theta:    4-8Hz
-> Alpha:    7.5-13Hz
-> Beta:     13-30Hz
+> Delta:    1-4Hz<br>
+> Theta:    4-8Hz<br>
+> Alpha:    7.5-13Hz<br>
+> Beta:     13-30Hz<br>
 > Gamma:    30-44Hz
 
 You can access these values for each sensor, region, or for the entire headband. The accessors are
