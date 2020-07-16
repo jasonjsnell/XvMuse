@@ -101,7 +101,7 @@ eeg.rightEar
 
 For each sensor, you can access either the decibels or magnitudes.
 
-##### Examples: #####
+Examples:
 ```
 let TP9Decibles:[Double] = eeg.TP9.decibel
 let rightForeheadMagnitudes:[Double] = eeg.rightForehead.magnitude
@@ -131,7 +131,7 @@ eeg.front
 eeg.sides
 ```
 
-##### Examples: #####
+Examples:
 ```
 let leftSideOfHeadDecibels:[Double] = eeg.left.decibels
 let frontOfHeadMagnitudes:[Double] = eeg.front.magnitudes
@@ -144,7 +144,7 @@ Finally, you can access all the sensors averaged together.
 eeg
 ```
 
-##### Examples: #####
+Examples:
 ```
 let allSensorsAveragedInDecibels:[Double] = eeg.decibels
 let allSensorsAveragedInMagnitudes:[Double] = eeg.magnitudes
@@ -176,7 +176,7 @@ You can access these values for each sensor, region, or for the entire headband.
 
 To access the brainwave from a specific sensor, you have two options. You can start with the sensor or the brainwave.
 
-##### Examples: #####
+Examples:
 ```
 let leftForeheadDelta:Double = eeg.leftForehead.delta.decibel
 let deltaOfLeftForehead:Double = eeg.delta.leftForehead.decibel //same value as above
@@ -189,7 +189,7 @@ These give you the same value. The two routes to the same data are just a matter
 
 To access the averaged brainwave level from a region of sensors, you have two options. You can start with the region or the brainwave. The two examples below output the same value.
 
-##### Examples: #####
+Examples:
 ```
 let frontOfHeadDelta:Double = eeg.front.delta.decibel
 let deltaOfFrontOfHead:Double = eeg.delta.front.decibel
@@ -199,7 +199,7 @@ let deltaOfFrontOfHead:Double = eeg.delta.front.decibel
 
 To access the averaged brainwave level of the entire headband, just target the wave directly.
 
-##### Examples: #####
+Examples:
 ```
 let deltaAverageDecibelValueForEntireHead:Double = eeg.delta.decibel
 let deltaAverageMagnitudeValueForEntireHead:Double = eeg.delta.magnitude
@@ -209,7 +209,7 @@ let deltaAverageMagnitudeValueForEntireHead:Double = eeg.delta.magnitude
 
 Relative values of the brainwaves can be accessed by sensor, region, or from the whole headband. A relative value is a percentage (range: 0.0-1.0) strength of a brainwave compared to the other brainwaves of that reading.
 
-##### Examples: #####
+Examples:
 ```
 let relativeAlphaForRightForehead:Double = eeg.rightForehead.alpha
 let relativeBetaForFrontOfHead:Double = eee.front.beta
@@ -220,7 +220,7 @@ let relativeDeltaForEntireHead:Double = eeg.delta.relative
 
 Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the beginning of the array, the oldest value is at the end. Having these values can be useful for rendering a wave's values on a graphic display.
 
-##### Examples: #####
+Examples:
 ```
 let historyOfDeltaDecibelValuesForEntireHead:[Double] = eeg.delta.history.decibels
 let historyOfDeltaMagnitudeValuesForLeftForehead:[Double] = eeg.leftForehead.delta.history.magnitudes
@@ -247,7 +247,7 @@ getMagnitude(fromFrequencyRange:[Double]) -> Double
 
 You can pass in an array of two frequencies and get back the averaged decibel or magnitude for that range. All values must be below 110Hz, since that is the range of the Muse headband's output.
 
-##### Examples: #####
+Examples:
 ```
 let customBandDecibelAverageForLeftEarSensor:Double = eeg.leftEar.getDecibel(fromFrequencyRange[4.5, 8.0])
 let customBandDecibelAverageForFrontOfHead:Double = eeg.front.getDecibel(fromFrequencyRange[85.0, 60.0])
@@ -280,7 +280,7 @@ Instead of getting an averaged value from a custom frequency slice, you can acce
 ##### By Frequency Range #####
 You can get a slice of the frequency spectrum in decibels or magnitudes by passing in a frequency range.
 
-##### Examples: #####
+Examples:
 ```
 let customDecibelSliceOfSpectrum:[Double] = eeg.getDecibelSlice(fromFrequencyRange: [18.0, 23.0])
 let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromFrequencyRange: [8.5, 10.3])
