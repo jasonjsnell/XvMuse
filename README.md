@@ -79,26 +79,33 @@ eeg.leftEar
 ```
 
 ##### Left Forehead #####
+```
 eeg.FP1
 eeg.sensors[1]
 eeg.leftForehead
+```
 
 ##### Right Forehead #####
+```
 eeg.FP2
 eeg.sensors[2]
 eeg.rightForehead
+```
 
 ##### Right Ear #####
+```
 eeg.TP10
 eeg.sensors[3]
 eeg.rightEar
-
+```
 
 For each sensor, you can access either the decibels or magnitudes.
 
-###### Examples: ######
+##### Examples: #####
+```
 let TP9Decibles:[Double] = eeg.TP9.decibel
 let rightForeheadMagnitudes:[Double] = eeg.rightForehead.magnitude
+```
 
 These gives you the full frequency spectrum (called a Power Spectral Density) of the sensor.
 
