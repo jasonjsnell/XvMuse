@@ -216,14 +216,28 @@ let deltaAverageMagnitudeValueForEntireHead:Double = eeg.delta.magnitude
 ```
 
 ### Relative Values ###
+Relative values of the brainwaves can be accessed by sensor, region, or from the whole headband. A relative value is a percentage (range: 0.0-1.0) strength of a brainwave when compared to other brainwaves or to its own recent values.
 
-Relative values of the brainwaves can be accessed by sensor, region, or from the whole headband. A relative value is a percentage (range: 0.0-1.0) strength of a brainwave compared to the other brainwaves of that reading.
+#### Relative to other brainwaves ####
+
+This returns the strength of a brainwave compared to the other brainwaves.
 
 Examples:
 ```
-let relativeAlphaForRightForehead:Double = eeg.rightForehead.alpha
-let relativeBetaForFrontOfHead:Double = eee.front.beta
+let relativeAlphaForRightForehead:Double = eeg.rightForehead.alpha.relative
+let relativeBetaForFrontOfHead:Double = eee.front.beta.relative
 let relativeDeltaForEntireHead:Double = eeg.delta.relative
+```
+
+#### Relative to its own recent values ####
+
+This returns the strength of a brainwave compared to its own recent values (more details in History section below).
+
+Examples:
+```
+let deltaPercentageForLeftEar:Double = eeg.leftEar.delta.percent
+let gammaPercentageForSideSensors:Double = eee.sides.gamma.percent
+let thetaPercentageForEntireHead:Double = eeg.theta.relative
 ```
 
 ### History ###
