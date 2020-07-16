@@ -172,6 +172,12 @@ You can access these values for each sensor, region, or for the entire headband.
 .alpha
 .beta
 .gamma
+
+.waves[0] // delta
+.waves[1] // theta
+.waves[2] // alpha
+.waves[3] // beta
+.waves[4] // gamma
 ```
 
 #### By Sensor ####
@@ -182,6 +188,8 @@ Examples:
 ```
 let leftForeheadDelta:Double = eeg.leftForehead.delta.decibel
 let deltaOfLeftForehead:Double = eeg.delta.leftForehead.decibel //same value as above
+let leftForeheadDeltafromWavesArray:Double = eeg.leftForehead.waves[0].decibel //same value
+let deltaOfLeftForeheadFromWavesArray:Double = eeg.waves[0].leftForehead.decibel //same value
 ```
 
 These give you the same value. The two routes to the same data are just a matter of preference and what works for your project.
