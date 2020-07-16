@@ -47,6 +47,8 @@ func didReceiveUpdate(from eegPacket: XvMuseEEGPacket) {}
 
 This is how your project will receive data from the Muse headband. 
 
+<hr>
+
 ## EEG ##
 
 ### Summary ###
