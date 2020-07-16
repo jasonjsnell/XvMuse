@@ -56,7 +56,7 @@ Inside the XvMuseEEG packet you can access each sensor and each brainwave throug
 
 #### Values: Magnitudes vs. Decibels ####
 
-Athe value can be accessed as a magnitude or a decibel value.
+A value can be accessed as a magnitude or a decibel value.
 
 Both values come from the Fast Fourier Transform process. Magnitude is the more raw value, calculating the amplitude of the FFT by running vDSP_zvabsD on a DSPDoubleSplitComplex. The output is always above zero and I've seen values as high as 250000, with averages around 300-400. These are large values, but could be scaled down to more usable ranges.
 
@@ -72,9 +72,11 @@ You can access the 4 sensors on the Muse through their electrode number, array p
 
 
 ##### Left Ear #####
+```
 eeg.TP9
 eeg.sensors[0]
 eeg.leftEar
+```
 
 ##### Left Forehead #####
 eeg.FP1
