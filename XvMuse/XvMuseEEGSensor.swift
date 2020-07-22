@@ -8,33 +8,142 @@
 
 import Foundation
 
-/*
- instead of linking to Wave Object, which could cause a circular reference
- (delta.TP9.delta.TP9.etc...)
- this is a simpler Wave Value Object, which has the sensor's delta values
- example: eeg.TP9.delta.magnitude
- */
+//MARK: PSD
+//all-band, full spectrum Power Spectral Densities from the FFT
 
-public class XvMuseEEGWaveValue:EEGValuePair {
-    public var history:XvMuseEEGValueHistory = XvMuseEEGValueHistory()
+struct XvMuseEEGPsd {
+    
+    public init(magnitudes:[Double] = [], decibels:[Double] = []){
+        self.magnitudes = magnitudes
+        self.decibels = decibels
+    }
+    public var magnitudes:[Double] = []
+    public var decibels:[Double] = []
 }
 
-//object accessed directly from FFT Result
-//has each brainwave value, or entire PSD as magnitudes or decibels
+
+/* Each sensor can return
+ 
+ 1) sensor's power spectral density from FFT
+ 2) magnitudes or decibels from any of the specific 5 brainwave bands
+ 
+       TP9     AF7     AF8     TP10
+                       ---      ---
+delta   x       x     | x |    | x | < XvMuseEEGValue
+theta   x       x     | x |     ---
+alpha   x       x     | x |      x
+beta    x       x     | x |      x
+gamma   x       x     | x |      x
+                       ___
+                        ^
+                 XvMuseEEGSensor
+*/
+
 public class XvMuseEEGSensor {
     
-    //each wave value on this sensor
-    public var waves:[XvMuseEEGWaveValue]
-    public var delta:XvMuseEEGWaveValue { get { return waves[0] } }
-    public var theta:XvMuseEEGWaveValue { get { return waves[1] } }
-    public var alpha:XvMuseEEGWaveValue { get { return waves[2] } }
-    public var beta:XvMuseEEGWaveValue  { get { return waves[3] } }
-    public var gamma:XvMuseEEGWaveValue { get { return waves[4] } }
-
-    //entire PSD spectrum magnitudes and decibels
-    public var psd:XvMuseEEGPsd = XvMuseEEGPsd()
+    //MARK: - Power Spectral Density
     
-    init(){
-        waves = [XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue(), XvMuseEEGWaveValue()]
+    //example: eeg.TP9.magnitudes
+    //example: eeg.TP10.decibels
+    
+    fileprivate var psd:XvMuseEEGPsd = XvMuseEEGPsd()
+    internal func updatePsd(psd:XvMuseEEGPsd) {
+        
+        self.psd = psd
+        
+        if let min:Double = psd.decibels.min() {
+            noise = Int(min)
+            if (noise < 0){
+                noise = 0
+            }
+        }
     }
+    
+    public var noise:Int = 5
+    public var decibels:[Double] { get { return psd.decibels } }
+    public var magnitudes:[Double] { get { return psd.magnitudes } }
+    
+    
+    //MARK: Connection
+    
+    
+    //MARK: - Waves
+    
+    //vars for calculating wave values on the fly
+    //eeg.TP9.delta.decibel
+    //eeg.TP10.alpha.magnitude
+    
+    public var waves:[XvMuseEEGValue]
+    
+    public var delta:XvMuseEEGValue = XvMuseEEGValue(waveID: 0)
+    public var theta:XvMuseEEGValue = XvMuseEEGValue(waveID: 1)
+    public var alpha:XvMuseEEGValue = XvMuseEEGValue(waveID: 2)
+    public var beta: XvMuseEEGValue = XvMuseEEGValue(waveID: 3)
+    public var gamma:XvMuseEEGValue = XvMuseEEGValue(waveID: 4)
+
+    init(){
+        
+        //store wave value in an array
+        //assign this sensor to each wave value object
+       
+        waves = [delta, theta, alpha, beta, gamma]
+        
+        for w in 0..<waves.count {
+            let waveValue:XvMuseEEGValue = waves[w]
+            waveValue.assign(sensor: self)
+        }
+    }
+    
+    //MARK: - Accessing custom frequency ranges -
+    
+    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
+    
+    //MARK: Get bin slices
+    
+    public func getDecibelSlice(fromBinRange:[Int]) -> [Double] {
+        
+        return _fm.getSlice(bins: fromBinRange, spectrum: decibels)
+    }
+    
+    public func getMagnitudeSlice(fromBinRange:[Int]) -> [Double] {
+        
+        return _fm.getSlice(bins: fromBinRange, spectrum: magnitudes)
+    }
+    
+    //MARK: Get spectrum slices
+    public func getDecibelSlice(fromFrequencyRange:[Double]) -> [Double] {
+        
+        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: decibels)
+    }
+    
+    public func getMagnitudeSlice(fromFrequencyRange:[Double]) -> [Double] {
+        
+        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
+    }
+    
+    
+    //MARK: Get wave value via frequency range
+    public func getDecibel(fromFrequencyRange:[Double]) -> Double {
+        
+        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: decibels)
+    }
+    
+    public func getMagnitude(fromFrequencyRange:[Double]) -> Double {
+        
+        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
+    }
+    
+    
+    //MARK: Get wave value via bins
+    public func getDecibel(fromBinRange:[Int]) -> Double {
+        
+        return _fm.getWaveValue(bins: fromBinRange, spectrum: decibels)
+    }
+    
+    public func getMagnitude(fromBinRange:[Int]) -> Double {
+        
+        return _fm.getWaveValue(bins: fromBinRange, spectrum: magnitudes)
+    }
+    
+    
 }

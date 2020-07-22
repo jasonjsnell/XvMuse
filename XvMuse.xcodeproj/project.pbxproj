@@ -12,6 +12,9 @@
 		BB1E249924AE0FBF00DEBD9E /* XvUtils.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1E249724AE0FB300DEBD9E /* XvUtils.framework */; };
 		BB1E24B424AE88A500DEBD9E /* XvBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1E24B324AE889400DEBD9E /* XvBluetooth.framework */; };
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
+		BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */; };
+		BB2DB3B824BA67A100AA7DD4 /* XvMuseEEGRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */; };
+		BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */; };
 		BB57F88D2496B01C003DB78A /* XvMuse.h in Headers */ = {isa = PBXBuildFile; fileRef = BB57F88B2496B01C003DB78A /* XvMuse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8952496B05F003DB78A /* XvMuse.swift */; };
 		BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8A02496B268003DB78A /* XvMuseConstants.swift */; };
@@ -47,6 +50,9 @@
 		BB1E249124AE0FB300DEBD9E /* XvUtils.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvUtils.xcodeproj; path = ../../../UTILS/XvUtils/XvUtils.xcodeproj; sourceTree = "<group>"; };
 		BB1E24AE24AE889400DEBD9E /* XvBluetooth.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvBluetooth.xcodeproj; path = ../../../EXTERNAL_COMM/XvBluetooth/XvBluetooth.xcodeproj; sourceTree = "<group>"; };
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
+		BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGHistory.swift; sourceTree = "<group>"; };
+		BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGRegion.swift; sourceTree = "<group>"; };
+		BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGWaveValue.swift; sourceTree = "<group>"; };
 		BB57F8882496B01B003DB78A /* XvMuse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XvMuse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB57F88B2496B01C003DB78A /* XvMuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XvMuse.h; sourceTree = "<group>"; };
 		BB57F88C2496B01C003DB78A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -110,10 +116,13 @@
 			isa = PBXGroup;
 			children = (
 				BB57F8952496B05F003DB78A /* XvMuse.swift */,
-				BB8B857824B118E200376FD4 /* XvMuseEEG.swift */,
-				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
-				BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */,
 				BB57F8A02496B268003DB78A /* XvMuseConstants.swift */,
+				BB8B857824B118E200376FD4 /* XvMuseEEG.swift */,
+				BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */,
+				BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */,
+				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
+				BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */,
+				BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */,
 				BB57F8942496B04B003DB78A /* Private */,
 				BB1E24AE24AE889400DEBD9E /* XvBluetooth.xcodeproj */,
 				BB1E249124AE0FB300DEBD9E /* XvUtils.xcodeproj */,
@@ -262,14 +271,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */,
+				BB2DB3B824BA67A100AA7DD4 /* XvMuseEEGRegion.swift in Sources */,
 				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
 				BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
 				BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */,
 				BB8B856D24B0E81700376FD4 /* FFT.swift in Sources */,
+				BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift in Sources */,
 				BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */,
 				BB0962FC24B287F600D516D5 /* XvMuseEEGSensor.swift in Sources */,
 				BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */,
+				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
 				BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */,
 				BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */,
@@ -420,6 +432,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonjsnell.XvMuse;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -447,6 +460,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonjsnell.XvMuse;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

@@ -87,10 +87,25 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     //this is the bridge between the XvBluetooth framework and this class
+    
+    
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
         //print("XvMuse: Received value:", valueFromCharacteristic)
+        
         observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
+        
+        //up the counter
+        connectionCounter += 1
+        if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
+            keepAlive()
+            connectionCounter = 0
+        }
     }
+    
+    fileprivate var connectionCounter:Int = 0
+    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 100
+    
+    
     
     
     //MARK: Send commands to the Muse headband
@@ -98,6 +113,10 @@ public class MuseBluetooth:XvBluetoothObserver {
     //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
     public func connect(){
         XvBluetooth.sharedInstance.connect()
+    }
+    
+    public func disconnect(){
+        XvBluetooth.sharedInstance.disconnect()
     }
     
     //start streaming data
@@ -115,7 +134,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     public func keepAlive(){
-        
+        print("/////////////////////////////////////////// KEEP ALIVE")
         let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
         sendControlCommand(data: data)
     }

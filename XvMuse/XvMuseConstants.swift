@@ -46,18 +46,20 @@ public class XvMuseConstants {
     public static let CMND_P23:[UInt8]    = [0x04, 0x70, 0x32, 0x33, 0x0a] //preset 23
     
     public static let BATTERY_PCT_DIVIDEND:UInt16 = 512
-    public static let ACCEL_SCALE_FACTOR:Float = 0.0000610
-    public static let GYRO_SCALE_FACTOR:Float = 0.0074768
+    public static let ACCEL_SCALE_FACTOR:Double = 0.0000610
+    public static let GYRO_SCALE_FACTOR:Double = 0.0074768
     
     
     //MARK: EEG
     //Muse bands: https://web.archive.org/web/20181105231756/http://developer.choosemuse.com/tools/available-data#Absolute_Band_Powers
-    public static let FREQUENCY_BAND_DELTA:[Float] = [1,  3]
-    public static let FREQUENCY_BAND_THETA:[Float] = [4,  7]
-    public static let FREQUENCY_BAND_ALPHA:[Float] = [8,  12]
-    public static let FREQUENCY_BAND_BETA:[Float]  = [13, 29]
-    public static let FREQUENCY_BAND_GAMMA:[Float] = [30, 44]
     
+    public static let FREQUENCY_BAND_DELTA:[Double] = [1.5,  4.0]
+    public static let FREQUENCY_BAND_THETA:[Double] = [4.0,  8.0]
+    public static let FREQUENCY_BAND_ALPHA:[Double] = [7.5,  13.0]
+    public static let FREQUENCY_BAND_BETA :[Double] = [13.0, 30.0]
+    public static let FREQUENCY_BAND_GAMMA:[Double] = [30.0, 44.0]
+    
+    /*
     //order of sensors as the data comes in from muse
     public static let TP9:Int  = 2 //left ear
     public static let TP10:Int = 0 //right ear
@@ -69,9 +71,10 @@ public class XvMuseConstants {
     public static let EEG_SENSOR_EAR_R:Int      = 0 //right ear
     public static let EEG_SENSOR_FOREHEAD_L:Int = 3 //left forehead
     public static let EEG_SENSOR_FOREHEAD_R:Int = 1 //right forehead
+    */
     
     //MARK: FFT
-    public static let SAMPLING_RATE:Float = 220.0
+    public static let SAMPLING_RATE:Double = 220.0
     public static let FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     

@@ -34,7 +34,7 @@ and sends it here to create a streaming buffer, slice out epoch windows, and ret
 
 public struct DataStream {
     public var sensor:Int // same as data packet
-    public var samples:[Float] = [] // streaming samples of EEG sensor data
+    public var samples:[Double] = [] // streaming samples of EEG sensor data
     public var timestamps:[Double] = [] //series of recent timestamps
 }
 
@@ -42,15 +42,15 @@ public struct DataStream {
 
 public struct Epoch {
     public var sensor:Int // same as data stream
-    public var samples:[Float] = [] // X amount of EEG samples in a specific window of time
+    public var samples:[Double] = [] // X amount of EEG samples in a specific window of time
 }
 
 /* This stores the different FFT result arrays, including magnitudes (above zero, absolute values) and decibels (which the Muse SDK outputs) */
 
 public struct FFTResult {
     public var sensor:Int // same as epoch
-    public var magnitudes:[Float] //absolute, above zero values
-    public var decibels:[Float] //decibels, which go above and below 0
+    public var magnitudes:[Double] //absolute, above zero values
+    public var decibels:[Double] //decibels, which go above and below 0
 }
 
 

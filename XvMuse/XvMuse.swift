@@ -16,16 +16,48 @@ import XvUtils
 
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseObserver:class {
-    func didReceiveUpdate(from battery:XvMuseBattery)
-    func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
     func didReceiveUpdate(from eeg:XvMuseEEG)
     func didReceiveUpdate(from eegPacket:XvMuseEEGPacket)
+    func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
+    func didReceiveUpdate(from battery:XvMuseBattery)
+    
 }
 
 //MARK: - STRUCTS -
 //data objects that get sent to the observer when updates come in from the headband
 
+//MARK: Packet
+/* Each time the Muse headband fires off an EEG sensor update (order is: tp10 af8 tp9 af7),
+the XvMuse class puts that data into XvMuseEEGPackets
+and sends it here to create a streaming buffer, slice out epoch windows, and return Fast Fourier Transformed array of frequency data
+       
+       ch1     ch2     ch3     ch4  < EEG sensors tp10 af8 tp9 af7
+                       ---     ---
+0:00    p       p     | p |   | p | < XvMuseEEGPacket is one packet of a 12 sample EEG reading, index, timestamp, channel ID
+0:01    p       p     | p |    ---
+0:02    p       p     | p |     p
+0:03    p       p     | p |     p
+0:04    p       p     | p |     p
+0:05    p       p     | p |     p
+                       ___
 
+                        ^ DataBuffer of streaming samples. Each channel has it's own buffer
+*/
+
+public struct XvMuseEEGPacket {
+    
+    public var packetIndex:UInt16 = 0
+    public var sensor:Int = 0 // 0 to 4: tp10 af8 tp9 af7 aux
+    public var timestamp:Double = 0 // milliseconds since packet creation
+    public var samples:[Double] = [] // 12 samples of EEG sensor data
+    
+    public init(packetIndex:UInt16, sensor:Int, timestamp:Double, samples:[Double]){
+        self.packetIndex = packetIndex
+        self.sensor = sensor
+        self.timestamp = timestamp
+        self.samples = samples
+    }
+}
 
 public struct XvMusePPG {
     
@@ -33,9 +65,9 @@ public struct XvMusePPG {
 
 public struct XvMuseAccelerometer {
     public var packetIndex:UInt16 = 0
-    public var x:Float = 0 //head forward / back
-    public var y:Float = 0 //head to shoulder
-    public var z:Float = 0 //jumping up and down
+    public var x:Double = 0 //head forward / back
+    public var y:Double = 0 //head to shoulder
+    public var z:Double = 0 //jumping up and down
     public var raw:[Int16] = []
 }
 
@@ -59,6 +91,7 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: Private
     //sensor data objects
+    public var eeg:XvMuseEEG { get { return _eeg } }
     fileprivate var _eeg:XvMuseEEG = XvMuseEEG()
     fileprivate var _accel:XvMuseAccelerometer = XvMuseAccelerometer()
     fileprivate var _battery:XvMuseBattery = XvMuseBattery()
@@ -81,13 +114,9 @@ public class XvMuse:MuseBluetoothObserver {
         
     }
     
-    //MARK: - ACCESSORS -
-    public func getCustomEEGBand(signal:[Double], low:Double, high:Double) {
-        
-    }
     
     //MARK: - DATA PROCESSING -
-
+    
     public func parse(bluetoothCharacteristic: CBCharacteristic) {
         
         if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
@@ -105,6 +134,7 @@ public class XvMuse:MuseBluetoothObserver {
             func _makeEEGPacket(i:Int) -> XvMuseEEGPacket {
                 
                 let packet:XvMuseEEGPacket = XvMuseEEGPacket(
+                    packetIndex: packetIndex,
                     sensor: i,
                     timestamp: timestamp,
                     samples: _parser.getEEGSamples(fromBytes: bytes))
@@ -129,15 +159,14 @@ public class XvMuse:MuseBluetoothObserver {
                 //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the XvMuseEEG object
             case XvMuseConstants.CHAR_TP10:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-                 observer?.didReceiveUpdate(from: _eeg)
             case XvMuseConstants.CHAR_AF8:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-                 observer?.didReceiveUpdate(from: _eeg)
             case XvMuseConstants.CHAR_TP9:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-                 observer?.didReceiveUpdate(from: _eeg)
             case XvMuseConstants.CHAR_AF7:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                 
+                 //only broadcast the XvMuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
                  observer?.didReceiveUpdate(from: _eeg)
                 
                 //MARK: PPG
@@ -219,5 +248,4 @@ public class XvMuse:MuseBluetoothObserver {
             }
         }
     }
-
 }

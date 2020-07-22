@@ -27,26 +27,26 @@ class Parser {
     
     //MARK: - EEG -
     
-    internal func getEEGSamples(fromBytes:[UInt8]) -> [Float] {
+    internal func getEEGSamples(fromBytes:[UInt8]) -> [Double] {
         
         //convert UInt8 array into a UInt12 array
         let UInt12Samples:[UInt16] = Bytes.constructUInt12Array(fromUInt8Array: fromBytes)
         
         //process these samples into the correct range
-        return UInt12Samples.map { 0.48828125 * Float(Int($0) - 2040) }
+        return UInt12Samples.map { 0.48828125 * Double(Int($0) - 2048) } //0x800 = 2048
     }
     
     //MARK: - ACCEL -
     
     //gets the raw XYZ data from muse
-    internal func getXYZ(values:[Int16], start:Int) -> Float {
+    internal func getXYZ(values:[Int16], start:Int) -> Double {
         
         //add up every third value
-        //convert to float, otherwise total exceeds Int16 max
-        let sum:Float =
-            Float(values[start]) +
-            Float(values[start+3]) +
-            Float(values[start+6])
+        //convert to Double, otherwise total exceeds Int16 max
+        let sum:Double =
+            Double(values[start]) +
+            Double(values[start+3]) +
+            Double(values[start+6])
        
         //divide by 3 to get average and multiple by scale
         return (sum / 3) * XvMuseConstants.ACCEL_SCALE_FACTOR
