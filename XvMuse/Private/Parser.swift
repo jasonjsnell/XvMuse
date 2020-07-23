@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XvUtils
 
 class Parser {
     
@@ -16,8 +15,8 @@ class Parser {
     // many of the characteristics include a counter that moves up with each received packet
     internal func getPacketIndex(fromBytes:[UInt8]) -> UInt16 {
         let twoByteArr:[UInt8] = [fromBytes[0], fromBytes[1]]
-        let hex:String = Hex.getHex(fromBytes: twoByteArr)
-        if let index:UInt16 = Hex.getUInt16(fromHex: hex) {
+        let hex:String = Bytes.getHex(fromBytes: twoByteArr)
+        if let index:UInt16 = Bytes.getUInt16(fromHex: hex) {
             return index
         } else {
             print("EEG:Parser: Unable to get packet index from bytes")
@@ -56,6 +55,7 @@ class Parser {
     
     //var to concat incoming messages to
     fileprivate var controlMsg:String = ""
+    internal var printControlMessages:Bool = false
     
     internal func parse(controlLine:Data?) {
         
@@ -80,13 +80,17 @@ class Parser {
                 //if the character is the close bracket...
                 if (charFromByte == "}") {
                     
-                    print("CONTROL: Message received")
+                    if (printControlMessages) {
+                        print("CONTROL: Message received")
+                    }
                     
                     //send the string to the JSON func
                     if let json:[String:Any] = JSON.getJSON(fromStr: controlMsg) {
                         
                         //print result
-                        print("CONTROL: JSON", json)
+                        if (printControlMessages) {
+                            print("CONTROL: JSON", json)
+                        }
                     }
                     
                     //re-initliaze the message string for the next time a command comes in

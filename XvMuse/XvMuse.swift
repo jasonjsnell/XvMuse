@@ -11,8 +11,6 @@
 
 import Foundation
 import CoreBluetooth
-import XvBluetooth
-import XvUtils
 
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseObserver:class {
@@ -89,9 +87,15 @@ public class XvMuse:MuseBluetoothObserver {
     //the view controller that receives EEG, accel, PPG, etc updates
     public weak var observer:XvMuseObserver?
     
+    public var eeg:XvMuseEEG { get { return _eeg } }
+    
+    public var printControlMessages:Bool {
+        get { return _parser.printControlMessages }
+        set { _parser.printControlMessages = newValue}
+    }
+    
     //MARK: Private
     //sensor data objects
-    public var eeg:XvMuseEEG { get { return _eeg } }
     fileprivate var _eeg:XvMuseEEG = XvMuseEEG()
     fileprivate var _accel:XvMuseAccelerometer = XvMuseAccelerometer()
     fileprivate var _battery:XvMuseBattery = XvMuseBattery()

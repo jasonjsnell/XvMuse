@@ -8,7 +8,6 @@
 
 import Foundation
 import CoreBluetooth
-import XvBluetooth
 
 //the observer receives the values coming in from bluetooth
 public protocol MuseBluetoothObserver:class {
@@ -103,7 +102,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     fileprivate var connectionCounter:Int = 0
-    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 100
+    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 75
     
     
     
@@ -134,7 +133,6 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     public func keepAlive(){
-        print("/////////////////////////////////////////// KEEP ALIVE")
         let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
         sendControlCommand(data: data)
     }

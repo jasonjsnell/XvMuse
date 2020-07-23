@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XvUtils
 
 public class XvMuseEEGValue {
     

@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XvUtils
 
 /*
         Delta   Theta   Alpha   Gamma   Beta  < XvMuseEEGWave

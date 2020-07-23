@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XvUtils
 
 public struct EEGValue {
     public var magnitude:Double = 0
@@ -100,47 +99,53 @@ public class XvMuseEEGHistory {
     
     
     //MARK: - Changing the data
-    
+    let magnitudeHistoryQueue:DispatchQueue = DispatchQueue(label: "magnitudeHistoryQueue")
     fileprivate func add(magnitude:Double){
         
-        //only add to array if value is new
-        //this prevents duplicate entries from the history being called repeatedly in one render loop
-        if let first:Double = _magnitudes.first {
-            if (magnitude == first) { return }
-        }
-        
-        //add to the buffer
-        //_magnitudes.append(magnitude)
-        _magnitudes.insert(magnitude, at: 0)
-        
-        //and remove oldest values that are beyond the buffer size
-        if (_magnitudes.count > _maxCount) {
-            _magnitudes.removeLast(_magnitudes.count-_maxCount)
-        }
-    }
-    
-    fileprivate func add(decibel:Double){
-        
-        //only add to array if value is new
-        //this prevents duplicate entries from the history being called repeatedly in one render loop
-        if let first:Double = _decibels.first {
-            if (decibel == first) { return }
-        }
-        
-        //add to the buffer
-        _decibels.insert(decibel, at: 0)
-        
-        //and remove oldest values that are beyond the buffer size
-        if (_decibels.count > _maxCount) {
+        //run inside of queue to avoid fatal errors from multiple sources calling this simultaneously
+        magnitudeHistoryQueue.sync {
             
-            
-            
-            let removalQuantity:Int = _decibels.count - _maxCount
-            print("db count", _decibels.count, "|", _maxCount, "| over by", removalQuantity)
-            if (removalQuantity > 0) { //error checking
-                _decibels.removeLast(removalQuantity)
+            //only add to array if value is new
+            //this prevents duplicate entries from the history being called repeatedly in one render loop
+            if let last:Double = _magnitudes.last {
+                if (magnitude == last) { return }
             }
             
+            //add to the buffer
+            _magnitudes.append(magnitude)
+            
+            //and remove oldest values that are beyond the buffer size
+            if (_magnitudes.count > _maxCount) {
+                let _:Double? = _magnitudes.removeFirst()
+            }
+            
+        }
+        
+        
+    }
+    
+    let decibelHistoryQueue:DispatchQueue = DispatchQueue(label: "decibelHistoryQueue")
+    fileprivate func add(decibel:Double){
+        
+        // run in a queue to avoid fatal errors like
+        // fatal error: UnsafeMutablePointer.deinitialize with negative count
+        // this error can happen if this func is being called from multiple places at the same time
+        decibelHistoryQueue.sync {
+            
+            //only add to array if value is new
+            //this prevents duplicate entries from the history being called repeatedly in one render loop
+            
+            if let last:Double = _decibels.last {
+                if (decibel == last) { return }
+            }
+            
+            //add to the buffer
+            _decibels.append(decibel)
+            
+            //and remove oldest values that are beyond the buffer size
+            if (_decibels.count > _maxCount) {
+                let _:Double? = _decibels.removeFirst()
+            }
         }
     }
     

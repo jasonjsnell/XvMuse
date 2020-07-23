@@ -35,29 +35,39 @@ class FrequencyManager {
     
     // MARK: - PRESET BANDS -
     // Delta Theta Alpha Bete Gamma
+    
+    let waveValueQueue:DispatchQueue = DispatchQueue(label: "waveValueQueue")
+   
+            
+            
     internal func getWaveValue(waveID:Int, spectrum:[Double]) -> Double {
         
-        //if the spectrum is populated...
-        
-        if (spectrum.count > 0) {
+        //use queue to avoid fatal errors
+        //examples
+        //ERROR: Thread 1: EXC_BAD_ACCESS (code=1, address=0x8)
+        //ERROR: Expected expression in list of expressions
+        //these occur when too many sources call this func
+        waveValueQueue.sync {
             
-            //get the location of where to begin and end the spectrum slice
-            let waveBins:[Int] = bins[waveID]
-            //TODO: ERROR
-            //print("waveBin", waveBins)
-            //slice the spectrum piece out
-            //ERROR: Thread 1: EXC_BAD_ACCESS (code=1, address=0x8)
-            //ERROR: Expected expression in list of expressions
-            let slice:[Double] = Array(spectrum[waveBins[0]...waveBins[1]])
+            //if the spectrum is populated...
+            if (spectrum.count > 0) {
+                
+                //get the location of where to begin and end the spectrum slice
+                let waveBins:[Int] = bins[waveID]
+                //TODO: ERROR
+                //print("waveBin", waveBins)
+                //slice the spectrum piece out
+                
+                let slice:[Double] = Array(spectrum[waveBins[0]...waveBins[1]])
+                
+                //average it
+                return slice.reduce(0, +) / Double(slice.count)
             
-            //average it
-            return slice.reduce(0, +) / Double(slice.count)
-        
-        } else {
-            
-            return 0.0
+            } else {
+                
+                return 0.0
+            }
         }
-        
     }
     
     // MARK: - CUSTOM BANDS -
@@ -209,6 +219,12 @@ class FrequencyManager {
         let allWavesSum:Double = allWaves.reduce(0, +)
         
         //return the incoming wave by the sum, and it returns a 0.0-1.0 percentage
-        return incomingWave / allWavesSum
+        var average:Double = incomingWave / allWavesSum
+        
+        //error checking
+        if (average.isNaN || average.isInfinite || average < 0) {
+            average = 0
+        }
+        return average
     }
 }

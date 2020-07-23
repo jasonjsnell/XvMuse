@@ -16,7 +16,6 @@ left-side < < < < <   > > > > > > right-side
 */
 
 import Foundation
-import XvUtils
 
 public class XvMuseEEGRegion {
     
