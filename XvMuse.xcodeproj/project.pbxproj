@@ -13,6 +13,8 @@
 		BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */; };
 		BB2DB3B824BA67A100AA7DD4 /* XvMuseEEGRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */; };
 		BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */; };
+		BB43B3FB24CCFA5600E6D3D3 /* XvMusePPG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FA24CCFA5600E6D3D3 /* XvMusePPG.swift */; };
+		BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift */; };
 		BB57F88D2496B01C003DB78A /* XvMuse.h in Headers */ = {isa = PBXBuildFile; fileRef = BB57F88B2496B01C003DB78A /* XvMuse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8952496B05F003DB78A /* XvMuse.swift */; };
 		BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8A02496B268003DB78A /* XvMuseConstants.swift */; };
@@ -29,6 +31,9 @@
 		BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857624B100E400376FD4 /* FFTransfomer.swift */; };
 		BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857824B118E200376FD4 /* XvMuseEEG.swift */; };
 		BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */; };
+		BB99B22A24CF0AA4007346A4 /* BeatsPerMinute.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */; };
+		BB99B22C24CF1143007346A4 /* HeartbeatAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22B24CF1143007346A4 /* HeartbeatAnalyzer.swift */; };
+		BBA6C01A24CDF29700966159 /* DCT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA6C01924CDF29700966159 /* DCT.swift */; };
 		BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA8F0A2499086600DE3691 /* Parser.swift */; };
 /* End PBXBuildFile section */
 
@@ -39,6 +44,8 @@
 		BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGHistory.swift; sourceTree = "<group>"; };
 		BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGRegion.swift; sourceTree = "<group>"; };
 		BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGWaveValue.swift; sourceTree = "<group>"; };
+		BB43B3FA24CCFA5600E6D3D3 /* XvMusePPG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMusePPG.swift; sourceTree = "<group>"; };
+		BB43B3FC24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMusePPGSensor.swift; sourceTree = "<group>"; };
 		BB57F8882496B01B003DB78A /* XvMuse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XvMuse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB57F88B2496B01C003DB78A /* XvMuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XvMuse.h; sourceTree = "<group>"; };
 		BB57F88C2496B01C003DB78A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -57,6 +64,9 @@
 		BB8B857624B100E400376FD4 /* FFTransfomer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTransfomer.swift; sourceTree = "<group>"; };
 		BB8B857824B118E200376FD4 /* XvMuseEEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEG.swift; sourceTree = "<group>"; };
 		BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
+		BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatsPerMinute.swift; sourceTree = "<group>"; };
+		BB99B22B24CF1143007346A4 /* HeartbeatAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartbeatAnalyzer.swift; sourceTree = "<group>"; };
+		BBA6C01924CDF29700966159 /* DCT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DCT.swift; sourceTree = "<group>"; };
 		BBAA8F0A2499086600DE3691 /* Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -98,6 +108,8 @@
 				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
 				BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */,
 				BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift */,
+				BB43B3FA24CCFA5600E6D3D3 /* XvMusePPG.swift */,
+				BB43B3FC24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift */,
 				BB57F8942496B04B003DB78A /* Private */,
 			);
 			path = XvMuse;
@@ -115,12 +127,12 @@
 		BB57F8942496B04B003DB78A /* Private */ = {
 			isa = PBXGroup;
 			children = (
-				BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */,
 				BBAA8F0A2499086600DE3691 /* Parser.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
-				BB7741E524CA1FF9004B8AE5 /* XvBluetooth */,
+				BB7741E524CA1FF9004B8AE5 /* Bluetooth */,
+				BB8B857124B0E81E00376FD4 /* EEG */,
+				BB99B22824CF0A93007346A4 /* PPG */,
 				BB7741DC24CA1B78004B8AE5 /* Utils */,
-				BB8B857124B0E81E00376FD4 /* FFT */,
 				BB57F8932496B035003DB78A /* Basics */,
 				BB57F8892496B01B003DB78A /* Products */,
 			);
@@ -137,18 +149,19 @@
 			path = Utils;
 			sourceTree = "<group>";
 		};
-		BB7741E524CA1FF9004B8AE5 /* XvBluetooth */ = {
+		BB7741E524CA1FF9004B8AE5 /* Bluetooth */ = {
 			isa = PBXGroup;
 			children = (
+				BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */,
 				BB7741E324CA1FF0004B8AE5 /* XvBluetooth.swift */,
 				BB7741E624CA202B004B8AE5 /* BluetoothConstants.swift */,
 				BB7741E824CA2066004B8AE5 /* BluetoothListener.swift */,
 				BB7741EA24CA2087004B8AE5 /* BluetoothUtils.swift */,
 			);
-			path = XvBluetooth;
+			path = Bluetooth;
 			sourceTree = "<group>";
 		};
-		BB8B857124B0E81E00376FD4 /* FFT */ = {
+		BB8B857124B0E81E00376FD4 /* EEG */ = {
 			isa = PBXGroup;
 			children = (
 				BB8B856C24B0E81700376FD4 /* FFT.swift */,
@@ -156,7 +169,17 @@
 				BB8B857424B0F98200376FD4 /* EpochGenerator.swift */,
 				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
 			);
-			path = FFT;
+			path = EEG;
+			sourceTree = "<group>";
+		};
+		BB99B22824CF0A93007346A4 /* PPG */ = {
+			isa = PBXGroup;
+			children = (
+				BBA6C01924CDF29700966159 /* DCT.swift */,
+				BB99B22B24CF1143007346A4 /* HeartbeatAnalyzer.swift */,
+				BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */,
+			);
+			path = PPG;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -246,17 +269,22 @@
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */,
+				BB43B3FB24CCFA5600E6D3D3 /* XvMusePPG.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
 				BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */,
+				BB99B22C24CF1143007346A4 /* HeartbeatAnalyzer.swift in Sources */,
 				BB8B856D24B0E81700376FD4 /* FFT.swift in Sources */,
 				BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGWaveValue.swift in Sources */,
 				BB7741E024CA1CF3004B8AE5 /* Number.swift in Sources */,
 				BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */,
+				BBA6C01A24CDF29700966159 /* DCT.swift in Sources */,
 				BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */,
 				BB0962FC24B287F600D516D5 /* XvMuseEEGSensor.swift in Sources */,
 				BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */,
+				BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */,
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
+				BB99B22A24CF0AA4007346A4 /* BeatsPerMinute.swift in Sources */,
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
 				BB7741E424CA1FF0004B8AE5 /* XvBluetooth.swift in Sources */,
 				BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */,

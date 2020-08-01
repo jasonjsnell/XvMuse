@@ -78,6 +78,12 @@ public class XvMuseConstants {
     public static let FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     
+    //MARK: PPG
+    public static let PPG_RESTING:Int = 0
+    public static let PPG_S1_EVENT:Int = 1
+    public static let PPG_S2_EVENT:Int = 2
+    
+    
     
     
     

@@ -26,13 +26,22 @@ class Parser {
     
     //MARK: - EEG -
     
-    internal func getEEGSamples(fromBytes:[UInt8]) -> [Double] {
+    internal func getEEGSamples(from bytes:[UInt8]) -> [Double] {
         
         //convert UInt8 array into a UInt12 array
-        let UInt12Samples:[UInt16] = Bytes.constructUInt12Array(fromUInt8Array: fromBytes)
+        let UInt12Samples:[UInt16] = Bytes.constructUInt12Array(fromUInt8Array: bytes)
         
         //process these samples into the correct range
         return UInt12Samples.map { 0.48828125 * Double(Int($0) - 2048) } //0x800 = 2048
+    }
+    
+    //MARK: - PPG -
+    
+    internal func getPPGSamples(from bytes:[UInt8]) -> [Double] {
+        
+        //get 24 bit samples and map them into an array of Doubles
+        let UInt24Samples:[UInt32] = Bytes.constructUInt24Array(fromUInt8Array: bytes, packetTotal: 6)
+        return UInt24Samples.map { Double($0) }
     }
     
     //MARK: - ACCEL -
@@ -55,9 +64,8 @@ class Parser {
     
     //var to concat incoming messages to
     fileprivate var controlMsg:String = ""
-    internal var printControlMessages:Bool = false
     
-    internal func parse(controlLine:Data?) {
+    internal func parse(controlLine:Data?) -> [String:Any]? {
         
         if let _controlLine:Data = controlLine {
             
@@ -80,24 +88,37 @@ class Parser {
                 //if the character is the close bracket...
                 if (charFromByte == "}") {
                     
-                    if (printControlMessages) {
-                        print("CONTROL: Message received")
-                    }
-                    
                     //send the string to the JSON func
                     if let json:[String:Any] = JSON.getJSON(fromStr: controlMsg) {
                         
-                        //print result
-                        if (printControlMessages) {
-                            print("CONTROL: JSON", json)
+                        //print alert if response code is not 0
+                        if let responseCode:Int = json["rc"] as? Int {
+                            
+                            if (responseCode != 0) {
+                                print("CONTROL: Error: Received error response code from control message")
+                            }
                         }
+                        
+                        //re-initliaze the message string for the next time a command comes in
+                        controlMsg = ""
+                        
+                        //if the control message was a request for data, the dictionary count will be more than 1 (a length of 1 just means a response code came back, like ["rc": 0]
+                        if (json.count > 1) {
+                        
+                            return json
+                            
+                        } else {
+                            
+                            return nil
+                        }
+                        
+                    } else {
+                        
+                        controlMsg = ""
+                        return nil
                     }
                     
-                    //re-initliaze the message string for the next time a command comes in
-                    controlMsg = ""
                     
-                    //stop executing
-                    return
                 }
             }
 
@@ -108,5 +129,7 @@ class Parser {
         } else {
             print("PARSER: Error: Incoming control line is nil")
         }
+        
+        return nil
     }
 }

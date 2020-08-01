@@ -12,6 +12,12 @@ import CoreBluetooth
 //the observer receives the values coming in from bluetooth
 public protocol MuseBluetoothObserver:class {
     func parse(bluetoothCharacteristic: CBCharacteristic)
+    
+    //steps of connecting, disconnecting
+    func isConnecting()
+    func didConnect()
+    func didDisconnect()
+    func didLoseConnection()
 }
 
 public class MuseBluetooth:XvBluetoothObserver {
@@ -38,9 +44,9 @@ public class MuseBluetooth:XvBluetoothObserver {
                 //XvMuseConstants.CHAR_GYRO,
                 XvMuseConstants.CHAR_ACCEL,
                 XvMuseConstants.CHAR_BATTERY,
-                //XvMuseConstants.CHAR_PPG1,
-                //XvMuseConstants.CHAR_PPG2,
-                //XvMuseConstants.CHAR_PPG3
+                XvMuseConstants.CHAR_PPG1,
+                XvMuseConstants.CHAR_PPG2,
+                XvMuseConstants.CHAR_PPG3
             ]
         )
     }
@@ -53,6 +59,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     public func discovered(targetDevice: CBPeripheral) {
         print("XvMuse: Discovered target device:", targetDevice.identifier.uuidString)
+        observer?.isConnecting()
     }
     
     public func discovered(nearbyDevice: CBPeripheral) {
@@ -72,6 +79,7 @@ public class MuseBluetooth:XvBluetoothObserver {
             print("")
             print("----------------------------")
             print("")
+            
         }
         print("Discovered non-Muse Bluetooth device:", nearbyDevice.identifier.uuidString)
         
@@ -79,6 +87,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     public func discovered(service: CBService) {
         print("XvMuse: Discovered service:", service.uuid)
+        observer?.didConnect()
     }
     
     public func discovered(characteristic: CBCharacteristic) {
@@ -87,6 +96,9 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     //this is the bridge between the XvBluetooth framework and this class
     
+    //sends "K" / "Keep Alive" command
+    fileprivate var connectionCounter:Int = 0
+    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 5
     
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
         //print("XvMuse: Received value:", valueFromCharacteristic)
@@ -101,11 +113,13 @@ public class MuseBluetooth:XvBluetoothObserver {
         }
     }
     
-    fileprivate var connectionCounter:Int = 0
-    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 75
+    public func didLoseConnection() {
+        observer?.didLoseConnection()
+    }
     
-    
-    
+    public func didDisconnect() {
+        observer?.didDisconnect()
+    }
     
     //MARK: Send commands to the Muse headband
     
@@ -166,8 +180,5 @@ public class MuseBluetooth:XvBluetoothObserver {
         } else {
             print("MuseBluetooth: Error: Attempting to send a control command to a nil device")
         }
-        
     }
-    
-    
 }

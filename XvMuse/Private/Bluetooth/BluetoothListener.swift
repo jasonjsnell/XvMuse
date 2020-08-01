@@ -52,11 +52,11 @@ class BluetoothListener:NSObject {
         _characteristicsUUIDs = characteristicsUUIDs
         
         //init bluetooth
-        let workerQueue = DispatchQueue(label: "com.xv.EEGOSX.workerQueue")
-        let options: [String: Any] = [CBCentralManagerOptionShowPowerAlertKey: true]
+        //let workerQueue = DispatchQueue(label: "com.xv.EEGOSX.workerQueue")
+        //let options: [String: Any] = [CBCentralManagerOptionShowPowerAlertKey: true]
         
-        _centralManager = CBCentralManager(delegate: self, queue: workerQueue, options: options)
-        //_centralManager = CBCentralManager(delegate: self, queue: nil)
+        //_centralManager = CBCentralManager(delegate: self, queue: workerQueue, options: options)
+        _centralManager = CBCentralManager(delegate: self, queue: nil)
         
         if (debug){ print("BLUETOOTH LISTENER: Init") }
         
@@ -69,7 +69,7 @@ class BluetoothListener:NSObject {
             //init connection
             disconnect()
             
-            print("BLUETOOTH: Connect")
+            //print("BLUETOOTH: Connect")
             
             if (_serviceUUID != nil && _deviceUUID != nil) {
                 
@@ -139,11 +139,6 @@ extension BluetoothListener: CBCentralManagerDelegate {
         
         observer?.update(state: BluetoothUtils.getDesc(forState: central.state))
         
-        //if device is powered on and ready, automatically connect
-        //this happens too fast - doesn't give central time to be not nil
-        //if (central.state == .poweredOn) {
-            //connect()
-        //}
     }
     
     
@@ -207,6 +202,22 @@ extension BluetoothListener: CBCentralManagerDelegate {
         
         } else {
             print("BLUETOOTH: Error: Device is nil in didConnect peripheral()")
+        }
+    }
+    
+    internal func centralManager(_ central: CBCentralManager,
+            didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        // IME the error codes encountered are:
+        // 0 = rebooting the peripheral.
+        // 6 = out of range.
+        if let error:Error = error {
+            print("BLUETOOTH: Disconnect:", error)
+            observer?.didLoseConnection()
+            
+        } else {
+            // Likely a deliberate unpairing.
+             print("BLUETOOTH: Disconnect: Unpaired")
+            observer?.didDisconnect()
         }
     }
 }
@@ -282,9 +293,6 @@ extension BluetoothListener: CBPeripheralDelegate {
             }
         }
     }
-    
-    
-    
     
     //MARK: Value updates from the connected device
     internal func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {

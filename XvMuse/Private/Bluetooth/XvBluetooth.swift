@@ -41,12 +41,22 @@ import CoreBluetooth
 //MARK: - View Controller -
 
 public protocol XvBluetoothObserver:class {
+    
     func update(state:String)
+    
+    //connecting
     func discovered(targetDevice:CBPeripheral)
     func discovered(nearbyDevice:CBPeripheral)
     func discovered(service:CBService)
     func discovered(characteristic:CBCharacteristic)
+    
+    //receive data
     func received(valueFromCharacteristic:CBCharacteristic, fromDevice:CBPeripheral)
+    
+    //disconnecting
+    func didLoseConnection() // headband connection fails
+    func didDisconnect() //head receives disconnect command
+    
 }
 
 
@@ -95,7 +105,7 @@ public class XvBluetooth {
     
     public func disconnect(){
         
-        print("BLUETOOTH: Disconnect")
+        //print("BLUETOOTH: Disconnect")
         
         for listener in listeners {
             listener.disconnect()

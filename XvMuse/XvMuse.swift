@@ -14,17 +14,36 @@ import CoreBluetooth
 
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseObserver:class {
+    
+    //syntax:
+    //didReceiveUpdate from sensor
+    //didReceive object
+    
     func didReceiveUpdate(from eeg:XvMuseEEG)
-    func didReceiveUpdate(from eegPacket:XvMuseEEGPacket)
+    func didReceive(eegPacket:XvMuseEEGPacket)
+    
+    func didReceiveUpdate(from ppg:XvMusePPG)
+    func didReceive(ppgHeartEvent:XvMusePPGHeartEvent)
+    func didReceive(ppgBpmPacket:XvMusePPGBpmPacket)
+    func didReceive(ppgPacket:XvMusePPGPacket)
+    
     func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
     func didReceiveUpdate(from battery:XvMuseBattery)
+    
+    func didReceive(commandResponse:[String:Any])
+    
+    //bluetooth connection updates
+    func museIsConnecting()
+    func museDidConnect()
+    func museDidDisconnect()
+    func museLostConnection()
     
 }
 
 //MARK: - STRUCTS -
 //data objects that get sent to the observer when updates come in from the headband
 
-//MARK: Packet
+//MARK: Packets
 /* Each time the Muse headband fires off an EEG sensor update (order is: tp10 af8 tp9 af7),
 the XvMuse class puts that data into XvMuseEEGPackets
 and sends it here to create a streaming buffer, slice out epoch windows, and return Fast Fourier Transformed array of frequency data
@@ -42,7 +61,7 @@ and sends it here to create a streaming buffer, slice out epoch windows, and ret
                         ^ DataBuffer of streaming samples. Each channel has it's own buffer
 */
 
-public struct XvMuseEEGPacket {
+public class XvMusePacket {
     
     public var packetIndex:UInt16 = 0
     public var sensor:Int = 0 // 0 to 4: tp10 af8 tp9 af7 aux
@@ -57,10 +76,10 @@ public struct XvMuseEEGPacket {
     }
 }
 
-public struct XvMusePPG {
-    
-}
+public class XvMuseEEGPacket:XvMusePacket {}
+public class XvMusePPGPacket:XvMusePacket {}
 
+//MARK: Accel
 public struct XvMuseAccelerometer {
     public var packetIndex:UInt16 = 0
     public var x:Double = 0 //head forward / back
@@ -69,6 +88,7 @@ public struct XvMuseAccelerometer {
     public var raw:[Int16] = []
 }
 
+//MARK: Battery
 public struct XvMuseBattery {
     public var packetIndex:UInt16 = 0
     public var percentage:UInt16 = 0
@@ -88,16 +108,13 @@ public class XvMuse:MuseBluetoothObserver {
     public weak var observer:XvMuseObserver?
     
     public var eeg:XvMuseEEG { get { return _eeg } }
-    
-    public var printControlMessages:Bool {
-        get { return _parser.printControlMessages }
-        set { _parser.printControlMessages = newValue}
-    }
+    public var ppg:XvMusePPG { get { return _ppg } }
     
     //MARK: Private
     //sensor data objects
     fileprivate var _eeg:XvMuseEEG = XvMuseEEG()
     fileprivate var _accel:XvMuseAccelerometer = XvMuseAccelerometer()
+    fileprivate var _ppg:XvMusePPG = XvMusePPG()
     fileprivate var _battery:XvMuseBattery = XvMuseBattery()
 
     
@@ -133,7 +150,7 @@ public class XvMuse:MuseBluetoothObserver {
             //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
             let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
             
-            //local func to make EEG packet from the above variables
+            // local func to make EEG packet from the above variables
             
             func _makeEEGPacket(i:Int) -> XvMuseEEGPacket {
                 
@@ -141,9 +158,24 @@ public class XvMuse:MuseBluetoothObserver {
                     packetIndex: packetIndex,
                     sensor: i,
                     timestamp: timestamp,
-                    samples: _parser.getEEGSamples(fromBytes: bytes))
+                    samples: _parser.getEEGSamples(from: bytes))
                 
-                observer?.didReceiveUpdate(from: packet) //send to observer in case someone wants to do their own FFT processing
+                observer?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
+                
+                return packet // return assembled packet
+            }
+            
+            // local func to make PPG packet from the above variables
+            
+            func _makePPGPacket(i:Int) -> XvMusePPGPacket {
+                
+                let packet:XvMusePPGPacket = XvMusePPGPacket(
+                    packetIndex: packetIndex,
+                    sensor: i,
+                    timestamp: timestamp,
+                    samples: _parser.getPPGSamples(from: bytes))
+                
+                observer?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
                 
                 return packet // return assembled packet
             }
@@ -176,30 +208,38 @@ public class XvMuse:MuseBluetoothObserver {
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1:
                 
-                //https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6651860/
-                //https://github.com/marnixnaber/rPPG/blob/master/rPPG.m
-                //https://developer.apple.com/documentation/XvAccelerometererate/finding_the_component_frequencies_in_a_composite_sine_wave
+                //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+                //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
+
                 /*
                 uint:24,uint:24,uint:24
                 uint:24,uint:24,uint:24
                 UInt24 x 6 samples
                 */
-                break
                 
+                let _:PPGResult? = _ppg.update(with: _makePPGPacket(i: 0))
                 
             case XvMuseConstants.CHAR_PPG2:
                 
-                print("ppg2")
-               
-                let UInt24Samples:[UInt32] = Bytes.constructUInt24Array(fromUInt8Array: bytes, packetTotal: 6)
-                print(UInt24Samples)
+                //if result is fired (from a heart event)
+                if let result:PPGResult = _ppg.update(with: _makePPGPacket(i: 1)) {
+                    
+                    //broadcast the heart event
+                    observer?.didReceive(ppgHeartEvent: result.heartEvent)
+                    
+                    //and AV heart events include bpm updates, so if that is valid, broadcast it
+                    if let bpmPacket:XvMusePPGBpmPacket = result.bpmPacket {
+                        observer?.didReceive(ppgBpmPacket: bpmPacket)
+                    }
+                    
+                }
                 
             case XvMuseConstants.CHAR_PPG3:
                 
-                print("ppg3")
-               
-                let UInt24Samples:[UInt32] = Bytes.constructUInt24Array(fromUInt8Array: bytes, packetTotal: 6)
-                print(UInt24Samples)
+                let _:PPGResult? = _ppg.update(with: _makePPGPacket(i: 2))
+                
+                //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
+                observer?.didReceiveUpdate(from: _ppg)
                 
             case XvMuseConstants.CHAR_ACCEL:
                 
@@ -245,11 +285,33 @@ public class XvMuse:MuseBluetoothObserver {
                 //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
                 //getting device info or a control status send back JSON dictionaries with several vars
                 //note: this package does not use packetIndex, so pass in the raw charactersitic value
-                _parser.parse(controlLine: bluetoothCharacteristic.value)
+                if let commandResponse:[String:Any] =  _parser.parse(controlLine: bluetoothCharacteristic.value) {
+                    
+                    //if a response more than ["rc":0] comes in, broadcast it
+                    observer?.didReceive(commandResponse: commandResponse)
+                }
                
             default:
                break
             }
         }
+    }
+    
+    //MARK: - BLUETOOTH CONNECTION
+    
+    public func isConnecting() {
+        observer?.museIsConnecting()
+    }
+    
+    public func didConnect() {
+        observer?.museDidConnect()
+    }
+    
+    public func didDisconnect() {
+        observer?.museDidDisconnect()
+    }
+    
+    public func didLoseConnection() {
+        observer?.museLostConnection()
     }
 }

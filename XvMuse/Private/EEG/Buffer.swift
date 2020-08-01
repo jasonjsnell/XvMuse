@@ -104,7 +104,7 @@ class Buffer {
             return _dataStream
         } else {
             
-            print("Buffer: building data stream", _dataStream.samples.count, "/", _samplesMax)
+            print("EEG: Building buffer", _dataStream.samples.count, "/", _samplesMax)
             return nil //otherwise if it is still building, return nothing
         }
     }

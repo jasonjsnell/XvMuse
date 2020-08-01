@@ -160,7 +160,7 @@ public class XvMuseEEG {
     
     //MARK: - INIT -
     
-    init() {
+    public init() {
         
         //init the sensors
         //they are the entry point into this system from the Muse hardware

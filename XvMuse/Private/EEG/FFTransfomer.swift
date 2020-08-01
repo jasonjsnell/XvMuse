@@ -190,8 +190,6 @@ class FFTransformer {
         
         var validSamples:[Double] = samples
         
-        
-        
         //replace any NaN or infinite values with zero
         validSamples = validSamples.map {
             if ($0.isNaN || $0.isInfinite) { return 0 }
