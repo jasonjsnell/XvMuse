@@ -15,13 +15,7 @@ class Parser {
     // many of the characteristics include a counter that moves up with each received packet
     internal func getPacketIndex(fromBytes:[UInt8]) -> UInt16 {
         let twoByteArr:[UInt8] = [fromBytes[0], fromBytes[1]]
-        let hex:String = Bytes.getHex(fromBytes: twoByteArr)
-        if let index:UInt16 = Bytes.getUInt16(fromHex: hex) {
-            return index
-        } else {
-            print("EEG:Parser: Unable to get packet index from bytes")
-            return 0
-        }
+        return Bytes.getUInt16(fromBytes: twoByteArr)
     }
     
     //MARK: - EEG -

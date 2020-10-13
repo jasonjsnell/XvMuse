@@ -75,6 +75,17 @@ public class Bytes {
     }
     
     //MARK: - 16-bit
+    
+    public class func getUInt16(fromBytes: [UInt8]) -> UInt16 {
+        
+        if (fromBytes.count <= 2) {
+            return UInt16(getUInt(fromBytes: fromBytes))
+        } else {
+            print("Number: getUInt16:fromBytes Error: Incoming array needs to be 2 bytes")
+            return 0
+        }
+    }
+    
     public class func constructUInt16(fromUInt8Pair:[UInt8]) -> UInt16 {
         
         return UInt16(fromUInt8Pair[0]) << 8 | UInt16(fromUInt8Pair[1])
@@ -128,6 +139,16 @@ public class Bytes {
     
     //MARK:- 24-bit
     
+    public class func getUInt24(fromBytes: [UInt8]) -> UInt32 {
+        
+        if (fromBytes.count <= 3) {
+            return UInt32(getUInt(fromBytes: fromBytes))
+        } else {
+            print("Number: getUInt24:fromBytes Error: Incoming array needs to be 3 bytes")
+            return 0
+        }
+    }
+    
     public class func constructUInt24Array(fromUInt8Array:[UInt8], packetTotal:Int) -> [UInt32] {
         
         let packetLength:Int = 3
@@ -153,26 +174,62 @@ public class Bytes {
                 byteArr.append(fromUInt8Array[bytePos])
                 bytePos += 1
             }
-
-            //convert bytes into an array of 3 2-char hexes
-            let hexArray:[String] = Bytes.getHexArray(fromBytes: byteArr, packetLength: 1, packetTotal: 3)
-            //combine the hexes into a 6-character string
-            let hexString:String = hexArray[0] + hexArray[1] + hexArray[2]
             
-            //convert 6-char hex into a UInt32
-            if let uInt24FromHex:UInt32 = UInt32(hexString, radix: 16){
-                //add to aray
-                uInt24Array.append(uInt24FromHex)
-            }
+            //create UInt24 from bytes
+            let uInt24FromBytes:UInt32 = getUInt24(fromBytes: byteArr)
+            
+            //add to array
+            uInt24Array.append(uInt24FromBytes)
             
         }
         
         return uInt24Array
     }
     
-    //MARK: - get hex array
-    public class func getHexArray(fromBytes:[UInt8], packetLength:Int, packetTotal:Int) -> [String] {
+    
+    //MARK: - 32-bit
+    
+    public class func getUInt32(fromBytes: [UInt8]) -> UInt32 {
         
+        if (fromBytes.count <= 4) {
+            return UInt32(getUInt(fromBytes: fromBytes))
+        } else {
+            print("Number: getUInt32:fromBytes Error: Incoming array needs to be 4 bytes")
+            return 0
+        }
+    }
+    
+    //MARK: - Main UInt Conversion func
+    
+    //main processor func
+    //can create UInt16 from 2 bytes, UInt32 (UInt24) from 3 bytes, and UInt32 from 4 bytes
+    public class func getUInt(fromBytes: [UInt8]) -> UInt {
+        
+        //max number of bytes this can process is 4 (resulting in UInt32)
+        if (fromBytes.count <= 4) {
+            
+            var result:UInt = 0
+            
+            //loop through byte positions
+            for i in 0..<(fromBytes.count) {
+                
+                //concat values
+                let shiftAmount = UInt((fromBytes.count) - i - 1) * 8
+                result += UInt(fromBytes[i]) << shiftAmount
+            }
+            
+            return result
+            
+        } else {
+            print("Number: getUInt:fromBytes Error: Incoming array needs to be 4 bytes or less")
+            return 0
+        }
+    }
+    
+    //MARK: - get hex array REMOVED in favor of UInt conversions
+    /*
+    public class func getHexArray(fromBytes:[UInt8], packetLength:Int, packetTotal:Int) -> [String] {
+        print("fromBytes", fromBytes)
         var hexArray:[String] = []
         var bytePos:Int = 0
         
@@ -202,25 +259,15 @@ public class Bytes {
             //add to hex aray
             hexArray.append(hex)
         }
-        
+        print("hexArray", hexArray)
         return hexArray
     }
     
     //MARK: - 2 string hex from 2 bytes packets
     public class func getHex(fromBytes:[UInt8]) -> String {
         
-        //int blank string
-        var hexStr:String = ""
-        
-        //loop through each byte in array
-        for byte in fromBytes {
-            
-            //convert byte into a hex formatted string and build via concatentation
-            
-            //hexStr += String(format:"%02X", byte) // positive values only?
-            hexStr += String(format: "%02hhX", byte) //can include negative values
-        }
-        return hexStr
+        //convert byte into a hex formatted string and build via concatentation
+        return fromBytes.map { String(format: "%02hhx", $0) }.joined()
     }
     
     //MARK: - Unsigned ints from from hex
@@ -264,7 +311,7 @@ public class Bytes {
             return nil
         }
     }
-    
+    */
     
 }
 

@@ -301,11 +301,11 @@ extension BluetoothListener: CBPeripheralDelegate {
             print("BLUETOOTH: Update value: Error:", error)
         }
         
-        guard characteristic.value != nil else {
-            return
-        }
+        //guard characteristic.value != nil else {
+          //  return
+        //}
         
-        if (debug) { print("BLUETOOTH: Update value", characteristic.description, characteristic.value!) }
+        if (debug) { print("BLUETOOTH: Update value", characteristic.description, characteristic.value as Any) }
         
         observer?.received(valueFromCharacteristic: characteristic, fromDevice: peripheral)
 

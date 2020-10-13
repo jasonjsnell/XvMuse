@@ -32,55 +32,7 @@ public class XvMuseEEGRegion {
     // left  sensors will be 0 and 1
     // right sensors will be 2 and 3
     
-    fileprivate var sensors:[XvMuseEEGSensor]
-    init(with sensors:[XvMuseEEGSensor]) {
-        self.sensors = sensors
-        
-        //pass the sensors into each wave value object
-        delta.assign(sensors: sensors)
-        theta.assign(sensors: sensors)
-        alpha.assign(sensors: sensors)
-        beta.assign(sensors: sensors)
-        gamma.assign(sensors: sensors)
-        
-        waves = [delta, theta, alpha, beta, gamma]
-    }
-    
-    public var magnitudes: [Double] {
-        
-        get {
-        
-            //grab magnitude arrays from the two sensors
-            //average each index value of each array,
-            //and output an array of averaged values for all the sensors combined
-            if let sensorAveragedMagnitudes:[Double] = Number.getAverageByIndex(arrays: sensors.map { $0.magnitudes }) {
-                
-                return sensorAveragedMagnitudes
-            } else {
-                
-                print("XvMuseEEGRegion: Error: Unable to calculate averaged magnitudes of region sensors")
-                return []
-            }
-        }
-    }
-    
-    public var decibels: [Double] {
-        
-        get {
-        
-            //same as magnitudes above
-            if let sensorAveragedDecibels:[Double] = Number.getAverageByIndex(arrays: sensors.map { $0.decibels }) {
-                
-                return sensorAveragedDecibels
-            } else {
-                
-                print("XvMuseEEGRegion: Error: Unable to calculate averaged decibels of region sensors")
-                return []
-            }
-        }
-    }
-    
-    //MARK: Waves
+    //MARK: - INIT -
     public var waves:[XvMuseEEGValue]
     public var delta:XvMuseEEGValue = XvMuseEEGValue(waveID: 0)
     public var theta:XvMuseEEGValue = XvMuseEEGValue(waveID: 1)
@@ -88,8 +40,33 @@ public class XvMuseEEGRegion {
     public var beta: XvMuseEEGValue = XvMuseEEGValue(waveID: 3)
     public var gamma:XvMuseEEGValue = XvMuseEEGValue(waveID: 4)
     
+    init() {
+        
+        //init waves array
+        waves = [delta, theta, alpha, beta, gamma]
+    }
     
-    //MARK: Accessing custom frequency ranges
+    //MARK: - DATA UPDATES -
+    internal func update(with sensors:[XvMuseEEGSensor]){
+        
+        //update averaging processors
+        _cache.update(with: sensors)
+        
+        //update this regions wave value objects
+        for wave in waves {
+            wave.update(with: sensors)
+        }
+    }
+    
+    //MARK: - AVERAGED VALUES -
+    
+    fileprivate var _cache:SensorCache = SensorCache()
+    
+    public var magnitudes:[Double] { get { return _cache.getMagnitudes() } }
+    public var decibels:[Double] {   get { return _cache.getDecibels()   } }
+    public var noise:Int {           get { return _cache.getNoise()      } }
+    
+    //MARK: - ACCESS CUSTOM FREQ RANGES -
     
     fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
     
@@ -107,6 +84,7 @@ public class XvMuseEEGRegion {
     }
     
     //MARK: Get spectrum slices
+    
     public func getDecibelSlice(fromFrequencyRange:[Double]) -> [Double] {
         
         return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: decibels)
@@ -119,6 +97,7 @@ public class XvMuseEEGRegion {
     
     
     //MARK: Get wave value via frequency range
+    
     public func getDecibel(fromFrequencyRange:[Double]) -> Double {
         
         return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: decibels)
@@ -131,6 +110,7 @@ public class XvMuseEEGRegion {
     
     
     //MARK: Get wave value via bins
+    
     public func getDecibel(fromBinRange:[Int]) -> Double {
         
         return _fm.getWaveValue(bins: fromBinRange, spectrum: decibels)

@@ -12,7 +12,7 @@ class BeatsPerMinute {
     
     fileprivate var prevTimestamp:Double = 0
     fileprivate var bpms:[Double] = []
-    fileprivate let BPM_HISTORY_LENGTH:Int = 32
+    fileprivate let BPM_HISTORY_LENGTH:Int = 10
 
     internal func update(with timestamp:Double) -> XvMusePPGBpmPacket {
         
@@ -20,7 +20,13 @@ class BeatsPerMinute {
         let beatLength:Double = timestamp - prevTimestamp
         
         //calc bpm
-        let currBpm:Double = 60 / beatLength
+        var currBpm:Double = 60 / beatLength
+        
+        if let lastBpm:Double = bpms.last {
+            if (currBpm < lastBpm * 0.75) {
+                currBpm = lastBpm
+            }
+        }
         
         //add to array and keep array the correct length
         bpms.append(currBpm)

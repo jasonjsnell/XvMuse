@@ -24,136 +24,238 @@ public struct EEGValue {
 
 public class XvMuseEEGHistory {
     
+    //MARK: - INIT -
     init(){
         _magnitudes = [Double](repeating: 0.0, count: _maxCount)
-        _decibels = [Double](repeating: 0.0, count: _maxCount)
+        _decibels =   [Double](repeating: 0.0, count: _maxCount)
     }
     
+    //MARK: - DATA UPDATES -
     fileprivate var source:XvMuseEEGValue?
+    internal func update(with source:XvMuseEEGValue) {
+        self.source = source
+        newCache()
+    }
+    
     fileprivate var sources:[XvMuseEEGValue]?
-  
-    internal func assign(source:XvMuseEEGValue?){
-        if (sources == nil) {
-            self.source = source
-        } else {
-            print("XvMuseEEGHistory: Error: Object has already been assigned to a set of sources.")
-        }
+    internal func update(with sources:[XvMuseEEGValue]) {
+        self.sources = sources
+        newCache()
     }
     
-    internal func assign(sources:[XvMuseEEGValue]?){
-        if (source == nil) {
-            self.sources = sources
-        } else {
-            print("XvMuseEEGHistory: Error: Object has already been assigned to a single source.")
-        }
+    fileprivate func newCache(){
+        newSourceMagnitudes = true
+        newSourcesMagnitudes = true
+        newSourceDecibels = true
+        newSourcesDecibels = true
+        newHighest = true
+        newLowest = true
+        newRange = true
+        newSum = true
+        newAverage = true
+        newPercent = true
     }
     
-    //MARK: Accessors
     
+    //MARK: Magnitudes
+    fileprivate var newSourceMagnitudes:Bool = true //single source
+    fileprivate var newSourcesMagnitudes:Bool = true //multi source
     fileprivate var _magnitudes:[Double] = []
     public var magnitudes:[Double] {
         
         get {
             
-            if (source != nil) {
-                
-                //single source
+            if (source != nil && newSourceMagnitudes) {
+                //single source, add to array
                 add(magnitude: source!.magnitude)
-                
-            } else if (sources != nil) {
-                
-                //if multiple sources, average the magnitudes from all sources
-                let averageMagnitude:Double = Number.getAverage(ofArray: sources!.map { $0.magnitude })
-                add(magnitude: averageMagnitude)
-                
-            } else {
-                print("XvMuseEEGHistory: Error: No source(s) assigned when accessing magnitudes")
+                newSourceMagnitudes = false
+            
+            } else if (sources != nil && newSourcesMagnitudes) {
+                //if multiple sources, average the magnitudes from all sources, add to array
+                add(magnitude: Number.getAverage(ofArray: sources!.map { $0.magnitude }))
+                newSourcesMagnitudes = false
             }
             
+            //return the array each time
             return _magnitudes
         }
     }
     
+    fileprivate func add(magnitude:Double){
+        //add to the buffer
+        _magnitudes.append(magnitude)
+        
+        //and remove oldest values that are beyond the buffer size
+        if (_magnitudes.count > _maxCount) {
+            _magnitudes.removeFirst(_magnitudes.count-_maxCount)
+        }
+    }
+    
+    //MARK: Decibels
+    fileprivate var newSourceDecibels:Bool = true //single source
+    fileprivate var newSourcesDecibels:Bool = true //multi source
     fileprivate var _decibels:[Double] = []
     public var decibels:[Double] {
         
         get {
-            
-            if (source != nil) {
+            if (source != nil && newSourceDecibels) {
                 
+                //single source, add to array
                 add(decibel: source!.decibel)
+                newSourceDecibels = false
+            
+            } else if (sources != nil && newSourcesDecibels) {
                 
-            } else if (sources != nil) {
-                
-                //if multiple sources, average the magnitudes from all sources
-                let averageDecibel:Double = Number.getAverage(ofArray: sources!.map { $0.decibel })
-                add(decibel: averageDecibel)
-                
-            } else {
-                print("XvMuseEEGHistory: Error: No source(s) assigned when accessing decibels")
+                //if multiple sources, average the magnitudes from all sources, add to array
+                add(decibel: Number.getAverage(ofArray: sources!.map { $0.decibel }))
+                newSourcesDecibels = false
             }
             
+            //return the array each time
             return _decibels
         }
     }
     
-    
-    //MARK: - Changing the data
-    let magnitudeHistoryQueue:DispatchQueue = DispatchQueue(label: "magnitudeHistoryQueue")
-    fileprivate func add(magnitude:Double){
-        
-        //run inside of queue to avoid fatal errors from multiple sources calling this simultaneously
-        magnitudeHistoryQueue.sync {
-            
-            //only add to array if value is new
-            //this prevents duplicate entries from the history being called repeatedly in one render loop
-            if let last:Double = _magnitudes.last {
-                if (magnitude == last) { return }
-            }
-            
-            //add to the buffer
-            _magnitudes.append(magnitude)
-            
-            //and remove oldest values that are beyond the buffer size
-            if (_magnitudes.count > _maxCount) {
-                let _:Double? = _magnitudes.removeFirst()
-            }
-            
-        }
-        
-        
-    }
-    
-    let decibelHistoryQueue:DispatchQueue = DispatchQueue(label: "decibelHistoryQueue")
     fileprivate func add(decibel:Double){
+    
+        //add to the buffer
+        _decibels.append(decibel)
         
-        // run in a queue to avoid fatal errors like
-        // fatal error: UnsafeMutablePointer.deinitialize with negative count
-        // this error can happen if this func is being called from multiple places at the same time
-        decibelHistoryQueue.sync {
-            
-            //only add to array if value is new
-            //this prevents duplicate entries from the history being called repeatedly in one render loop
-            
-            if let last:Double = _decibels.last {
-                if (decibel == last) { return }
-            }
-            
-            //add to the buffer
-            _decibels.append(decibel)
-            
-            //and remove oldest values that are beyond the buffer size
-            if (_decibels.count > _maxCount) {
-                let _:Double? = _decibels.removeFirst()
-            }
+        //and remove oldest values that are beyond the buffer size
+        if (_decibels.count > _maxCount) {
+            _decibels.removeFirst(_decibels.count-_maxCount)
         }
     }
     
     
-    //MARK: - Buffer
+    //MARK: - Array attributes -
+    fileprivate var newHighest:Bool = true
+    fileprivate var _highest:EEGValue = EEGValue()
+    public var highest:EEGValue {
+        get {
+            //if new data is avail
+            if (newHighest) {
+                
+                //calc new var
+                _highest = EEGValue(magnitude: _getHighest(in: magnitudes), decibel: _getHighest(in: decibels))
+                
+                //flag as no longer new data
+                newHighest = false
+            }
+       
+            //always return the curr var
+            return _highest
+        }
+    }
+    
+    fileprivate var newLowest:Bool = true
+    fileprivate var _lowest:EEGValue = EEGValue()
+    public var lowest:EEGValue {
+        get {
+            if (newLowest) {
+                
+                _lowest = EEGValue(magnitude: _getLowest(in: magnitudes), decibel: _getLowest(in: decibels))
+                newLowest = false
+            }
+          
+            return _lowest
+        }
+    }
+    
+    fileprivate var newRange:Bool = true
+    fileprivate var _range:EEGValue = EEGValue()
+    public var range:EEGValue {
+        get {
+            if (newRange){
+                _range = EEGValue(magnitude: _getRange(of: magnitudes), decibel: _getRange(of: decibels))
+                newRange = false
+            }
+            return _range
+        }
+    }
+    
+    fileprivate var newSum:Bool = true
+    fileprivate var _sum:EEGValue = EEGValue()
+    public var sum:EEGValue {
+        get {
+            if (newSum){
+                _sum = EEGValue(magnitude: _getSum(of: magnitudes), decibel: _getSum(of: decibels))
+                newSum = false
+            }
+            return _sum
+        }
+    }
+    
+    fileprivate var newAverage:Bool = true
+    fileprivate var _average:EEGValue = EEGValue()
+    public var average:EEGValue {
+        get {
+            if (newAverage) {
+                _average = EEGValue(magnitude: _getAverage(of: magnitudes), decibel: _getAverage(of: decibels))
+                newAverage = false
+            }
+            return _average
+        }
+    }
+    
+    fileprivate var newPercent:Bool = true
+    fileprivate var _percent:Double = 0
+    public var percent:Double {
+        get {
+            if (newPercent) {
+                if let curr:Double = decibels.last,
+                    let highest:Double = decibels.max(){
+                    _percent = curr / highest
+                } else {
+                    _percent = 0
+                }
+                newPercent = false
+            }
+            return _percent
+        }
+    }
+    
+    //MARK: attribute processing
+    
+    fileprivate func _getRange(of array:[Double]) -> Double {
+        _getHighest(in: array) - _getLowest(in: array)
+    }
+
+    fileprivate func _getHighest(in array:[Double]) -> Double {
+        if let max:Double = array.max() {
+            return max
+        } else {
+            print("XvMuseEEG: Unable to calculate max value of array")
+            return 0
+        }
+    }
+
+    fileprivate func _getLowest(in array:[Double]) -> Double {
+        if let min:Double = array.min() {
+            return min
+        } else {
+            print("XvMuseEEG: Unable to calculate min value of array")
+            return 0
+        }
+    }
+    
+    fileprivate func _getSum(of array:[Double]) -> Double {
+        return array.reduce(0, +)
+    }
+    
+    fileprivate func _getAverage(of array:[Double]) -> Double {
+        if (array.count > 0) {
+            return array.reduce(0, +) / Double(array.count)
+        } else {
+            return 0
+        }
+    }
+    
+ 
+    
+    //MARK: - History Length -
     
     fileprivate var _maxCount:Int = 75
-    
     public var historyLength:Int {
         get { return _maxCount }
         set {
@@ -174,83 +276,12 @@ public class XvMuseEEGHistory {
             
             //same with DBs
             if (_decibels.count < _maxCount){
-                
                 let zeroes:[Double] = [Double](repeating: 0.0, count: _maxCount-_decibels.count)
                 _decibels += zeroes
             
             } else if (_decibels.count > _maxCount) {
-                
                 _decibels.removeLast(_decibels.count-_maxCount)
             }
-            
         }
     }
-    
-    
-    //MARK: Information requests
-    
-    public var highest:EEGValue {
-        get { return EEGValue(magnitude: _highest(in: magnitudes), decibel: _highest(in: decibels)) }
-    }
-    public var lowest:EEGValue {
-        get { return EEGValue(magnitude: _lowest(in: magnitudes), decibel: _lowest(in: decibels)) }
-    }
-    public var range:EEGValue {
-        get { return EEGValue(magnitude: _range(of: magnitudes), decibel: _range(of: decibels)) }
-    }
-    public var sum:EEGValue {
-        get { return EEGValue(magnitude: _sum(of: magnitudes), decibel: _sum(of: decibels)) }
-    }
-    public var average:EEGValue {
-        get { return EEGValue(magnitude: _average(of: magnitudes), decibel: _average(of: decibels)) }
-    }
-    public var percent:Double {
-        get {
-            if let first:Double = decibels.first,
-                let highest:Double = decibels.max(){
-                return first / highest
-            } else {
-                return 0
-            }
-        }
-    }
-    
-    
-    //MARK: Helpers
-    
-    fileprivate func _range(of array:[Double]) -> Double {
-        _highest(in: array) - _lowest(in: array)
-    }
-
-    fileprivate func _highest(in array:[Double]) -> Double {
-        if let max:Double = array.max() {
-            return max
-        } else {
-            print("XvMuseEEG: Unable to calculate max value of array")
-            return 0
-        }
-    }
-
-    fileprivate func _lowest(in array:[Double]) -> Double {
-        if let min:Double = array.min() {
-            return min
-        } else {
-            print("XvMuseEEG: Unable to calculate min value of array")
-            return 0
-        }
-    }
-    
-    fileprivate func _sum(of array:[Double]) -> Double {
-        return array.reduce(0, +)
-    }
-    
-    fileprivate func _average(of array:[Double]) -> Double {
-        if (array.count > 0) {
-            return array.reduce(0, +) / Double(array.count)
-        } else {
-            return 0
-        }
-    }
-    
-    
 }

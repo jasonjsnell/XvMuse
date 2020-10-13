@@ -22,57 +22,40 @@ import Foundation
 //example: eeg.delta.TP9.decibel <-- delta value from one of the sensors
 public class XvMuseEEGWave {
     
-    //MARK: - Init
-    public var id:Int {
-        get { return waveID }
-    }
+    //MARK: - INIT -
+    public var id:Int { get { return waveID } }
     fileprivate var waveID:Int
-    fileprivate var _sensors:[XvMuseEEGSensor]
-    internal var sensorValues:[XvMuseEEGValue]
     
-    init(waveID:Int, sensors:[XvMuseEEGSensor]) {
+    internal var sensorValues:[XvMuseEEGValue]
+    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
+    
+    init(waveID:Int) {
         
         //save the incoming vars
         self.waveID = waveID
-        self._sensors = sensors
         
-        //loop through incoming sensors and create the sensor value objects
+        //create the sensor value object array
         //this enables access to sensor values via the wave
         //example: eeg.delta.TP9
         
-        self.sensorValues = []
-        
-        for s in 0..<_sensors.count {
-            
-            let sensor:XvMuseEEGSensor = _sensors[s] //grab from incoming array
-            
-            //init with wave and sensor info
-            let sensorValue:XvMuseEEGValue = XvMuseEEGValue(waveID: waveID)
-            sensorValue.assign(sensor: sensor)
-            
-            //save to local array for public accessors
-            sensorValues.append(sensorValue)
-        }
+        sensorValues = [XvMuseEEGValue](
+            repeating: XvMuseEEGValue(waveID: waveID),
+            count: XvMuseConstants.EEG_SENSOR_TOTAL
+        )
         
         // init the four regions (front, sides, left, right)
-        // by passing those sensors into the region objects
         //example: eeg.delta.front
-        
         front = XvMuseEEGValue(waveID: waveID)
-        front.assign(sensors: [_sensors[1], _sensors[2]])
-        
         sides = XvMuseEEGValue(waveID: waveID)
-        sides.assign(sensors: [_sensors[0], _sensors[3]])
-        
         left  = XvMuseEEGValue(waveID: waveID)
-        left.assign(sensors: [_sensors[0], _sensors[1]])
-        
         right = XvMuseEEGValue(waveID: waveID)
-        right.assign(sensors: [_sensors[2], _sensors[3]])
-        
+        regions = [front, sides, left, right]
+
         //history
         history = XvMuseEEGHistory()
-        history.assign(sources: sensorValues)
+        
+        //averaging processor
+        _cache = WaveAveragesCache(waveID: waveID)
     }
     
     //MARK: - Sensor Accessors
@@ -96,63 +79,45 @@ public class XvMuseEEGWave {
     
     //MARK: Regions
     
+    public var regions:[XvMuseEEGValue]
     public var front:XvMuseEEGValue
     public var sides:XvMuseEEGValue
     public var left:XvMuseEEGValue
     public var right:XvMuseEEGValue
     
-    //MARK: - Wave Averages
-    
-    //example: eeg.delta.decibel <-- average delta value for all 4 sensors
-    
-    public var magnitude:Double {
-    
-        get {
-            //grab the wave magnitude from each sensor
-            let magnitudes:[Double] = _sensors.map { $0.waves[waveID].magnitude }
-            
-            //and return the average
-            return magnitudes.reduce(0, +) / Double(magnitudes.count)
-        }
-    }
-    
-    public var decibel:Double {
-        
-        get {
-            //grab the wave decibels from each sensor
-            let decibels:[Double] = _sensors.map { $0.waves[waveID].decibel }
-            
-            //and return the average
-            return decibels.reduce(0, +) / Double(decibels.count)
-        }
-    }
-    
-    public var percent:Double {
-        
-        //grab the percent value of this wave from each sensor
-        let percents:[Double] = _sensors.map { $0.waves[waveID].percent }
-        
-        //and return the average
-        return percents.reduce(0, +) / Double(percents.count)
-        
-    }
-    
-    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
-    
-    public var relative:Double {
-        
-        // get an averaged array of all the sensor's decibel arrays
-        if let sensorAveragedDecibels:[Double] = Number.getAverageByIndex(arrays: _sensors.map { $0.decibels }) {
-        
-            //return the relative percentage for this wave ID
-            return _fm.getRelative(waveID: waveID, spectrum: sensorAveragedDecibels)
-        
-        } else {
-            return 0
-        }
-    }
-    
     //MARK: - History
-    
     public var history:XvMuseEEGHistory
+    
+    //MARK: - DATA UPDATES -
+    
+    internal func update(with sensors:[XvMuseEEGSensor]) {
+        
+        //update regions
+        front.update(with: [sensors[1], sensors[2]])
+        sides.update(with: [sensors[0], sensors[3]])
+        left.update(with:  [sensors[0], sensors[1]])
+        right.update(with: [sensors[2], sensors[3]])
+        
+        //update sensor value objects with correspondng sensor
+        for s in (0..<sensorValues.count) {
+            sensorValues[s].update(with: sensors[s])
+        }
+        
+        //update averaging processors
+        _cache.update(sensors: sensors)
+        
+        //update history with new sensor values
+        history.update(with: sensorValues)
+        
+    }
+    
+    //MARK: - AVERAGES VALUES -
+    //example: eeg.delta.decibel <-- average delta value for all 4 sensors
+    fileprivate var _cache:WaveAveragesCache
+    
+    public var magnitude:Double { get { return _cache.getMagnitude() } }
+    public var decibel:Double {   get { return _cache.getDecibel()   } }
+    public var percent:Double {   get { return _cache.getPercent()   } }
+    public var relative:Double {  get { return _cache.getRelative()  } }
+    
 }

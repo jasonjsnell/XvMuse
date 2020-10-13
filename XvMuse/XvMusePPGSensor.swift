@@ -31,7 +31,7 @@ public class XvMusePPGSensor {
         HIGH_PASS_FILTER_FREQ -= 0.1
         return HIGH_PASS_FILTER_FREQ
     }
-    fileprivate var HIGH_PASS_FILTER_FREQ:Float = 5.0
+    fileprivate var HIGH_PASS_FILTER_FREQ:Float = 1.6
     
     
     internal func add(packet:XvMusePPGPacket) -> PPGResult? {
@@ -58,9 +58,9 @@ public class XvMusePPGSensor {
                         
                         if let heartEvent:XvMusePPGHeartEvent = _hba.getHeartEvent(from: slice) {
                             
-                            if heartEvent.type == XvMuseConstants.PPG_S1_EVENT {
+                            if heartEvent.type == XvMuseConstants.PPG_S2_EVENT {
                                 
-                                //only update the bpms with the AV event, which is the beginning of a heartbeat
+                                
                                 let bpmPacket:XvMusePPGBpmPacket = _bpm.update(with: packet.timestamp)
                                 return PPGResult(heartEvent: heartEvent, bpmPacket: bpmPacket)
                             }
