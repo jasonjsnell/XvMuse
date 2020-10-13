@@ -242,7 +242,7 @@ let thetaPercentageForEntireHead:Double = eeg.theta.percent
 
 ### History ###
 
-Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the beginning of the array, the oldest value is at the end. Having these values can be useful for rendering a wave's recent values on a graphic display.
+Besides accessing the current decibel or magnitude of a wave, you can also access the history of values, up to the historyLength amount. The most recent value is at the end of the array. Having these values can be useful for rendering a wave's recent values on a graphic display.
 
 Examples:
 ```
