@@ -20,13 +20,13 @@ class BeatsPerMinute {
         let beatLength:Double = timestamp - prevTimestamp
         
         //calc bpm
-        var currBpm:Double = 60 / beatLength
+        let currBpm:Double = 60 / beatLength
         
-        if let lastBpm:Double = bpms.last {
+        /*if let lastBpm:Double = bpms.last {
             if (currBpm < lastBpm * 0.75) {
                 currBpm = lastBpm
             }
-        }
+        }*/
         
         //add to array and keep array the correct length
         bpms.append(currBpm)

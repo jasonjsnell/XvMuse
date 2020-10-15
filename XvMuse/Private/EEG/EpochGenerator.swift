@@ -32,7 +32,7 @@ class EpochGenerator {
     init(){
         
         self.interval = XvMuseConstants.EPOCH_REFRESH_TIME
-        self.duration = XvMuseConstants.FFT_BINS
+        self.duration = XvMuseConstants.EEG_FFT_BINS
         
         //make a unique slot for each sensors start time
         for _ in 0..<XvMuseConstants.EEG_SENSOR_TOTAL{

@@ -14,7 +14,7 @@ class DCT{
     fileprivate var _bins:Int
     
     fileprivate var forwardDCTSetup:vDSP.DCT
-    fileprivate var inverseDCTSetup:vDSP.DCT
+    //fileprivate var inverseDCTSetup:vDSP.DCT
     
     init(bins:Int) {
         
@@ -25,10 +25,11 @@ class DCT{
             transformType: vDSP.DCTTransformType.II
         )!
         
+        /*
         inverseDCTSetup = vDSP.DCT(
             count: _bins,
             transformType: vDSP.DCTTransformType.III
-        )!
+        )!*/
     }
     
     public func clean(signal:[Double], threshold:Float) -> [Double] {
@@ -45,7 +46,7 @@ class DCT{
             with: .zeroFill,
             result: &forwardDCT)
         
-        let divisor = Float(_bins)
+        let divisor:Float = Float(_bins)
         
         vDSP.divide(forwardDCT,
                     divisor,
@@ -53,16 +54,18 @@ class DCT{
         
         return forwardDCT.map { Double($0) }
         
+        /*
         //Use an inverse DCT to generate a new signal using the cleaned-up frequency domain data:
         
-        /*var inverseDCT:[Float] = inverseDCTSetup.transform(forwardDCT)
+        
+         var inverseDCT:[Float] = inverseDCTSetup.transform(forwardDCT)
         
         // Now scale the inverse DCT. The scaling factor for the forward transform is 2, and the scaling factor for the inverse transform is the number of samples (in this case, 1024). Use divide(_:_:) to divide the inverse DCT result by count / 2 to return a signal with the correct amplitude.
         
-        let divisor = Float(_bins / 2)
+        let inverseDivisor:Float = Float(_bins / 2)
         
         vDSP.divide(inverseDCT,
-                    divisor,
+                    inverseDivisor,
                     result: &inverseDCT)
         
         //convert array back into a double and return

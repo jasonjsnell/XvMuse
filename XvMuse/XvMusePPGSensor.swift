@@ -8,33 +8,44 @@
 
 import Foundation
 
+/*
+ 
+ sensor 0 - most sensitive
+ sensor 1 - medium sensitive
+ sensor 2 - least sensitve
+ */
+
 public class XvMusePPGSensor {
     
     fileprivate var id:Int
     init(id:Int) {
         self.id = id
+        //_dct = DCT(bins: _maxCount)
+        _ffTransformer = FFTransformer(bins: _maxCount)
     }
 
-    fileprivate let _dct:DCT = DCT(bins: 256)
-    fileprivate let _hba:HeartbeatAnalyzer = HeartbeatAnalyzer()
-    fileprivate let _bpm:BeatsPerMinute = BeatsPerMinute()
+    //fileprivate let _dct:DCT
     
-    fileprivate var _maxCount:Int = 256
+    
+    //muse PPG is at 256 Hz
+    //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+    fileprivate var _maxCount:Int = 32
     fileprivate var _rawSamples:[Double] = []
     fileprivate var _frequencySpectrum:[Double] = []
     
-    public func add() -> Float {
-        HIGH_PASS_FILTER_FREQ += 0.1
-        return HIGH_PASS_FILTER_FREQ
+    let _noiseFloorInc:Double = 5.0
+    public func raiseNoiseFloor() -> Double {
+        noiseFloor += _noiseFloorInc
+        return noiseFloor
     }
-    public func reduce() -> Float {
-        HIGH_PASS_FILTER_FREQ -= 0.1
-        return HIGH_PASS_FILTER_FREQ
+    public func lowerNoiseFloor() -> Double {
+        noiseFloor -= _noiseFloorInc
+        return noiseFloor
     }
-    fileprivate var HIGH_PASS_FILTER_FREQ:Float = 1.6
+    fileprivate var noiseFloor:Double = 300
     
     
-    internal func add(packet:XvMusePPGPacket) -> PPGResult? {
+    internal func add(packet:XvMusePPGPacket) -> [Double]? {
         
         //add to the existing array
         _rawSamples += packet.samples
@@ -45,31 +56,12 @@ public class XvMusePPGSensor {
             
             //update frequency spectrum
             if let fs:[Double] = _getFrequencySpectrum(from: _rawSamples) {
+                
+                //store in var for external access
                 _frequencySpectrum = fs
                 
-                //only get heart events from sensor 1
-                if (id == 1) {
-                    
-                    //if data is full
-                    if (_frequencySpectrum.count == _maxCount) {
-                        
-                        //grab the heartbeat slice from spectrum
-                        let slice:[Double] = Array(_frequencySpectrum[11...12])
-                        
-                        if let heartEvent:XvMusePPGHeartEvent = _hba.getHeartEvent(from: slice) {
-                            
-                            if heartEvent.type == XvMuseConstants.PPG_S2_EVENT {
-                                
-                                
-                                let bpmPacket:XvMusePPGBpmPacket = _bpm.update(with: packet.timestamp)
-                                return PPGResult(heartEvent: heartEvent, bpmPacket: bpmPacket)
-                            }
-                            
-                            //non AV events don't have a bpm update
-                            return PPGResult(heartEvent: heartEvent, bpmPacket: nil)
-                        }
-                    }
-                }
+                //return to XvMusePPG for summing, creating heart and breath events
+                return _frequencySpectrum
             }
         }
         
@@ -112,9 +104,36 @@ public class XvMusePPGSensor {
         }
     }
     
-    
+    fileprivate var _ffTransformer:FFTransformer
     fileprivate func _getFrequencySpectrum(from timeSamples:[Double]) -> [Double]? {
         
+        
+        if let fftResult:FFTResult = _ffTransformer.transform(
+            samples: timeSamples,
+            fromSensor: id,
+            noiseFloor: noiseFloor
+        ) {
+            //return the result
+            return fftResult.magnitudes
+            //return fftResult.decibels
+        
+        } else {
+            return nil
+        }
+        
+        /*
+        //convert to frequency and apply high pass filter to reduce noise
+        let dctResult:[Double] = _dct.clean(
+            signal: timeSamples,
+            threshold: noiseFloor
+        )
+        
+        return dctResult
+        */
+        
+        /*
+         //this code causes the values to go up and down every cycle, creating false movements in the output
+         
         //once the buffer has been achieved
         if let min:Double = timeSamples.min(),
             let max:Double = timeSamples.max() {
@@ -125,14 +144,29 @@ public class XvMusePPGSensor {
             //creates consistency
             let scaledSamples:[Double] = _rawSamples.map { ($0-min) / range }
             
-            //convert to frequency and apply high pass filter to reduce noise
-            let cleanedSamples:[Double] = _dct.clean(signal: scaledSamples, threshold: HIGH_PASS_FILTER_FREQ)
+            //FFT
+            /*if let fftResult:FFTResult = _ffTransformer.transform(
+                samples: scaledSamples,
+                fromSensor: id
+            ) {
+                //return the result
+                //return fftResult.magnitudes
+                return fftResult.decibels
             
-            return cleanedSamples.map { $0 * 10 } //scale up
+            } else {
+                return nil
+            }*/
+         
+             let dctResult:[Double] = _dct.clean(
+                 signal: scaledSamples,
+                 threshold: noiseFloor
+             )
+         
+            return dctResult
             
         } else {
             return nil
-        }
+        }*/
     }
     
 }

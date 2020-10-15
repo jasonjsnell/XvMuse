@@ -36,10 +36,10 @@ class FFTransformer {
     
     //MARK: - Init
     
-    init(){
+    init(bins:Int){
         
         //size of the sample buffer that is being analyzed
-        N = XvMuseConstants.FFT_BINS
+        N = bins
         
         //half of N, 128
         N2 = vDSP_Length(N/2)
@@ -59,13 +59,20 @@ class FFTransformer {
     }
     
     //MARK: - FFT Processing
+    public func transform(epoch:Epoch, noiseFloor:Double = 0.0) -> FFTResult? {
+        
+        return transform(
+            samples: epoch.samples,
+            fromSensor: epoch.sensor,
+            noiseFloor: noiseFloor
+        )        
+    }
     
-    public func transform(epoch:Epoch) -> FFTResult? {
+    public func transform(samples:[Double], fromSensor:Int, noiseFloor:Double = 0.0) -> FFTResult? {
         
         //MARK: Validation
         //validate incoming samples
-        
-        var samples:[Double] = validate(samples: epoch.samples)
+        var samples:[Double] = validate(samples: samples)
         
         //validate length
         if (samples.count != N){
@@ -135,6 +142,14 @@ class FFTransformer {
             //range: 0-250,000
             //average: 300-400
             
+            //remove signals underneath the incoming noise flood value
+            vDSP.threshold(
+                magnitudes,
+                to: noiseFloor,
+                with: .zeroFill,
+                result: &magnitudes
+            )
+            
             //validate
             magnitudes = validate(samples: magnitudes)
             
@@ -166,7 +181,7 @@ class FFTransformer {
             decibels = validate(samples: decibels)
             
             return FFTResult(
-                sensor: epoch.sensor,
+                sensor: fromSensor,
                 magnitudes: magnitudes,
                 decibels: decibels
             )

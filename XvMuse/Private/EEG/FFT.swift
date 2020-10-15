@@ -60,7 +60,9 @@ public class FFT {
     
     fileprivate var _buffers:[Buffer] = []
     fileprivate var _epochGenerator:EpochGenerator = EpochGenerator()
-    fileprivate var _ffTransformer:FFTransformer = FFTransformer()
+    fileprivate var _ffTransformer:FFTransformer = FFTransformer(
+        bins: XvMuseConstants.EEG_FFT_BINS
+    )
     
     public init() {
         

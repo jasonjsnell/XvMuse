@@ -18,8 +18,8 @@ class FrequencyManager {
        
     fileprivate init() {
         
-        let freqInc:Double = XvMuseConstants.SAMPLING_RATE / Double(XvMuseConstants.FFT_BINS)
-        let freqRange:Array<Int> = Array(0...XvMuseConstants.FFT_BINS/2)
+        let freqInc:Double = XvMuseConstants.SAMPLING_RATE / Double(XvMuseConstants.EEG_FFT_BINS)
+        let freqRange:Array<Int> = Array(0...XvMuseConstants.EEG_FFT_BINS/2)
         
         frequencies = freqRange.map { Double($0) * freqInc }
         

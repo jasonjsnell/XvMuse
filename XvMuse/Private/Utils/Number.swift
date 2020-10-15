@@ -29,6 +29,19 @@ public class Number{
         }
     }
     
+    public class func _getMaxByIndex(arrays:[[Double]]) -> [Double]? {
+        
+        guard let length = arrays.first?.count else { return [] }
+
+        // check all the elements have the same length, otherwise returns nil
+        guard !arrays.contains(where:{ $0.count != length }) else { return nil }
+
+        return (0..<length).map { i in
+            let max:Double? = arrays.map { $0[i] }.max()
+            return max!
+        }
+    }
+    
     public class func getAverage(ofArray:[Double]) -> Double {
         let total:Double = getTotal(ofArray: ofArray)
         return total / Double(ofArray.count)

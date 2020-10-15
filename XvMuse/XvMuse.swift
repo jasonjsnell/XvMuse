@@ -176,7 +176,7 @@ public class XvMuse:MuseBluetoothObserver {
                     samples: _parser.getPPGSamples(from: bytes))
                 
                 observer?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
-                
+            
                 return packet // return assembled packet
             }
     
@@ -208,21 +208,16 @@ public class XvMuse:MuseBluetoothObserver {
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1:
                 
-                //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
-                //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
-
                 /*
+                 //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+                 //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
                 uint:24,uint:24,uint:24
                 uint:24,uint:24,uint:24
                 UInt24 x 6 samples
                 */
-                
-                let _:PPGResult? = _ppg.update(with: _makePPGPacket(i: 0))
-                
-            case XvMuseConstants.CHAR_PPG2:
-                
+               
                 //if result is fired (from a heart event)
-                if let result:PPGResult = _ppg.update(with: _makePPGPacket(i: 1)) {
+                if let result:PPGResult = _ppg.update(with: _makePPGPacket(i: 0)) {
                     
                     //broadcast the heart event
                     observer?.didReceive(ppgHeartEvent: result.heartEvent)
@@ -234,12 +229,17 @@ public class XvMuse:MuseBluetoothObserver {
                     
                 }
                 
+                //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
+                observer?.didReceiveUpdate(from: _ppg)
+                
+            case XvMuseConstants.CHAR_PPG2:
+                
+                let _:PPGResult? = _ppg.update(with: _makePPGPacket(i: 1))
+                
             case XvMuseConstants.CHAR_PPG3:
                 
                 let _:PPGResult? = _ppg.update(with: _makePPGPacket(i: 2))
                 
-                //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
-                observer?.didReceiveUpdate(from: _ppg)
                 
             case XvMuseConstants.CHAR_ACCEL:
                 
