@@ -47,22 +47,24 @@ public class XvMusePPGSensor {
     internal func add(packet:XvMusePPGPacket) -> PPGSignalPacket? {
         
         //add to the existing array
-        _timeBasedSamples += packet.samples
+        _rawSamples += packet.samples
         
         //and remove oldest values that are beyond the buffer size
-        if (_timeBasedSamples.count > _maxCount) {
-            _timeBasedSamples.removeFirst(_timeBasedSamples.count-_maxCount)
+        if (_rawSamples.count > _maxCount) {
+            _rawSamples.removeFirst(_rawSamples.count-_maxCount)
             
             //MARK: Scale time based samples
             //scale samples into percentage (0.0 - 1.0)
             
-            if let min:Double = _timeBasedSamples.min(),
-               let max:Double = _timeBasedSamples.max()
+            if let min:Double = _rawSamples.min(),
+               let max:Double = _rawSamples.max()
             {
+                
                 let range:Double = max - min
-                    
+                
+                
                 //store in var for external access via ppg.sensors[0].samples
-                _timeBasedSamples = _timeBasedSamples.map { ($0-min) / range }
+                _timeBasedSamples = _rawSamples.map { (($0-min)) / range }
                 
                 //MARK: update frequency spectrum
                 if let fs:[Double] = _getFrequencySpectrum(from: _timeBasedSamples) {
@@ -95,6 +97,7 @@ public class XvMusePPGSensor {
     //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
     
     fileprivate var _maxCount:Int = 64 //256
+    fileprivate var _rawSamples:[Double] = []
     fileprivate var _timeBasedSamples:[Double] = []
     
     //access to the raw, time-based ppg samples for each sensor
