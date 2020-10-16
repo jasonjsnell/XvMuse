@@ -33,20 +33,14 @@ public class XvMusePPG {
     
     
     //MARK: Init
-    public var sensors:[XvMusePPGSensor]
-    
     
     init(){
         sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
     }
     
-    //MARK: History
-    public var history:[Double] {
-        get { return _history }
-    }
-    fileprivate var _history:[Double] = []
-    fileprivate let HISTORY_MAX:Int = 50
-    
+    //MARK: Sensors
+    public var sensors:[XvMusePPGSensor]
+
     //MARK: data processors
     fileprivate let _hba:HeartbeatAnalyzer = HeartbeatAnalyzer()
     fileprivate let _bpm:BeatsPerMinute = BeatsPerMinute()
@@ -62,37 +56,15 @@ public class XvMusePPG {
         
         //send samples into the sensors
         
-        //if frequency spectrum is returned (doesn't happen until buffer is full)...
-        if let _frequencySpectrum:[Double] = sensors[ppgPacket.sensor].add(packet: ppgPacket) {
+        //if signal packet is returned (doesn't happen until buffer is full)...
+        if let signalPacket:PPGSignalPacket = sensors[ppgPacket.sensor].add(packet: ppgPacket) {
             
+            /*
             //new packet index
             if (ppgPacket.packetIndex != _currPacketIndex) {
                 
                 //have a loaded pack of spectrums
                 if (_currFrequencySpectrums.count == 3) {
-                    
-                    //it's a good 60-70 bpm rhythm but does not go up with increased heart rate
-                    let sensorB:[Double] = _currFrequencySpectrums[1]
-                    let heartRange:[Double] = [
-                        sensorB[13], sensorB[14], sensorB[15], sensorB[16]
-                    ]
-                    if let lowestSpike:Double = heartRange.min() {
-                        
-                        var inverseSpike:Double = -lowestSpike
-                        //print("inverseSpike", inverseSpike)
-                        if (inverseSpike > 20) {
-                            inverseSpike = 20
-                        }
-                        _history.append(-lowestSpike)
-                    }
-                    
-                    
-                    
-                    
-                    //and remove oldest values that are beyond the array max
-                    if (_history.count > HISTORY_MAX) {
-                        _history.removeFirst(_history.count-HISTORY_MAX)
-                    }
                     
                     //combine them
                     /*if let _combinedFrequencySpectrums:[Double] = Number._getMaxByIndex(
@@ -143,8 +115,8 @@ public class XvMusePPG {
             
             //same packet index
             //keep adding to array
-            _currFrequencySpectrums.append(_frequencySpectrum)
-            
+            _currFrequencySpectrums.append(signalPacket.frequencySpectrum)
+             */
         }
         
         return nil
