@@ -59,7 +59,7 @@ class FFTransformer {
     }
     
     //MARK: - FFT Processing
-    public func transform(epoch:Epoch, noiseFloor:Double = 0.0) -> FFTResult? {
+    public func transform(epoch:Epoch, noiseFloor:Double? = nil) -> FFTResult? {
         
         return transform(
             samples: epoch.samples,
@@ -68,7 +68,7 @@ class FFTransformer {
         )        
     }
     
-    public func transform(samples:[Double], fromSensor:Int, noiseFloor:Double = 0.0) -> FFTResult? {
+    public func transform(samples:[Double], fromSensor:Int, noiseFloor:Double? = nil) -> FFTResult? {
         
         //MARK: Validation
         //validate incoming samples
@@ -143,12 +143,15 @@ class FFTransformer {
             //average: 300-400
             
             //remove signals underneath the incoming noise flood value
-            vDSP.threshold(
-                magnitudes,
-                to: noiseFloor,
-                with: .zeroFill,
-                result: &magnitudes
-            )
+            if (noiseFloor != nil) {
+                vDSP.threshold(
+                    magnitudes,
+                    to: noiseFloor!,
+                    with: .zeroFill,
+                    result: &magnitudes
+                )
+            }
+            
             
             //validate
             magnitudes = validate(samples: magnitudes)

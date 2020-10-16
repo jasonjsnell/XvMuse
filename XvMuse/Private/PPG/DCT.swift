@@ -25,14 +25,14 @@ class DCT{
             transformType: vDSP.DCTTransformType.II
         )!
         
-        /*
-        inverseDCTSetup = vDSP.DCT(
+        
+        /*inverseDCTSetup = vDSP.DCT(
             count: _bins,
             transformType: vDSP.DCTTransformType.III
         )!*/
     }
     
-    public func clean(signal:[Double], threshold:Float) -> [Double] {
+    public func transform(signal:[Double], threshold:Float! = nil) -> [Double] {
         
         //convert double to float array
         let floatSignal:[Float] = signal.map { Float($0) }
@@ -41,10 +41,12 @@ class DCT{
         var forwardDCT:[Float] = forwardDCTSetup.transform(floatSignal)
         
         //Remove the noise from the signal by zeroing all values in the frequency domain data that are below a specified threshold.
-        vDSP.threshold(forwardDCT,
-            to: threshold,
-            with: .zeroFill,
-            result: &forwardDCT)
+        if (threshold != nil) {
+            vDSP.threshold(forwardDCT,
+                to: threshold!,
+                with: .zeroFill,
+                result: &forwardDCT)
+        }
         
         let divisor:Float = Float(_bins)
         
@@ -56,9 +58,8 @@ class DCT{
         
         /*
         //Use an inverse DCT to generate a new signal using the cleaned-up frequency domain data:
-        
-        
-         var inverseDCT:[Float] = inverseDCTSetup.transform(forwardDCT)
+    
+        var inverseDCT:[Float] = inverseDCTSetup.transform(forwardDCT)
         
         // Now scale the inverse DCT. The scaling factor for the forward transform is 2, and the scaling factor for the inverse transform is the number of samples (in this case, 1024). Use divide(_:_:) to divide the inverse DCT result by count / 2 to return a signal with the correct amplitude.
         
@@ -69,7 +70,8 @@ class DCT{
                     result: &inverseDCT)
         
         //convert array back into a double and return
-        return inverseDCT.map { Double($0) }*/
+        return inverseDCT.map { Double($0) }
+        */
     }
 
 }

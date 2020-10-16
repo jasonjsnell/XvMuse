@@ -15,86 +15,113 @@ import Foundation
  sensor 2 - least sensitve
  */
 
+struct PPGSignalPacket {
+    internal var samples:[Double]
+    internal var frequencySpectrum:[Double]
+    
+    init(samples:[Double], frequencySpectrum:[Double]) {
+        self.samples = samples
+        self.frequencySpectrum = frequencySpectrum
+    }
+}
+
 public class XvMusePPGSensor {
     
     fileprivate var id:Int
+    
+    //data processors
+    fileprivate var _ffTransformer:FFTransformer
+    fileprivate var _dct:DCT
+    
     init(id:Int) {
+        
         self.id = id
-        //_dct = DCT(bins: _maxCount)
+        _dct = DCT(bins: _maxCount)
         _ffTransformer = FFTransformer(bins: _maxCount)
     }
-
-    //fileprivate let _dct:DCT
     
+    //MARK: - Incoming Data
     
-    //muse PPG is at 256 Hz
-    //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
-    fileprivate var _maxCount:Int = 32
-    fileprivate var _rawSamples:[Double] = []
-    fileprivate var _frequencySpectrum:[Double] = []
-    
-    let _noiseFloorInc:Double = 5.0
-    public func raiseNoiseFloor() -> Double {
-        noiseFloor += _noiseFloorInc
-        return noiseFloor
-    }
-    public func lowerNoiseFloor() -> Double {
-        noiseFloor -= _noiseFloorInc
-        return noiseFloor
-    }
-    fileprivate var noiseFloor:Double = 300
-    
-    
-    internal func add(packet:XvMusePPGPacket) -> [Double]? {
+    //this is where packets from the device, via bluetooth, come in for processing
+    //these raw, time-based samples are what create the heartbeat pattern
+    internal func add(packet:XvMusePPGPacket) -> PPGSignalPacket? {
         
         //add to the existing array
-        _rawSamples += packet.samples
+        _timeBasedSamples += packet.samples
         
         //and remove oldest values that are beyond the buffer size
-        if (_rawSamples.count > _maxCount) {
-            _rawSamples.removeFirst(_rawSamples.count-_maxCount)
+        if (_timeBasedSamples.count > _maxCount) {
+            _timeBasedSamples.removeFirst(_timeBasedSamples.count-_maxCount)
             
-            //update frequency spectrum
-            if let fs:[Double] = _getFrequencySpectrum(from: _rawSamples) {
+            //MARK: Scale time based samples
+            //scale samples into percentage (0.0 - 1.0)
+            
+            if let min:Double = _timeBasedSamples.min(),
+               let max:Double = _timeBasedSamples.max()
+            {
+                let range:Double = max - min
+                    
+                //store in var for external access via ppg.sensors[0].samples
+                _timeBasedSamples = _timeBasedSamples.map { ($0-min) / range }
                 
-                //store in var for external access
-                _frequencySpectrum = fs
-                
-                //return to XvMusePPG for summing, creating heart and breath events
-                return _frequencySpectrum
+                //MARK: update frequency spectrum
+                if let fs:[Double] = _getFrequencySpectrum(from: _timeBasedSamples) {
+                    
+                    //store in var for external access via ppg.sensors[0].frequencySpectrum
+                    _frequencySpectrum = fs
+                    
+                    //store both arrays into signal packet
+                    //and return to parnt class for processing into heart events and bpm
+                    return PPGSignalPacket(
+                        samples: _timeBasedSamples,
+                        frequencySpectrum: _frequencySpectrum
+                    )
+                }
             }
+            
+        } else {
+            print("PPG: Building buffer", _timeBasedSamples.count, "/", _maxCount)
         }
         
         return nil
     }
     
-    //MARK: - TIME SAMPLES
-    //access to the raw ppg samples for each sensor
+    
+    
+    //MARK: - Samples -
+    //muse PPG is at 256 Hz
+    //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+    //muse lsl python script uses 64 samples
+    //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
+    
+    fileprivate var _maxCount:Int = 64 //256
+    fileprivate var _timeBasedSamples:[Double] = []
+    
+    //access to the raw, time-based ppg samples for each sensor
     public var samples:[Double]? {
         
         get {
-            
-            if (_rawSamples.count < _maxCount) {
+            if (_timeBasedSamples.count < _maxCount) {
                 
-                print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
                 return nil
-            
+
             } else {
-                
-                return _rawSamples
+                return _timeBasedSamples
             }
         }
     }
     
+    
     //MARK: - FREQUENCY SPECTRUM
     //access to the frequency spectrum for each sensor
+    fileprivate var _frequencySpectrum:[Double] = []
     public var frequencySpectrum:[Double]? {
         
         get {
             
-            if (_rawSamples.count < _maxCount) {
+            if (_timeBasedSamples.count < _maxCount) {
                 
-                print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
+                //print("PPG: Building buffer", _timeBasedSamples.count, "/", _maxCount)
                 return nil
             
             } else {
@@ -104,69 +131,31 @@ public class XvMusePPGSensor {
         }
     }
     
-    fileprivate var _ffTransformer:FFTransformer
     fileprivate func _getFrequencySpectrum(from timeSamples:[Double]) -> [Double]? {
         
-        
-        if let fftResult:FFTResult = _ffTransformer.transform(
-            samples: timeSamples,
-            fromSensor: id,
-            noiseFloor: noiseFloor
-        ) {
-            //return the result
-            return fftResult.magnitudes
-            //return fftResult.decibels
-        
-        } else {
-            return nil
-        }
-        
-        /*
-        //convert to frequency and apply high pass filter to reduce noise
-        let dctResult:[Double] = _dct.clean(
+        //convert to frequency and apply noise gate reduce noise
+        let dctResult:[Double] = _dct.transform(
             signal: timeSamples,
-            threshold: noiseFloor
+            threshold: Float(noiseGate)
         )
         
         return dctResult
-        */
-        
-        /*
-         //this code causes the values to go up and down every cycle, creating false movements in the output
-         
-        //once the buffer has been achieved
-        if let min:Double = timeSamples.min(),
-            let max:Double = timeSamples.max() {
-            
-            let range:Double = max-min
-            
-            //scale the samples down to a percentage for each sensor
-            //creates consistency
-            let scaledSamples:[Double] = _rawSamples.map { ($0-min) / range }
-            
-            //FFT
-            /*if let fftResult:FFTResult = _ffTransformer.transform(
-                samples: scaledSamples,
-                fromSensor: id
-            ) {
-                //return the result
-                //return fftResult.magnitudes
-                return fftResult.decibels
-            
-            } else {
-                return nil
-            }*/
-         
-             let dctResult:[Double] = _dct.clean(
-                 signal: scaledSamples,
-                 threshold: noiseFloor
-             )
-         
-            return dctResult
-            
-        } else {
-            return nil
-        }*/
     }
+    
+    //MARK: - Noise Gate -
+    
+    public func increaseNoiseGate() -> Double {
+        noiseGate += _noiseGateInc
+        return noiseGate
+    }
+    public func decreaseNoiseGate() -> Double {
+        noiseGate -= _noiseGateInc
+        return noiseGate
+    }
+    fileprivate var noiseGate:Double = 540
+    let _noiseGateInc:Double = 25
+    
+    
+
     
 }
