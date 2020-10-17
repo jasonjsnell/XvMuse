@@ -82,7 +82,7 @@ public class XvMusePPGSensor {
             }
             
         } else {
-            print("PPG: Building buffer", _timeBasedSamples.count, "/", _maxCount)
+            print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
         }
         
         return nil
@@ -96,7 +96,7 @@ public class XvMusePPGSensor {
     //muse lsl python script uses 64 samples
     //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
     
-    fileprivate var _maxCount:Int = 128 //256
+    fileprivate var _maxCount:Int = 128
     fileprivate var _rawSamples:[Double] = []
     fileprivate var _timeBasedSamples:[Double] = []
     
