@@ -82,7 +82,11 @@ public class XvMusePPGSensor {
             }
             
         } else {
-            print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
+            
+            //only print the buffer build from one sensor
+            if (id == 1) {
+                print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
+            }
         }
         
         return nil
