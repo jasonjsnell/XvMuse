@@ -27,24 +27,32 @@ public class XvMusePPG {
     //MARK: Init
     
     init(){
+        
         sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
-        _pd = PeakDetector(
+    
+        _bpm = BeatsPerMinute()
+        
+        _npd = NegativePeakDetector(
+            analysisWindowSize: 10,
+            restWindowMin: 2
+        )
+        _sp = SignalProcessor(
             bins: sensors[1].sampleCount,
             threshold: threshold,
             lag: 10,
             influence: 0.5
         )
+        
     }
     
     //MARK: Sensors
     public var sensors:[XvMusePPGSensor]
 
     //MARK: Data processors
-    fileprivate let _pd:PeakDetector
-    fileprivate let _hba:HeartbeatAnalyzer = HeartbeatAnalyzer()
-    fileprivate let _bpm:BeatsPerMinute = BeatsPerMinute()
+    fileprivate let _sp:SignalProcessor
+    fileprivate let _npd:NegativePeakDetector
+    fileprivate let _bpm:BeatsPerMinute
     
-
 
     //MARK: Packet processing
     //basic update each time the PPG sensors send in new data
@@ -60,13 +68,10 @@ public class XvMusePPG {
             if (ppgPacket.sensor == 1) {
                 
                 //do peak detection
-                if let peakDetectionPacket:PeakDetectionPacket = _pd.process(yDataSet: signalPacket.samples) {
+                if let streams:SignalProcessorStreams = _sp.process(yDataSet: signalPacket.samples) {
                     
                     //if a peak (heartbeat) is detected...
-                    if let peakAmplitude:Double = _hba.getHeartbeatAmplitude(
-                        peaks: peakDetectionPacket.peaks,
-                        values: peakDetectionPacket.averagedValues
-                    ) {
+                    if let peakAmplitude:Double = _npd.getPeakAmplitude(peaks: streams.peaks, rawSamples: streams.raw) {
                         
                         //grab the current bpm with the curr timestamp
                         let bpmPacket:PPGBpmPacket = _bpm.update(with: ppgPacket.timestamp)
@@ -91,15 +96,15 @@ public class XvMusePPG {
     fileprivate var threshold:Double = 4.3
     public func increaseDetectionThreshold() {
         
-        _pd.threshold += 0.1
-        print("PPG: Peak detection threshold", _pd.threshold)
+        _sp.threshold += 0.1
+        print("PPG: Peak detection threshold", _sp.threshold)
         
     }
     
     public func decreaseDetectionThreshold() {
         
-        _pd.threshold -= 0.1
-        print("PPG: Peak detection threshold", _pd.threshold)
+        _sp.threshold -= 0.1
+        print("PPG: Peak detection threshold", _sp.threshold)
     }
     
 }

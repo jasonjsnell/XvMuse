@@ -202,35 +202,42 @@ public class XvMuseEEG {
     
     //MARK: History Lengths
     //the length of the sensor or wave value history can be changed by the user
-    public func set(historyLength:Int) {
+    public var historyLength:Int {
         
-        //each wave in each sensor
-        for sensor in sensors {
-           
-            for wave in sensor.waves {
-                wave.history.historyLength = historyLength
-            }
+        get {
+            waves[0].history.historyLength
         }
         
-        for wave in waves {
+        set {
             
-            //each wave
-            wave.history.historyLength = historyLength
-            
-            //each sensor in each wave
-            for sensorValue in wave.sensorValues {
-                sensorValue.history.historyLength = historyLength
+            //each wave in each sensor
+            for sensor in sensors {
+               
+                for wave in sensor.waves {
+                    wave.history.historyLength = newValue
+                }
             }
             
-            for region in wave.regions {
-                region.history.historyLength = historyLength
+            for wave in waves {
+                
+                //each wave
+                wave.history.historyLength = newValue
+                
+                //each sensor in each wave
+                for sensorValue in wave.sensorValues {
+                    sensorValue.history.historyLength = newValue
+                }
+                
+                for region in wave.regions {
+                    region.history.historyLength = newValue
+                }
             }
-        }
-        
-        for region in regions {
             
-            for wave in region.waves {
-                wave.history.historyLength = historyLength
+            for region in regions {
+                
+                for wave in region.waves {
+                    wave.history.historyLength = newValue
+                }
             }
         }
     }

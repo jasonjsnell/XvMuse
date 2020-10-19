@@ -120,4 +120,5 @@ public class XvMuseEEGWave {
     public var percent:Double {   get { return _cache.getPercent()   } }
     public var relative:Double {  get { return _cache.getRelative()  } }
     
+    
 }
