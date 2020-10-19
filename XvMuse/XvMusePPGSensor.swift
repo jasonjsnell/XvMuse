@@ -9,7 +9,6 @@
 import Foundation
 
 /*
- 
  sensor 0 - most sensitive
  sensor 1 - medium sensitive
  sensor 2 - least sensitve
@@ -38,6 +37,8 @@ public class XvMusePPGSensor {
         self.id = id
         _dct = DCT(bins: _maxCount)
         _ffTransformer = FFTransformer(bins: _maxCount)
+        _LFO1 = []
+        _LFO2 = []
     }
     
     //MARK: - Incoming Data
@@ -62,7 +63,6 @@ public class XvMusePPGSensor {
                 
                 let range:Double = max - min
                 
-                
                 //store in var for external access via ppg.sensors[0].samples
                 _timeBasedSamples = _rawSamples.map { (($0-min)) / range }
                 
@@ -71,6 +71,10 @@ public class XvMusePPGSensor {
                     
                     //store in var for external access via ppg.sensors[0].frequencySpectrum
                     _frequencySpectrum = fs
+                    
+                    //update the two LFO waves, using specific bins from the frequency spectrum
+                    _update(lfo: 1, fs: _frequencySpectrum, binRange:[2, 2])
+                    _update(lfo: 2, fs: _frequencySpectrum, binRange:[6, 7])
                     
                     //store both arrays into signal packet
                     //and return to parnt class for processing into heart events and bpm
@@ -100,6 +104,9 @@ public class XvMusePPGSensor {
     //muse lsl python script uses 64 samples
     //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
     
+    internal var sampleCount:Int {
+        get { return _maxCount }
+    }
     fileprivate var _maxCount:Int = 128
     fileprivate var _rawSamples:[Double] = []
     fileprivate var _timeBasedSamples:[Double] = []
@@ -142,27 +149,74 @@ public class XvMusePPGSensor {
         
         //convert to frequency and apply noise gate reduce noise
         let dctResult:[Double] = _dct.transform(
-            signal: timeSamples,
-            threshold: Float(noiseGate)
+            signal: timeSamples
         )
         
         return dctResult
     }
-    
-    //MARK: - Noise Gate -
-    
-    public func increaseNoiseGate() -> Double {
-        noiseGate += _noiseGateInc
-        return noiseGate
-    }
-    public func decreaseNoiseGate() -> Double {
-        noiseGate -= _noiseGateInc
-        return noiseGate
-    }
-    fileprivate var noiseGate:Double = 540
-    let _noiseGateInc:Double = 25
-    
-    
 
     
+    //MARK: - LFO -
+    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
+    fileprivate func _update(lfo:Int, fs:[Double], binRange:[Int]) {
+        
+        let binValues:[Double] = _fm.getSlice(bins: binRange, spectrum: fs)
+        if (binValues.count > 0) {
+            let binAverage:Double = binValues.reduce(0, +) / Double(binValues.count)
+            
+            if (lfo == 1) {
+                _LFO1.append(binAverage)
+                if (_LFO1.count > _maxCount) {
+                    _LFO1.removeFirst(_LFO1.count - _maxCount)
+                }
+            } else {
+                _LFO2.append(binAverage)
+                if (_LFO2.count > _maxCount) {
+                    _LFO2.removeFirst(_LFO2.count - _maxCount)
+                }
+            }
+        }
+    }
+    
+    fileprivate var _LFO1:[Double]
+    public var LFO1:[Double] {
+        get { return _LFO1 }
+    }
+    
+    fileprivate var _LFO2:[Double]
+    public var LFO2:[Double] {
+        get { return _LFO2 }
+    }
 }
+
+/*
+ 
+ PPG NOTES
+ Weds 10/14 9am
+ ppgGraph!.set(psdCustomBinRange: [0, 3])
+ ppgGraph!.set(amplifier: 0.035)
+ sensor 1 goes from ~5000-32000 based on whether i'm leaning forward or not
+ I think it's a sort of reading of blood pressure flowing towards the sensor
+ 
+ 10:30am
+ DCT, bin 0 sees to be pure noise
+ 
+ bin 1 may be breath. Perhaps sum all 3 sensors, bin 1
+ 
+ DCT
+ [5, 16] heart range
+ 
+ 10/15 7:30am
+ //ussing fft, noise thread of about 240
+ ppgGraph!.set(psdCustomBinRange:
+ [6, 8]) - lub and dub range
+ [5, 6]) - peak detection range
+ ppgGraph!.set(amplifier: 0.1)
+ 
+ Thurs 10/15
+ ppgGraph!.initView()
+ ppgGraph!.set(psdCustomBinRange:  [13, 16]) //113
+ //ppgGraph!.set(amplifier: 3.0)//dct
+ ppgGraph!.set(amplifier: 1.0)
+ 
+ */

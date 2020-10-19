@@ -8,13 +8,22 @@
 
 import Foundation
 
+struct PPGBpmPacket {
+    var current:Double
+    var average:Double
+    
+    init(current:Double, average:Double) {
+        self.current = current
+        self.average = average
+    }
+}
 class BeatsPerMinute {
     
     fileprivate var prevTimestamp:Double = 0
     fileprivate var bpms:[Double] = []
     fileprivate let BPM_HISTORY_LENGTH:Int = 10
 
-    internal func update(with timestamp:Double) -> XvMusePPGBpmPacket {
+    internal func update(with timestamp:Double) -> PPGBpmPacket {
         
         //get the length of the beat by looking at the diff between the current time and the last time this func ran
         let beatLength:Double = timestamp - prevTimestamp
@@ -38,7 +47,7 @@ class BeatsPerMinute {
         //update timestamp
         prevTimestamp = timestamp
         
-        return XvMusePPGBpmPacket(current: currBpm, average: averageBpm)
+        return PPGBpmPacket(current: currBpm, average: averageBpm)
     
     }
     

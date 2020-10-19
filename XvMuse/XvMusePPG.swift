@@ -11,22 +11,14 @@ import Foundation
 
 public class XvMusePPGHeartEvent {
     
-    public init(type:Int = -1, amplitude:Double = 0) {
-        self.type = type //default is no event
-        self.amplitude = amplitude //default zero
+    public init(amplitude:Double = 0, currentBpm:Double = 0, averageBpm:Double = 0) {
+        self.amplitude = amplitude
+        self.currentBpm = currentBpm
+        self.averageBpm = averageBpm
     }
-    public var type:Int
     public var amplitude:Double
-}
-
-public struct XvMusePPGBpmPacket {
-    public var current:Double
-    public var average:Double
-}
-
-internal struct PPGResult {
-    public var heartEvent:XvMusePPGHeartEvent
-    public var bpmPacket:XvMusePPGBpmPacket?
+    public var currentBpm:Double
+    public var averageBpm:Double
 }
 
 public class XvMusePPG {
@@ -36,113 +28,78 @@ public class XvMusePPG {
     
     init(){
         sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
+        _pd = PeakDetector(
+            bins: sensors[1].sampleCount,
+            threshold: threshold,
+            lag: 10,
+            influence: 0.5
+        )
     }
     
     //MARK: Sensors
     public var sensors:[XvMusePPGSensor]
 
-    //MARK: data processors
+    //MARK: Data processors
+    fileprivate let _pd:PeakDetector
     fileprivate let _hba:HeartbeatAnalyzer = HeartbeatAnalyzer()
     fileprivate let _bpm:BeatsPerMinute = BeatsPerMinute()
     
-    
-    
+
+
     //MARK: Packet processing
     //basic update each time the PPG sensors send in new data
-    fileprivate var _currPacketIndex:UInt16 = 0
-    fileprivate var _currFrequencySpectrums:[[Double]] = []
     
-    internal func update(with ppgPacket:XvMusePPGPacket) -> PPGResult? {
+    internal func update(with ppgPacket:XvMusePPGPacket) -> XvMusePPGHeartEvent? {
         
         //send samples into the sensors
         
         //if signal packet is returned (doesn't happen until buffer is full)...
         if let signalPacket:PPGSignalPacket = sensors[ppgPacket.sensor].add(packet: ppgPacket) {
             
-            /*
-            //new packet index
-            if (ppgPacket.packetIndex != _currPacketIndex) {
+            //using sensor 1 (middle-range sensor) to calculate heartbeat
+            if (ppgPacket.sensor == 1) {
                 
-                //have a loaded pack of spectrums
-                if (_currFrequencySpectrums.count == 3) {
+                //do peak detection
+                if let peakDetectionPacket:PeakDetectionPacket = _pd.process(yDataSet: signalPacket.samples) {
                     
-                    //combine them
-                    /*if let _combinedFrequencySpectrums:[Double] = Number._getMaxByIndex(
-                        arrays: _currFrequencySpectrums
+                    //if a peak (heartbeat) is detected...
+                    if let peakAmplitude:Double = _hba.getHeartbeatAmplitude(
+                        peaks: peakDetectionPacket.peaks,
+                        values: peakDetectionPacket.averagedValues
                     ) {
                         
-                        //let slice1:Double = _combinedFrequencySpectrums[5]
-                        //let slice2:Double = _combinedFrequencySpectrums[6]
-                        //var slice:Double = slice1
-                        //if (slice2 > slice1) {
-                          //  slice = slice2
-                        //}
-                        //add to history
-                        //bin 1 or 2 is the slow, long arc - breath-ish
-                        
-                        
-
-                        
-                        /*
-                        //grab the heartbeat slice from spectrum
-                        let slices:[Double] = [
-                            _combinedFrequencySpectrums[6], _combinedFrequencySpectrums[8]
-                        ]
-                        
-                        
-                        if let heartEvent:XvMusePPGHeartEvent = _hba.getHeartEvent(from: slice) {
-                            
-                            //have bpm detected by time between resting event
-                            if heartEvent.type == XvMuseConstants.PPG_RESTING {
-                                
-                                let bpmPacket:XvMusePPGBpmPacket = _bpm.update(with: ppgPacket.timestamp)
-                                return PPGResult(heartEvent: heartEvent, bpmPacket: bpmPacket)
-                            }
-                            
-                            //else send back a heart event with no bpm packet
-                            return PPGResult(heartEvent: heartEvent, bpmPacket: nil)
-                        }*/
-                    }*/
+                        //grab the current bpm with the curr timestamp
+                        let bpmPacket:PPGBpmPacket = _bpm.update(with: ppgPacket.timestamp)
+                     
+                        //and return a heart event with peak and bpm data
+                        return XvMusePPGHeartEvent(
+                            amplitude: peakAmplitude,
+                            currentBpm: bpmPacket.current,
+                            averageBpm: bpmPacket.average
+                        )
+                    }
                 }
-                
-                //first packet or incomplete packet
-                _currFrequencySpectrums = []
-                
-                //update the curr index
-                _currPacketIndex = ppgPacket.packetIndex
-                
             }
-            
-            //same packet index
-            //keep adding to array
-            _currFrequencySpectrums.append(signalPacket.frequencySpectrum)
-             */
         }
         
         return nil
     }
     
-    //MARK: Noise floor
+    //MARK: peak detection threshold
     //test to tweak sensor sensitivity
-    public func increaseNoiseGate() -> Double {
+    
+    fileprivate var threshold:Double = 4.3
+    public func increaseDetectionThreshold() {
         
-        var db:Double = 0
+        _pd.threshold += 0.1
+        print("PPG: Peak detection threshold", _pd.threshold)
         
-        for sensor in sensors {
-            db = sensor.increaseNoiseGate()
-        }
-        
-        return db
     }
     
-    public func decreaseNoiseGate() -> Double {
+    public func decreaseDetectionThreshold() {
         
-        var db:Double = 0
-        
-        for sensor in sensors {
-            db = sensor.decreaseNoiseGate()
-        }
-        return db
+        _pd.threshold -= 0.1
+        print("PPG: Peak detection threshold", _pd.threshold)
     }
     
 }

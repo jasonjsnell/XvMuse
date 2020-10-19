@@ -10,7 +10,7 @@ import Foundation
 
 class HeartbeatAnalyzer {
     
-    fileprivate var rest:Bool = false
+    fileprivate var rest:Int = 0
     fileprivate var S1:Bool = false
     fileprivate var S2:Bool = false
     
@@ -18,92 +18,48 @@ class HeartbeatAnalyzer {
     fileprivate var recentS1:[Double] = []
     fileprivate var recentS2:[Double] = []
     
+    fileprivate let analysisWindow:Int = 10
+    fileprivate let restWindowMin:Int = 2
     
-    
-    internal func getHeartEvent(from slice:[Double]) -> XvMusePPGHeartEvent? {
+    internal func getHeartbeatAmplitude(peaks:[Int], values:[Double]) -> Double? {
         
-        //slice needs to be 2 in length
-        //bins 0 is atrioventricular
-        //bins 1 is semilunar
+        //examine the recent window of time, which is the end of the array
+        let recentPeaks:[Int] = Array(
+            peaks[
+                peaks.count-analysisWindow...peaks.count-1
+            ]
+        )
         
-        if (slice.count == 2){
+        //grab the lowest value
+        if let peakMin:Int = recentPeaks.min() {
             
-            let S1Value:Double = slice[0]
-            let S2Value:Double = slice[1]
-            let sum = S1Value + S2Value
-            
-            if (sum == 0 && !rest) {
+            //if a -1 is present and it's not right after a previous -1
+            if (peakMin == -1 && rest > restWindowMin) {
                 
-                //entire wave has come down and rested to zero
-                rest = true
-                S1 = false
-                S2 = false
+                //reset rest
+                rest = 0
                 
-                return XvMusePPGHeartEvent(
-                    type: XvMuseConstants.PPG_RESTING,
-                    amplitude: 0
-                )
-            
-            } else if (S1Value > S2Value && !S1) {
-                
-                //lower frequency part of wave is dominant
-                //this is the dominant LUB sound, atrioventricular
-                rest = false
-                S1 = true
-                S2 = false
-                
-                //add to array
-                recentS1.append(S1Value)
-                if (recentS1.count > RECENT_MAX) { recentS1.removeFirst() }
-                
-                //get normalized value
-                let normalizedS1:Double = normalize(value: S1Value, in: recentS1)
-                
-                
-                               
-                return XvMusePPGHeartEvent(
-                    type: XvMuseConstants.PPG_S1_EVENT,
-                    amplitude: normalizedS1
+                //get peak value
+                let recentValues:[Double] = Array(
+                    values[
+                        values.count-analysisWindow...values.count-1
+                    ]
                 )
                 
-            } else if (S2Value > S1Value && !S2) {
+                //grab max
+                if let valueMax:Double = recentValues.max() {
+                    
+                    //return amplitude
+                    return valueMax
+                }
+            
+            } else {
                 
-                //higher frequency part of the wave is dominant
-                //this is the dominant DUB sound, semilunar
-                rest = false
-                S1 = false
-                S2 = true
-                
-                //add to array
-                recentS2.append(S2Value)
-                if (recentS2.count > RECENT_MAX) { recentS2.removeFirst() }
-                
-                //get normalized value
-                let normalizedS2:Double = normalize(value: S2Value, in: recentS2)
-                
-                return XvMusePPGHeartEvent(
-                    type: XvMuseConstants.PPG_S2_EVENT,
-                    amplitude: normalizedS2
-                )
+                //increase rest time
+                rest += 1
             }
-            
-        } else {
-            print("PPG: Error: Frequency spectrum slice is incorrect length")
-            return nil
         }
-        
-        return nil
-    }
     
-    //MARK: Subs
-    fileprivate func normalize(value:Double, in array:[Double]) -> Double {
-        
-        var normalizedValue = value
-        
-        if let max:Double = array.max() {
-            normalizedValue = value / max
-        }
-        
-        return normalizedValue
+        return nil
     }
 }
