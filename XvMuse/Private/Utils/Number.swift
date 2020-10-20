@@ -29,7 +29,7 @@ public class Number{
         }
     }
     
-    public class func _getMaxByIndex(arrays:[[Double]]) -> [Double]? {
+    internal class func _getMaxByIndex(arrays:[[Double]]) -> [Double]? {
         
         guard let length = arrays.first?.count else { return [] }
 
@@ -42,12 +42,12 @@ public class Number{
         }
     }
     
-    public class func getAverage(ofArray:[Double]) -> Double {
+    internal class func getAverage(ofArray:[Double]) -> Double {
         let total:Double = getTotal(ofArray: ofArray)
         return total / Double(ofArray.count)
     }
     
-    public class func getTotal(ofArray:[Double]) -> Double {
+    internal class func getTotal(ofArray:[Double]) -> Double {
         return ofArray.reduce(0, +)
     }
     

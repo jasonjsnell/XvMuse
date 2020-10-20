@@ -51,18 +51,5 @@ public class XvMuseEEGValue {
     //percent
     public var percent:Double { get { return decibel / history.highest.decibel } }
    
-    
-    //MARK: - Helpers -
-    
-    //helpers
-    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
-    
-    fileprivate func _getValue(from spectrum:[Double]) -> Double {
-        
-        return _fm.getWaveValue(
-            waveID: waveID,
-            spectrum: spectrum
-        )
-    }
 
 }

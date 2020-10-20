@@ -9,7 +9,7 @@
 
 import Foundation
 
-public struct SignalProcessorStreams {
+public class SignalProcessorPacket {
     
     init(raw:[Double], averagedValues:[Double], deviationValues:[Double], peaks:[Int]) {
         self.raw = raw
@@ -77,13 +77,13 @@ public class SignalProcessor {
     //MARK: - Process value
     //process one value at a time
     //this adds to buffer, then buffer is passed into the peak detection method
-    public func process(value:Double) -> SignalProcessorStreams? {
+    public func process(value:Double) -> SignalProcessorPacket? {
         
         //build buffer
         _buffer.append(value)
         
         //trim buffer
-        if (_trimBuffer()){
+        if (_updateBuffer()){
             
             //then detect peaks
             return _process(rawSamples: _buffer)
@@ -95,13 +95,13 @@ public class SignalProcessor {
     //MARK: Process packet
     //this is a small array of several values, often used in device communication
     //this adds to buffer, then buffer is passed into the peak detection method
-    public func process(packet:[Double]) -> SignalProcessorStreams? {
+    public func process(packet:[Double]) -> SignalProcessorPacket? {
         
         //append entire packet
         _buffer += packet
         
         //trim buffer
-        if (_trimBuffer()){
+        if (_updateBuffer()){
             
             //then detect peaks
             return _process(rawSamples: _buffer)
@@ -112,24 +112,28 @@ public class SignalProcessor {
     
     //MARK: Process signal
     //this is an array the same length as the bins
-    public func process(yDataSet:[Double]) -> SignalProcessorStreams? {
+    public func process(yDataSet:[Double]) -> SignalProcessorPacket? {
         
         //MARK: Error checking
         //data set needs to match bin length
         if (yDataSet.count != _bins){
-            print("PeakDetection: Error: Data set length", yDataSet.count, "doesn't match bin length", _bins)
-            return nil
+            print("SignalProcessor: Error: Data set length", yDataSet.count, "doesn't match bin length", _bins)
         
         } else {
             
-            return _process(rawSamples: yDataSet)
+            if (_updateBuffer()) {
+                return _process(rawSamples: yDataSet)
+            
+            }
         }
+        
+        return nil
     }
     
     
     //MARK: - Peak detection -
     
-    fileprivate func _process(rawSamples:[Double]) -> SignalProcessorStreams? {
+    fileprivate func _process(rawSamples:[Double]) -> SignalProcessorPacket? {
 
         //grab count
         let N:Int = rawSamples.count
@@ -204,7 +208,7 @@ public class SignalProcessor {
         
         
         //package the peaks, averaged filter, and deviation filter
-        return SignalProcessorStreams(
+        return SignalProcessorPacket(
             raw: rawSamples,
             averagedValues: _avgFilter,
             deviationValues: _devFilter,
@@ -260,10 +264,10 @@ public class SignalProcessor {
         return Array(array[s..<min(e, array.count)])
     }
     
-    fileprivate func _trimBuffer() -> Bool{
+    fileprivate func _updateBuffer() -> Bool{
         
         if (_buffer.count < _bins) {
-            print("PeakDetection: Building buffer", _buffer.count, "/", _bins)
+            print("SignalProcessor: Building buffer", _buffer.count, "/", _bins)
             return false
         }
         
@@ -273,6 +277,9 @@ public class SignalProcessor {
             //remove the excess from the beginning of the array
             _buffer.removeFirst(_buffer.count-_bins)
         }
+        
+        //remove nans
+        _buffer = _buffer.map { $0.isNaN ? 0 : $0 }
         
         return true
     }
@@ -291,7 +298,7 @@ public class SignalProcessor {
         
         //error checking
         if (_averagingLag > _bins || _deviationLag > _bins) {
-            print("PeakDetection: Error: Lags (", _averagingLag, _deviationLag, ") can't be more than the bin length", _bins)
+            print("SignalProcessor: Error: Lags (", _averagingLag, _deviationLag, ") can't be more than the bin length", _bins)
             fatalError()
         }
     }
@@ -328,4 +335,6 @@ public class SignalProcessor {
         set { _deviationInfluence = newValue }
     }
 }
+
+
 

@@ -131,7 +131,6 @@ public class XvMuse:MuseBluetoothObserver {
 
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.observer = self
-        
     }
     
     
