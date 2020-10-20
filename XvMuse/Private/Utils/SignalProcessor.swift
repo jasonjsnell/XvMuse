@@ -121,6 +121,10 @@ public class SignalProcessor {
         
         } else {
             
+            //assign entire array to buffer
+            _buffer = yDataSet
+            
+            //check the buffer for errors
             if (_updateBuffer()) {
                 return _process(rawSamples: yDataSet)
             
