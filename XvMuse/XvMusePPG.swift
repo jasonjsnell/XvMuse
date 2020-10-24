@@ -93,7 +93,7 @@ public class XvMusePPG {
     //MARK: peak detection threshold
     //test to tweak sensor sensitivity
     
-    fileprivate var threshold:Double = 4.3
+    fileprivate var threshold:Double = 3.3
     public func increaseDetectionThreshold() {
         
         _sp.threshold += 0.1
