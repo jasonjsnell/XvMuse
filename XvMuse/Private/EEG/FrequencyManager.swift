@@ -161,7 +161,14 @@ class FrequencyManager {
         let slice:[Double] = getSlice(bins: bins, spectrum: spectrum)
         
         //average it
-        return slice.reduce(0, +) / Double(slice.count)
+        var waveValue:Double = slice.reduce(0, +) / Double(slice.count)
+        
+        //clean it
+        if (waveValue.isInfinite || waveValue.isNaN) {
+            waveValue = 0
+        }
+        
+        return waveValue
     }
     
     
