@@ -68,7 +68,7 @@ public class XvMusePPG {
             if (ppgPacket.sensor == 1) {
                 
                 //do peak detection
-                if let spPacket:SignalProcessorPacket = _sp.process(yDataSet: signalPacket.samples) {
+                if let spPacket:SignalProcessorPacket = _sp.process(stream: signalPacket.samples) {
                     
                     //if a peak (heartbeat) is detected...
                     if let peakAmplitude:Double = _npd.getPeakAmplitude(peaks: spPacket.peaks, rawSamples: spPacket.raw) {
