@@ -13,7 +13,7 @@ import Foundation
 import CoreBluetooth
 
 //another object or a view controller that can listen to this class's updates
-public protocol XvMuseObserver:class {
+public protocol XvMuseDelegate:class {
     
     //syntax:
     //didReceiveUpdate from sensor
@@ -104,7 +104,7 @@ public class XvMuse:MuseBluetoothObserver {
     public var bluetooth:MuseBluetooth
     
     //the view controller that receives EEG, accel, PPG, etc updates
-    public weak var observer:XvMuseObserver?
+    public weak var delegate:XvMuseDelegate?
     
     public var eeg:XvMuseEEG { get { return _eeg } }
     public var ppg:XvMusePPG { get { return _ppg } }
@@ -158,7 +158,7 @@ public class XvMuse:MuseBluetoothObserver {
                     timestamp: timestamp,
                     samples: _parser.getEEGSamples(from: bytes))
                 
-                observer?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
+                delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
                 
                 return packet // return assembled packet
             }
@@ -173,7 +173,7 @@ public class XvMuse:MuseBluetoothObserver {
                     timestamp: timestamp,
                     samples: _parser.getPPGSamples(from: bytes))
                 
-                observer?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
             
                 return packet // return assembled packet
             }
@@ -201,7 +201,7 @@ public class XvMuse:MuseBluetoothObserver {
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  
                  //only broadcast the XvMuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 observer?.didReceiveUpdate(from: _eeg)
+                 delegate?.didReceiveUpdate(from: _eeg)
                 
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1:
@@ -222,7 +222,7 @@ public class XvMuse:MuseBluetoothObserver {
                 if let heartEvent:XvMusePPGHeartEvent = _ppg.update(with: _makePPGPacket(i: 1)) {
                     
                     //broadcast the heart event
-                    observer?.didReceive(ppgHeartEvent: heartEvent)
+                    delegate?.didReceive(ppgHeartEvent: heartEvent)
                     
                 }
                 
@@ -231,7 +231,7 @@ public class XvMuse:MuseBluetoothObserver {
                 let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 2))
                 
                 //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
-                observer?.didReceiveUpdate(from: _ppg)
+                delegate?.didReceiveUpdate(from: _ppg)
                 
             case XvMuseConstants.CHAR_ACCEL:
                 
@@ -249,7 +249,7 @@ public class XvMuse:MuseBluetoothObserver {
                 _accel.y = _parser.getXYZ(values: _accel.raw, start: 1)
                 _accel.z = _parser.getXYZ(values: _accel.raw, start: 2)
                 
-                observer?.didReceiveUpdate(from: _accel)
+                delegate?.didReceiveUpdate(from: _accel)
                 
             case XvMuseConstants.CHAR_BATTERY:
                
@@ -269,7 +269,7 @@ public class XvMuse:MuseBluetoothObserver {
                 //parse the percentage
                 _battery.percentage = _battery.raw[0] / XvMuseConstants.BATTERY_PCT_DIVIDEND
                 
-                observer?.didReceiveUpdate(from: _battery)
+                delegate?.didReceiveUpdate(from: _battery)
 
             case XvMuseConstants.CHAR_CONTROL:
                 
@@ -280,7 +280,7 @@ public class XvMuse:MuseBluetoothObserver {
                 if let commandResponse:[String:Any] =  _parser.parse(controlLine: bluetoothCharacteristic.value) {
                     
                     //if a response more than ["rc":0] comes in, broadcast it
-                    observer?.didReceive(commandResponse: commandResponse)
+                    delegate?.didReceive(commandResponse: commandResponse)
                 }
                
             default:
@@ -292,18 +292,18 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - BLUETOOTH CONNECTION
     
     public func isConnecting() {
-        observer?.museIsConnecting()
+        delegate?.museIsConnecting()
     }
     
     public func didConnect() {
-        observer?.museDidConnect()
+        delegate?.museDidConnect()
     }
     
     public func didDisconnect() {
-        observer?.museDidDisconnect()
+        delegate?.museDidDisconnect()
     }
     
     public func didLoseConnection() {
-        observer?.museLostConnection()
+        delegate?.museLostConnection()
     }
 }
