@@ -21,7 +21,7 @@ class BeatsPerMinute {
     
     fileprivate var prevTimestamp:Double = 0
     fileprivate var bpms:[Double] = []
-    fileprivate let BPM_HISTORY_LENGTH:Int = 30
+    fileprivate let BPM_HISTORY_LENGTH:Int = 100
 
     internal func update(with timestamp:Double) -> PPGBpmPacket {
         

@@ -105,12 +105,14 @@ public class MuseBluetooth:XvBluetoothObserver {
         
         observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
         
+        /*
         //up the counter
         connectionCounter += 1
         if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
             keepAlive()
             connectionCounter = 0
         }
+        */
     }
     
     public func didLoseConnection() {
