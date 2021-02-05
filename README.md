@@ -4,9 +4,9 @@ I've built a Muse framework in Swift using XCode 11.1, Mac OS Catalina.
 
 ### Testing Environment ###
 • Tested on MacOS Catalina using XCode's MacCatalyst.<br>
-• Tested using the Muse 2 (2016) headband 
-• Tested using the Muse 1 (2014). No PPG data is available on the Muse 1.
-• Data results appear similar to other frameworks
+• Tested using the Muse 2 (2016) headband<br>
+• Tested using the Muse 1 (2014). No PPG data is available on the Muse 1.<br>
+• Data results appear similar to other frameworks<br>
 
 All the Swift code and libraries are iOS, so it *should* work on iOS devices.
 
@@ -14,24 +14,26 @@ All the Swift code and libraries are iOS, so it *should* work on iOS devices.
 ### Acknowledgements ###
 I learned a ton from these frameworks and research sources:
 
-Muse Python framework:
+Muse Python framework:<br>
 https://github.com/alexandrebarachant/muse-lsl
 
-Muse JS framework:
+Muse JS framework:<br>
 https://github.com/urish/muse-js
 
-Muse Bluetooth packets:
+Muse Bluetooth packets:<br>
 https://articles.jaredcamins.com/figuring-out-bluetooth-low-energy-8c2a2716e376
 
-Muse Serial Commands:
+Muse Serial Commands:<br>
 https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol/serial-commands
 
 ### Known issues: ###
 
-* There may be errors in the retrival or processing of the data, so I'm open to improvements. This is still a work in progress but I wanted to share it so others could utilize it.
-* The PPG heartbeat detection sensitiy may not be perfect. Still tweaking it to get an accurate tempo.
-* Breath detection is not created yet.
-• Device often disconnects. I'm studying the Muse Communication Protocol to address this (https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol)
+<ul>
+<li>There may be errors in the retrival or processing of the data, so I'm open to improvements. This is still a work in progress but I wanted to share it so others could utilize it.</li>
+<li>The PPG heartbeat detection sensitiy may not be perfect. Still tweaking it to get an accurate tempo.</li>
+<li>Breath detection is not created yet.</li>
+<li>Device often disconnects. I'm studying the Muse Communication Protocol to address this (https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol)</li>
+</ul>
 
 ### Install ###
 
@@ -163,7 +165,7 @@ func didReceive(ppgPacket:XvMusePPGPacket)
 Through these functions, you can access the Muse's data and use it for your main Xcode project.
 
 
-## XvMuseEEG Object##
+## XvMuseEEG Object ##
 
 ### Summary ###
 
@@ -544,7 +546,7 @@ They seem to have varying levels of sensitivity.
 
 ### Accessing Sensors Samples ###
 
-The samples array is an option, which is nil when the sensor's are inactive. So it needs to be safely unpacked. For example:
+The samples array is an Optional, which is nil when the sensor's are inactive. So it needs to be safely unpacked. For example:
 
 ```
 if let samples:[Double] = ppg.sensors[1].samples {
