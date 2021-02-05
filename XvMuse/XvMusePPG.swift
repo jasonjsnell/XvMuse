@@ -94,14 +94,14 @@ public class XvMusePPG {
     //test to tweak sensor sensitivity
     
     fileprivate var threshold:Double = 3.5
-    public func increaseDetectionThreshold() {
+    public func increaseHeartbeatPeakDetectionThreshold() {
         
         _sp.threshold += 0.1
         print("PPG: Peak detection threshold", _sp.threshold)
         
     }
     
-    public func decreaseDetectionThreshold() {
+    public func decreaseHeartbeatPeakDetectionThreshold() {
         
         _sp.threshold -= 0.1
         print("PPG: Peak detection threshold", _sp.threshold)

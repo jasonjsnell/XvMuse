@@ -10,6 +10,8 @@ import Foundation
 
 class Parser {
     
+    fileprivate let debug:Bool = true
+    
 
     //MARK: - PACKET INDEX
     // many of the characteristics include a counter that moves up with each received packet
@@ -85,13 +87,7 @@ class Parser {
                     //send the string to the JSON func
                     if let json:[String:Any] = JSON.getJSON(fromStr: controlMsg) {
                         
-                        //print alert if response code is not 0
-                        if let responseCode:Int = json["rc"] as? Int {
-                            
-                            if (responseCode != 0) {
-                                print("CONTROL: Error: Received error response code from control message")
-                            }
-                        }
+                        //print("CONTROL: json", json)
                         
                         //re-initliaze the message string for the next time a command comes in
                         controlMsg = ""
@@ -103,6 +99,8 @@ class Parser {
                             
                         } else {
                             
+                            //print from here, but don't return to main class
+                            if (debug) { print("PARSER: JSON:", json) }
                             return nil
                         }
                         
@@ -111,14 +109,8 @@ class Parser {
                         controlMsg = ""
                         return nil
                     }
-                    
-                    
                 }
             }
-
-            //keep adding the array of characters to the global message string
-            //controlMsg += String(charArr)
-            //print("msg", controlMsg)
             
         } else {
             print("PARSER: Error: Incoming control line is nil")

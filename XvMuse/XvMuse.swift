@@ -127,8 +127,15 @@ public class XvMuse:MuseBluetoothObserver {
     fileprivate let debug:Bool = true
     
     //MARK: - INIT -
-    public init(deviceCBUUID:CBUUID? = nil) {
+    public init(deviceID:String? = nil) {
 
+        //if a valid device ID string comes in, make a CBUUID for the bluetooth object
+        var deviceCBUUID:CBUUID?
+        
+        if (deviceID != nil) {
+            deviceCBUUID = CBUUID(string: deviceID!)
+        }
+        
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.observer = self
     }
@@ -296,7 +303,31 @@ public class XvMuse:MuseBluetoothObserver {
     }
     
     public func didConnect() {
+        
+        //communication protocol
+        //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
+        
+        //version handshake, set to v2
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+            bluetooth.versionHandshake()
+        }
+        
+        //set preset to 21, meaning no aux sensor is being used
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
+            
+            bluetooth.set(preset: XvMuseConstants.PRESET_21)
+            bluetooth.set(hostPlatform: XvMuseConstants.HOST_PLATFORM_MAC)
+        }
+        
+        //get status
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [self] in
+            
+            bluetooth.controlStatus()
+        }
+        
+        //notify delegate
         delegate?.museDidConnect()
+        
     }
     
     public func didDisconnect() {

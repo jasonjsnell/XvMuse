@@ -27,6 +27,11 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     public init(deviceCBUUID:CBUUID?) {
         
+        //connection time counter
+        timeFormatter = DateComponentsFormatter()
+        timeFormatter.allowedUnits = [.second]
+        
+        //bluetooth
         deviceID = deviceCBUUID
         
         //add bluetooth listeners
@@ -49,10 +54,11 @@ public class MuseBluetooth:XvBluetoothObserver {
                 XvMuseConstants.CHAR_PPG3
             ]
         )
+    
     }
     
     
-    //MARK: Updates from the Muse headband via Bluetooth
+    //MARK: - Updates from the Muse headband via Bluetooth -
     public func update(state: String) {
         print("XvMuse: State:", state)
     }
@@ -71,11 +77,11 @@ public class MuseBluetooth:XvBluetoothObserver {
             print("")
             print("----------------------------")
             print("")
-            print("Discovered", nearbyDevice.name!, "headband with CBUUID:", nearbyDevice.identifier.uuidString)
+            print("Discovered", nearbyDevice.name!, "headband with ID:", nearbyDevice.identifier.uuidString)
             print("")
             print("Use the line below to intialize the XvMuse framework with this Muse device.")
             print("")
-            print("let muse:XvMuse = XvMuse(deviceCBUUID: CBUUID(string: \"\(nearbyDevice.identifier.uuidString)\"))")
+            print("let muse:XvMuse = XvMuse(deviceID: \"\(nearbyDevice.identifier.uuidString)\")")
             print("")
             print("----------------------------")
             print("")
@@ -98,32 +104,36 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     //sends "K" / "Keep Alive" command
     fileprivate var connectionCounter:Int = 0
-    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 5
+    fileprivate var connectionStartTime:Date = Date()
+    fileprivate let timeFormatter:DateComponentsFormatter
+    fileprivate let RECONNECTION_SIGNAL_INTERVAL:Int = 500
     
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
         //print("XvMuse: Received value:", valueFromCharacteristic)
         
         observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
         
-        /*
+        
         //up the counter
         connectionCounter += 1
         if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
             keepAlive()
+            print("Connection time:", timeFormatter.string(from: connectionStartTime, to: Date())!)
             connectionCounter = 0
         }
-        */
+        
     }
     
     public func didLoseConnection() {
         observer?.didLoseConnection()
+        connect() //reconnect immediately
     }
     
     public func didDisconnect() {
         observer?.didDisconnect()
     }
     
-    //MARK: Send commands to the Muse headband
+    //MARK: - Send commands to the Muse headband -
     
     //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
     public func connect(){
@@ -137,6 +147,9 @@ public class MuseBluetooth:XvBluetoothObserver {
     //start streaming data
     public func startStreaming(){
         
+        //reset connection time
+        connectionStartTime = Date()
+        
         let data:Data = Data(_:XvMuseConstants.CMND_RESUME)
         sendControlCommand(data: data)
     }
@@ -144,26 +157,104 @@ public class MuseBluetooth:XvBluetoothObserver {
     //pause the stream
     public func pauseStreaming(){
         
-        let data:Data = Data(_:XvMuseConstants.CMND_STOP)
+        let data:Data = Data(_:XvMuseConstants.CMND_HALT)
         sendControlCommand(data: data)
     }
     
-    public func keepAlive(){
-        let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
-        sendControlCommand(data: data)
-    }
-    
-    //get device info
-    public func getDeviceInfo(){
+    //device init
+    public func versionHandshake(){
         
-        let data:Data = Data(_:XvMuseConstants.CMND_DEVICE)
+        //device info is the way to set the command protocol to V2
+        let data:Data = Data(_:XvMuseConstants.CMND_VERSION_HANDSHAKE)
         sendControlCommand(data: data)
     }
+    
+    public func set(hostPlatform:UInt8){
+        
+        var hostHex:UInt8 = XvMuseConstants.HOST_PLATFORM_MAC_HEX
+        
+        switch hostPlatform {
+        
+        case XvMuseConstants.HOST_PLATFORM_IOS,
+             XvMuseConstants.HOST_PLATFORM_IOS_HEX:
+            print("MuseBluetooth: Set Host Platform to iOS")
+            hostHex = XvMuseConstants.HOST_PLATFORM_IOS_HEX
+        case XvMuseConstants.HOST_PLATFORM_ANDROID,
+             XvMuseConstants.HOST_PLATFORM_ANDROID_HEX:
+            print("MuseBluetooth: Set Host Platform to Android")
+            hostHex = XvMuseConstants.HOST_PLATFORM_ANDROID_HEX
+        case XvMuseConstants.HOST_PLATFORM_WINDOWS,
+             XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX:
+            print("MuseBluetooth: Set Host Platform to Windows")
+            hostHex = XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX
+        case XvMuseConstants.HOST_PLATFORM_MAC,
+             XvMuseConstants.HOST_PLATFORM_MAC_HEX:
+            print("MuseBluetooth: Set Host Platform to Mac")
+            hostHex = XvMuseConstants.HOST_PLATFORM_MAC_HEX
+        case XvMuseConstants.HOST_PLATFORM_LINUX,
+             XvMuseConstants.HOST_PLATFORM_LINUX_HEX:
+            print("MuseBluetooth: Set Host Platform to Linux")
+            hostHex = XvMuseConstants.HOST_PLATFORM_LINUX_HEX
+        default:
+            print("MuseBluetooth: Error: Host Platform ID", hostPlatform)
+            break
+        }
+    
+        var hostPlatformCmnd:[UInt8] = XvMuseConstants.CMND_HOST_PLATFORM_PRE
+        hostPlatformCmnd.append(hostHex)
+        hostPlatformCmnd.append(XvMuseConstants.CMND_HOST_PLATFORM_POST)
+        
+        let data:Data = Data(_:hostPlatformCmnd)
+        sendControlCommand(data: data)
+    }
+    
+    public func set(preset:UInt8){
+        
+        print("MuseBluetooth: Set Preset to", preset)
+        
+        var presetHex:[UInt8] = XvMuseConstants.P21_HEX //default
+        
+        switch preset {
+        
+        case XvMuseConstants.PRESET_20:
+            presetHex = XvMuseConstants.P20_HEX
+        case XvMuseConstants.PRESET_21:
+            presetHex = XvMuseConstants.P21_HEX
+        case XvMuseConstants.PRESET_22:
+            presetHex = XvMuseConstants.P22_HEX
+        case XvMuseConstants.PRESET_23:
+            presetHex = XvMuseConstants.P23_HEX
+        default:
+            print("MuseBluetooth: Error: Preset ID", preset)
+            break
+        }
+        
+        var presetCmnd:[UInt8] = XvMuseConstants.CMND_PRESET_PRE
+        presetCmnd += presetHex
+        presetCmnd.append(XvMuseConstants.CMND_PRESET_POST)
+        
+        let data:Data = Data(_:presetCmnd)
+        sendControlCommand(data: data)
+    }
+    
+    public func resetMuse(){
+        print("MuseBluetooth: Reset Muse")
+        let data:Data = Data(_:XvMuseConstants.CMND_RESET)
+        sendControlCommand(data: data)
+    }
+    
+    
     
     //get status, including battery power (bp)
-    public func getControlStatus(){
+    public func controlStatus(){
         
         let data:Data = Data(_:XvMuseConstants.CMND_STATUS)
+        sendControlCommand(data: data)
+    }
+    
+    //internal
+    internal func keepAlive(){
+        let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
         sendControlCommand(data: data)
     }
     
