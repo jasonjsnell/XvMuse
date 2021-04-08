@@ -212,7 +212,6 @@ public class XvMuse:MuseBluetoothObserver {
                 
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1:
-                
                 /*
                  //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
                  //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
@@ -224,7 +223,7 @@ public class XvMuse:MuseBluetoothObserver {
                 let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 0))
                 
             case XvMuseConstants.CHAR_PPG2:
-                
+ 
                 //heart events examine sensor PPG2
                 if let heartEvent:XvMusePPGHeartEvent = _ppg.update(with: _makePPGPacket(i: 1)) {
                     
@@ -234,7 +233,7 @@ public class XvMuse:MuseBluetoothObserver {
                 }
                 
             case XvMuseConstants.CHAR_PPG3:
-                
+            
                 let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 2))
                 
                 //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
@@ -315,7 +314,8 @@ public class XvMuse:MuseBluetoothObserver {
         //set preset to 21, meaning no aux sensor is being used
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
             
-            bluetooth.set(preset: XvMuseConstants.PRESET_21)
+            //setting the preset turns off the PPG
+            //bluetooth.set(preset: XvMuseConstants.PRESET_20)
             bluetooth.set(hostPlatform: XvMuseConstants.HOST_PLATFORM_MAC)
         }
         
