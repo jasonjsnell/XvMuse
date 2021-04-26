@@ -109,9 +109,25 @@ public class XvMuse:MuseBluetoothObserver {
     public var eeg:XvMuseEEG { get { return _eeg } }
     public var ppg:XvMusePPG { get { return _ppg } }
     
+    //only engage mock data objects when called directly
+    fileprivate let _mockData:MockData = MockData()
+    public var mockEEG:XvMuseEEG {
+        get {
+            
+            //loop through all four sensors, getting mock data and processing it via FFT
+            for i:Int in 0..<4 {
+                let mockPacket:XvMuseEEGPacket = _mockData.getPacket(for: i)
+                _mockEEG.update(with: _fft.process(eegPacket: mockPacket))
+            }
+            //after the four sensors are processed, return the object to use by the application
+            return _mockEEG
+        }
+    }
+    
     //MARK: Private
     //sensor data objects
     fileprivate var _eeg:XvMuseEEG = XvMuseEEG()
+    fileprivate var _mockEEG:XvMuseEEG = XvMuseEEG()
     fileprivate var _accel:XvMuseAccelerometer = XvMuseAccelerometer()
     fileprivate var _ppg:XvMusePPG = XvMusePPG()
     fileprivate var _battery:XvMuseBattery = XvMuseBattery()

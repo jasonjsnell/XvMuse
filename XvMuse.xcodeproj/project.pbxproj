@@ -34,6 +34,7 @@
 		BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857824B118E200376FD4 /* XvMuseEEG.swift */; };
 		BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */; };
 		BB99B22A24CF0AA4007346A4 /* BeatsPerMinute.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */; };
+		BB9FEF4626371290004F48B6 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9FEF4526371290004F48B6 /* MockData.swift */; };
 		BBA6C01A24CDF29700966159 /* DCT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA6C01924CDF29700966159 /* DCT.swift */; };
 		BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA8F0A2499086600DE3691 /* Parser.swift */; };
 		BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFCA51F24D879CF00516180 /* DataCaches.swift */; };
@@ -69,6 +70,7 @@
 		BB8B857824B118E200376FD4 /* XvMuseEEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEG.swift; sourceTree = "<group>"; };
 		BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
 		BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatsPerMinute.swift; sourceTree = "<group>"; };
+		BB9FEF4526371290004F48B6 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
 		BBA6C01924CDF29700966159 /* DCT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DCT.swift; sourceTree = "<group>"; };
 		BBAA8F0A2499086600DE3691 /* Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
 		BBFCA51F24D879CF00516180 /* DataCaches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCaches.swift; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
 				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
+				BB9FEF4526371290004F48B6 /* MockData.swift */,
 			);
 			path = EEG;
 			sourceTree = "<group>";
@@ -287,6 +290,7 @@
 				BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */,
 				BB0962FC24B287F600D516D5 /* XvMuseEEGSensor.swift in Sources */,
 				BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */,
+				BB9FEF4626371290004F48B6 /* MockData.swift in Sources */,
 				BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */,
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
