@@ -462,7 +462,10 @@ let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromFrequenc
 And similar to above, you can calcuate the bins of your frequency range, and use the bin range get a spectrum slice
 
 ```
+//call once in init func
 let myCustomBins:[Int] = eeg.getBins(fromFrequencyRange: [4.5, 8.0])
+
+//call in didReceiveUpdate(from eeg:XvMuseEEG) loop
 let customDecibelSliceOfSpectrum:[Double] = eeg.getDecibelSlice(fromBinRange: myCustomBins)
 let customMagnitudeSliceOfSpectrum:[Double] = eeg.getMagnitudeSlice(fromBinRange: myCustomBins)
 ```
