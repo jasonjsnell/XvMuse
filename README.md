@@ -430,7 +430,8 @@ Calculating the frequency range repeatedly can slow things down, so you can calc
 
 To get your custom bin range:
 ```
-let myCustomBins:[Int] = eeg.getBins(fromFrequencyRange: [4.5, 8.0])
+//call once in init func
+let myCustomBins:[Int] = muse.eeg.getBins(fromFrequencyRange: [4.5, 8.0])
 ```
 
 Then you can get the averaged decibel or magnitude for that bin range.
