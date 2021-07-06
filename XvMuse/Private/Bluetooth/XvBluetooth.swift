@@ -40,7 +40,7 @@ import CoreBluetooth
 
 //MARK: - View Controller -
 
-public protocol XvBluetoothObserver:class {
+public protocol XvBluetoothObserver:AnyObject {
     
     func update(state:String)
     

@@ -10,7 +10,7 @@ import Foundation
 import CoreBluetooth
 
 //the observer receives the values coming in from bluetooth
-public protocol MuseBluetoothObserver:class {
+public protocol MuseBluetoothObserver:AnyObject {
     func parse(bluetoothCharacteristic: CBCharacteristic)
     
     //steps of connecting, disconnecting

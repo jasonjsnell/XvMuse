@@ -13,7 +13,7 @@ import Foundation
 import CoreBluetooth
 
 //another object or a view controller that can listen to this class's updates
-public protocol XvMuseDelegate:class {
+public protocol XvMuseDelegate:AnyObject {
     
     //syntax:
     //didReceiveUpdate from sensor

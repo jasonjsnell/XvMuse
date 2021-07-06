@@ -161,7 +161,7 @@ class FFTransformer {
             decibels = magnitudes
             
             
-            vDSP_vsdivD(decibels, 1, [Double(N/2)], &decibels, 1, N2);
+            vDSP_vsdivD(decibels, 1, [Double(N/2)], &decibels, 1, N2)
             //print("DIV:", magnitudes[64])
             //range: 0-1500
             //average: 2-3

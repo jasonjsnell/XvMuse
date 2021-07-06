@@ -102,7 +102,7 @@ class FrequencyManager {
         }
         
         //if high value is above the max, make it the max
-        if (range[1] >= XvMuseConstants.SAMPLING_RATE/2) { range[1] = 109.0 }
+        if (range[1] > XvMuseConstants.FREQUENCY_SLICE_MAX) { range[1] = XvMuseConstants.FREQUENCY_SLICE_MAX }
         
         
         //MARK: Get bins

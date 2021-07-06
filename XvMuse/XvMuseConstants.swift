@@ -151,6 +151,7 @@ public class XvMuseConstants {
     //sampling rate Hz listed here:
     //https://sites.google.com/a/interaxon.ca/muse-developer-site/museio/presets
     public static let SAMPLING_RATE:Double = 220.0
+    public static let FREQUENCY_SLICE_MAX:Double = 110.0 //half the sampling rate
     public static let EEG_FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     

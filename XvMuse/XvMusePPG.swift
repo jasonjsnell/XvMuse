@@ -93,7 +93,7 @@ public class XvMusePPG {
     //MARK: peak detection threshold
     //test to tweak sensor sensitivity
     
-    fileprivate var threshold:Double = 3.5 // techno, fast beat
+    fileprivate var threshold:Double = 4.0 //3.3 techno
     public func increaseHeartbeatPeakDetectionThreshold() {
         
         _sp.threshold += 0.1
