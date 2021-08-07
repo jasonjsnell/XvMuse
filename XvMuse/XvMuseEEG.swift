@@ -68,9 +68,19 @@ public class XvMuseEEG {
     public var rightEar:XvMuseEEGSensor      { get { return sensors[3] } }
     public var TP10:XvMuseEEGSensor          { get { return sensors[3] } }
     
-    // the muse fires in the sequences of right ear, right forehead, left ear, left forehead
-    // the func allows the public array to be left to right: left ear, left forehead, right forehead, right ear
-    fileprivate let museSensorFireSequence:[Int] = [2, 0, 3, 1]
+    // the muse fires in the sequences of:
+    //0 TP10: right ear
+    //1 AF08: right forehead
+    //2 TP09: left ear
+    //3 AF07: left forehead
+    
+    // the func allows the public array to be left to right:
+    // left ear (2), left forehead (3), right forehead (1), right ear (0)
+    // 0 -> position 3
+    // 1 -> position 2
+    // 2 -> position 0
+    // 3 -> position 1
+    fileprivate let museSensorFireSequence:[Int] = [2, 3, 1, 0] // old, incorrect [2, 0, 3, 1]
     fileprivate func getSensorPosition(from id:Int) -> Int { return museSensorFireSequence[id] }
     
     //MARK: - REGIONS -

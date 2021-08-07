@@ -20,6 +20,7 @@ public class XvMuseConstants {
     //MARK: CHARACTERISTICS -
     public static let CHAR_CONTROL:CBUUID = CBUUID(string:"273E0001-4C4D-454D-96BE-F03BAC821358") //write to this to send CMNDs to the Muse
     
+    //https://github.com/alexandrebarachant/muse-lsl/blob/master/muselsl/constants.py
     public static let CHAR_TP9:CBUUID     = CBUUID(string:"273E0003-4C4D-454D-96BE-F03BAC821358") //left ear
     public static let CHAR_AF7:CBUUID     = CBUUID(string:"273E0004-4C4D-454D-96BE-F03BAC821358") //left forehead
     public static let CHAR_AF8:CBUUID     = CBUUID(string:"273E0005-4C4D-454D-96BE-F03BAC821358") //right forehead

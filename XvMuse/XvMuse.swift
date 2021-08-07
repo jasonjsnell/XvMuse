@@ -214,6 +214,11 @@ public class XvMuse:MuseBluetoothObserver {
                 
                 //MARK: EEG
                 //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the XvMuseEEG object
+            //packet order
+            //0 TP10: right ear
+            //1 AF08: right forehead
+            //2 TP09: left ear
+            //3 AF07: left forehead
             case XvMuseConstants.CHAR_TP10:
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
             case XvMuseConstants.CHAR_AF8:
