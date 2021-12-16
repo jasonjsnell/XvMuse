@@ -105,10 +105,14 @@ public class XvMuseEEG {
     public var left:XvMuseEEGRegion
     public var right:XvMuseEEGRegion
     
+    //calculate waves and region values, or just the FFT result for each sensor?
+    fileprivate let calculateWavesAndRegions:Bool
     
     //MARK: - INIT -
     
-    public init() {
+    public init(calculateWavesAndRegions:Bool = true) {
+        
+        self.calculateWavesAndRegions = calculateWavesAndRegions
         
         //init the sensors
         //they are the entry point into this system from the Muse hardware
@@ -148,7 +152,7 @@ public class XvMuseEEG {
 
     public func update(with fftResult:FFTResult?) {
         
-        //fftResult is nil when the buffers are loading in the beginng and inbetween Epoch window firings
+        //fftResult is nil when the buffers are loading in the beginning and inbetween Epoch window firings
         
         //so when the fft result is valid...
         
@@ -169,21 +173,25 @@ public class XvMuseEEG {
                 )
             )
             
-            //MARK: 2. Update wave objects
-            for wave in waves {
-                wave.update(with: sensors)
+            //only run these calculation if this varible (passed in at initiation) wants these extra computations
+            //the alternative is to custom perform these region and wave computations inside the parent application
+            if (calculateWavesAndRegions){
+                
+                //MARK: 2. Update wave objects
+                for wave in waves {
+                    wave.update(with: sensors)
+                }
+                
+                //MARK: 3. Update regions
+                front.update(with: [sensors[1], sensors[2]])
+                sides.update(with: [sensors[0], sensors[3]])
+                left.update( with: [sensors[0], sensors[1]])
+                right.update(with: [sensors[2], sensors[3]])
+                
+                //MARK: 4. Reset averaging processors for entire EEG
+                //reset data on averaging processors
+                _cache.update(with: sensors)
             }
-            
-            //MARK: 3. Update regions
-            front.update(with: [sensors[1], sensors[2]])
-            sides.update(with: [sensors[0], sensors[3]])
-            left.update( with: [sensors[0], sensors[1]])
-            right.update(with: [sensors[2], sensors[3]])
-            
-            //MARK: 4. Reset averaging processors for entire EEG
-            //reset data on averaging processors
-            _cache.update(with: sensors)
-            
         }
     }
     

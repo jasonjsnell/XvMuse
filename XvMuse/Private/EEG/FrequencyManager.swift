@@ -30,7 +30,7 @@ class FrequencyManager {
             getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_ALPHA),
             getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_BETA),
             getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_GAMMA)
-        ]        
+        ]
     }
     
     // MARK: - PRESET BANDS -
@@ -115,6 +115,7 @@ class FrequencyManager {
     }
     
     // MARK: Get spectrum slice from bin range
+    
     internal func getSlice(bins:[Int], spectrum:[Double]) -> [Double] {
         
         //MARK: Error checking on spectrum
