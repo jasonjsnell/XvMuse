@@ -426,7 +426,7 @@ let custonBandMagnitudeAverageForEntireHead:[Double] = eeg.getMagnitude(fromFreq
 
 #### By Bin Range ####
 
-Calculating the frequency range repeatedly can slow things down, so you can calculate the frequencis into it "bin" numbers. This finds the bin location of your frequency in the spectrum and returns results faster.
+Calculating the frequency range repeatedly can slow things down, so you can calculate the frequencies into "bin" numbers. This finds the bin location of your frequency in the spectrum and returns results faster.
 
 To get your custom bin range:
 ```
