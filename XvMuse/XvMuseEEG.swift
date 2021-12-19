@@ -106,13 +106,13 @@ public class XvMuseEEG {
     public var right:XvMuseEEGRegion
     
     //calculate waves and region values, or just the FFT result for each sensor?
-    fileprivate let calculateWavesAndRegions:Bool
+    fileprivate let eegWavesAndRegionProcessing:Bool
     
     //MARK: - INIT -
     
-    public init(calculateWavesAndRegions:Bool = true) {
+    public init(eegWavesAndRegionProcessing:Bool = true) {
         
-        self.calculateWavesAndRegions = calculateWavesAndRegions
+        self.eegWavesAndRegionProcessing = eegWavesAndRegionProcessing
         
         //init the sensors
         //they are the entry point into this system from the Muse hardware
@@ -175,7 +175,7 @@ public class XvMuseEEG {
             
             //only run these calculation if this varible (passed in at initiation) wants these extra computations
             //the alternative is to custom perform these region and wave computations inside the parent application
-            if (calculateWavesAndRegions){
+            if (eegWavesAndRegionProcessing){
                 
                 //MARK: 2. Update wave objects
                 for wave in waves {
