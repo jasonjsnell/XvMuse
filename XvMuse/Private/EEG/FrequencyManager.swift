@@ -70,9 +70,9 @@ class FrequencyManager {
         }
     }
     
-    // MARK: - CUSTOM BANDS -
+    // MARK: - CUSTOM BANDS
     
-    // MARK: Get spectrum slice from frequency range
+    // MARK: - Get spectrum slice from frequency range
     internal func getSlice(frequencyRange:[Double], spectrum:[Double]) -> [Double] {
         
         //MARK: Error checking on spectrum
@@ -114,12 +114,12 @@ class FrequencyManager {
         
     }
     
-    // MARK: Get spectrum slice from bin range
+    // MARK: - Get spectrum slice from bin range
     
     internal func getSlice(bins:[Int], spectrum:[Double]) -> [Double] {
         
         //MARK: Error checking on spectrum
-        //make sure spectrum has conten
+        //make sure spectrum has content
         if (spectrum.count == 0) { return [] }
         
         //MARK: Error checking on bins
@@ -146,7 +146,22 @@ class FrequencyManager {
         
     }
     
-    // MARK: Get wave value slice from frequency range
+    //MARK: - Get a single value from a bin
+    //similar to above but just a single value instead of a slice
+    internal func getDecibel(fromBin:Int, spectrum:[Double]) -> Double {
+        
+        //MARK: Error checking
+        //make sure spectrum has content
+        if (spectrum.count == 0) { return 0 }
+        
+        //make sure spectrum has data to assess
+        if (spectrum.count < fromBin) { return 0 }
+        
+        //MARK: get single value from bin
+        return spectrum[fromBin]
+    }
+    
+    // MARK: - Get wave value slice from frequency range
     internal func getWaveValue(frequencyRange:[Double], spectrum:[Double]) -> Double {
         
         //get slice
@@ -156,7 +171,7 @@ class FrequencyManager {
         return slice.reduce(0, +) / Double(slice.count)
     }
     
-    // MARK: Get wave value slice from bin range
+    // MARK: - Get wave value slice from bin range
     internal func getWaveValue(bins:[Int], spectrum:[Double]) -> Double {
         
         let slice:[Double] = getSlice(bins: bins, spectrum: spectrum)
@@ -174,7 +189,7 @@ class FrequencyManager {
     
     
     
-    //MARK: get bin slots from frequency range
+    //MARK: - Get bin slots from frequency range
     internal func getBinsFor(frequencyRange:[Double]) -> [Int] {
         
         var bins:[Int] = []

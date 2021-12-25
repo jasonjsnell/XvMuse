@@ -103,6 +103,10 @@ public class XvMuseEEGSensor {
         return _fm.getSlice(bins: fromBinRange, spectrum: decibels)
     }
     
+    public func getDecibel(fromBin:Int) -> Double {
+        return _fm.getDecibel(fromBin: fromBin, spectrum: decibels)
+    }
+    
     public func getMagnitudeSlice(fromBinRange:[Int]) -> [Double] {
         return _fm.getSlice(bins: fromBinRange, spectrum: magnitudes)
     }
