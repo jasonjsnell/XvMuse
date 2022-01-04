@@ -109,20 +109,39 @@ public class XvMuse:MuseBluetoothObserver {
     public var eeg:XvMuseEEG { get { return _eeg } }
     public var ppg:XvMusePPG { get { return _ppg } }
     
-    //only engage mock data objects when called directly
-    fileprivate let _mockData:MockData = MockData()
+    //MARK: Mock Data
+    //only engage mock data objects when called directly from external program
+    fileprivate let _mockEEGData:MockEEGData = MockEEGData()
     public var mockEEG:XvMuseEEG {
         get {
-            
+
             //loop through all four sensors, getting mock data and processing it via FFT
             for i:Int in 0..<4 {
-                let mockPacket:XvMuseEEGPacket = _mockData.getPacket(for: i)
-                _mockEEG.update(with: _fft.process(eegPacket: mockPacket))
+                let mockEEGPacket:XvMuseEEGPacket = _mockEEGData.getPacket(for: i)
+                _mockEEG.update(with: _fft.process(eegPacket: mockEEGPacket))
             }
             //after the four sensors are processed, return the object to use by the application
             return _mockEEG
         }
     }
+    fileprivate let _mockPPGData:MockPPGData = MockPPGData()
+    public var mockPPG:XvMusePPG {
+        get {
+
+            //process middle sensor
+            let mockPPGPacket:XvMusePPGPacket = _mockPPGData.getPacket()
+            if let heartEvent:XvMusePPGHeartEvent = _mockPPG.update(with: mockPPGPacket) {
+                
+                //broadcast the heart event
+                delegate?.didReceive(ppgHeartEvent: heartEvent)
+                
+            }
+           
+            //after the sensors are processed, return the object to use by the application
+            return _mockPPG
+        }
+    }
+    
     
     //MARK: Private
     //sensor data objects
@@ -130,6 +149,7 @@ public class XvMuse:MuseBluetoothObserver {
     fileprivate var _mockEEG:XvMuseEEG
     fileprivate var _accel:XvMuseAccelerometer
     fileprivate var _ppg:XvMusePPG
+    fileprivate var _mockPPG:XvMusePPG
     fileprivate var _battery:XvMuseBattery
 
     //helper classes
@@ -155,6 +175,7 @@ public class XvMuse:MuseBluetoothObserver {
         _mockEEG = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
         _accel = XvMuseAccelerometer()
         _ppg = XvMusePPG()
+        _mockPPG = XvMusePPG()
         _battery = XvMuseBattery()
         
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
@@ -249,7 +270,7 @@ public class XvMuse:MuseBluetoothObserver {
                 let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 0))
                 
             case XvMuseConstants.CHAR_PPG2:
- 
+                
                 //heart events examine sensor PPG2
                 if let heartEvent:XvMusePPGHeartEvent = _ppg.update(with: _makePPGPacket(i: 1)) {
                     

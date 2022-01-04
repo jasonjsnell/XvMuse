@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockData {
+class MockEEGData {
     
     //helper classes
     fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values
