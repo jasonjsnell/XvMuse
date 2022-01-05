@@ -7,6 +7,7 @@
 //  https://stackoverflow.com/users/2431885/jean-paul
 //  Edited by Jason Snell on 10/16/20
 
+/*
 import Foundation
 
 public class SignalProcessorPacket {
@@ -339,6 +340,6 @@ public class SignalProcessor {
         set { _deviationInfluence = newValue }
     }
 }
-
+*/
 
 

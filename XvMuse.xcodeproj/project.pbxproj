@@ -89,6 +89,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		BB348905278545F200E6685C /* Archive */ = {
+			isa = PBXGroup;
+			children = (
+				BB419822253E1150003A7375 /* PeakDetector.swift */,
+				BBA6C01924CDF29700966159 /* DCT.swift */,
+			);
+			path = Archive;
+			sourceTree = "<group>";
+		};
 		BB57F87E2496B01B003DB78A = {
 			isa = PBXGroup;
 			children = (
@@ -140,6 +149,7 @@
 				BB8B857124B0E81E00376FD4 /* EEG */,
 				BB99B22824CF0A93007346A4 /* PPG */,
 				BB7741DC24CA1B78004B8AE5 /* Utils */,
+				BB348905278545F200E6685C /* Archive */,
 				BB57F8932496B035003DB78A /* Basics */,
 				BB57F8892496B01B003DB78A /* Products */,
 			);
@@ -153,7 +163,6 @@
 				BB7741DF24CA1CF3004B8AE5 /* Number.swift */,
 				BB7741E124CA1F27004B8AE5 /* JSON.swift */,
 				BB553BA5253A56F7009E1278 /* SignalProcessor.swift */,
-				BB419822253E1150003A7375 /* PeakDetector.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -187,7 +196,6 @@
 		BB99B22824CF0A93007346A4 /* PPG */ = {
 			isa = PBXGroup;
 			children = (
-				BBA6C01924CDF29700966159 /* DCT.swift */,
 				BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */,
 				BB4DB0E22783A48C009E6BFF /* MockPPGData.swift */,
 			);

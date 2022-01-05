@@ -29,22 +29,25 @@ public class XvMusePPGSensor {
     fileprivate var id:Int
     
     //data processors
-    fileprivate var _ffTransformer:FFTransformer
-    fileprivate var _dct:DCT
+    //fileprivate var _ffTransformer:FFTransformer
+    //fileprivate var _dct:DCT
     
     init(id:Int) {
         
         self.id = id
-        _dct = DCT(bins: _maxCount)
-        _ffTransformer = FFTransformer(bins: _maxCount)
-        _LFO1 = []
-        _LFO2 = []
+        //_dct = DCT(bins: _maxCount)
+        //_ffTransformer = FFTransformer(bins: _maxCount)
+        //_LFO1 = []
+        //_LFO2 = []
     }
     
     //MARK: - Incoming Data
     
     //this is where packets from the device, via bluetooth, come in for processing
     //these raw, time-based samples are what create the heartbeat pattern
+    
+    fileprivate var _maxCount:Int = 128
+    fileprivate var _rawSamples:[Double] = []
 
     internal func getBuffer(from packet:XvMusePPGPacket) -> [Double]? {
         
@@ -65,9 +68,7 @@ public class XvMusePPGSensor {
                 let range:Double = max - min
                 
                 //store in var for external access via ppg.sensors[0].samples
-                _timeBasedSamples = _rawSamples.map { (($0-min)) / range }
-                
-                return _timeBasedSamples
+                return _rawSamples.map { (($0-min)) / range }
             }
             
         } else {
@@ -81,7 +82,7 @@ public class XvMusePPGSensor {
         return nil
     }
     
-    internal func add(packet:XvMusePPGPacket) -> PPGSignalPacket? {
+    /*internal func add(packet:XvMusePPGPacket) -> PPGSignalPacket? {
         
         //add to the existing array
         _rawSamples += packet.samples
@@ -130,7 +131,7 @@ public class XvMusePPGSensor {
         }
         
         return nil
-    }
+    }*/
     
     
     
@@ -140,11 +141,10 @@ public class XvMusePPGSensor {
     //muse lsl python script uses 64 samples
     //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
     
-    internal var sampleCount:Int {
+    /*internal var sampleCount:Int {
         get { return _maxCount }
     }
-    fileprivate var _maxCount:Int = 128
-    fileprivate var _rawSamples:[Double] = []
+    
     fileprivate var _timeBasedSamples:[Double] = []
     
     //access to the raw, time-based ppg samples for each sensor
@@ -159,9 +159,10 @@ public class XvMusePPGSensor {
                 return _timeBasedSamples
             }
         }
-    }
+    }*/
     
     
+    /*
     //MARK: - FREQUENCY SPECTRUM
     //access to the frequency spectrum for each sensor
     fileprivate var _frequencySpectrum:[Double] = []
@@ -190,8 +191,9 @@ public class XvMusePPGSensor {
         
         return dctResult
     }
-
+     */
     
+    /*
     //MARK: - LFO -
     fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
     fileprivate func _update(lfo:Int, fs:[Double], binRange:[Int]) {
@@ -223,6 +225,7 @@ public class XvMusePPGSensor {
     public var LFO2:[Double] {
         get { return _LFO2 }
     }
+     */
 }
 
 /*
