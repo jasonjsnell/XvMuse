@@ -45,6 +45,42 @@ public class XvMusePPGSensor {
     
     //this is where packets from the device, via bluetooth, come in for processing
     //these raw, time-based samples are what create the heartbeat pattern
+
+    internal func getBuffer(from packet:XvMusePPGPacket) -> [Double]? {
+        
+        //add to the existing array
+        _rawSamples += packet.samples
+        
+        //and remove oldest values that are beyond the buffer size
+        if (_rawSamples.count > _maxCount) {
+            _rawSamples.removeFirst(_rawSamples.count-_maxCount)
+            
+            //Scale time based samples
+            //scale samples into percentage (0.0 - 1.0)
+            
+            if let min:Double = _rawSamples.min(),
+               let max:Double = _rawSamples.max()
+            {
+                
+                let range:Double = max - min
+                
+                //store in var for external access via ppg.sensors[0].samples
+                _timeBasedSamples = _rawSamples.map { (($0-min)) / range }
+                
+                return _timeBasedSamples
+            }
+            
+        } else {
+            
+            //only print the buffer build from one sensor
+            if (id == 1) {
+                print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
+            }
+        }
+        
+        return nil
+    }
+    
     internal func add(packet:XvMusePPGPacket) -> PPGSignalPacket? {
         
         //add to the existing array

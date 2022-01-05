@@ -26,51 +26,7 @@ public class PeakDetector {
     }
 }
 
-public class NegativePeakDetector:PeakDetector {
-    
-    public func getPeakAmplitude(peaks:[Int], rawSamples:[Double]) -> Double? {
-        
-        //examine the recent window of time, which is the end of the array
-        let recentPeaks:[Int] = Array(
-            peaks[
-                peaks.count-_analysisWindowSize...peaks.count-1
-            ]
-        )
-    
-        //grab the lowest value
-        if let peakMin:Int = recentPeaks.min() {
-            
-            //if a -1 is present and it's not right after a previous -1
-            if (peakMin == -1 && _restCount > _restWindowMin) {
-                
-                //reset _rest
-                _restCount = 0
-                
-                //get peak value
-                let recentRawSamples:[Double] = Array(
-                    rawSamples[
-                        rawSamples.count-_analysisWindowSize...rawSamples.count-1
-                    ]
-                )
-                
-                //grab max
-                if let rawSampleMin:Double = recentRawSamples.min() {
-                    
-                    //return amplitude
-                    return rawSampleMin
-                }
-            
-            } else {
-                
-                //increase _rest time
-                _restCount += 1
-            }
-        }
-    
-        return nil
-    }
-    
-}
+
 
 public class PositivePeakDetector:PeakDetector {
     

@@ -20,11 +20,12 @@ public protocol XvMuseDelegate:AnyObject {
     //didReceive object
     
     func didReceiveUpdate(from eeg:XvMuseEEG)
-    func didReceive(eegPacket:XvMuseEEGPacket)
+    //func didReceive(eegPacket:XvMuseEEGPacket)
     
     func didReceiveUpdate(from ppg:XvMusePPG)
     func didReceive(ppgHeartEvent:XvMusePPGHeartEvent)
-    func didReceive(ppgPacket:XvMusePPGPacket)
+    //func didReceive(ppgPacket:XvMusePPGPacket)
+    
     
     func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
     func didReceiveUpdate(from battery:XvMuseBattery)
@@ -130,12 +131,14 @@ public class XvMuse:MuseBluetoothObserver {
 
             //process middle sensor
             let mockPPGPacket:XvMusePPGPacket = _mockPPGData.getPacket()
-            if let heartEvent:XvMusePPGHeartEvent = _mockPPG.update(with: mockPPGPacket) {
+            if let heartEvent:XvMusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
                 
                 //broadcast the heart event
                 delegate?.didReceive(ppgHeartEvent: heartEvent)
-                
             }
+            
+            //send to delegate if application wants to visualize the ppg buffer
+            delegate?.didReceiveUpdate(from: _mockPPG)
            
             //after the sensors are processed, return the object to use by the application
             return _mockPPG
@@ -207,22 +210,22 @@ public class XvMuse:MuseBluetoothObserver {
                     timestamp: timestamp,
                     samples: _parser.getEEGSamples(from: bytes))
                 
-                delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
+                //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
                 
                 return packet // return assembled packet
             }
             
             // local func to make PPG packet from the above variables
             
-            func _makePPGPacket(i:Int) -> XvMusePPGPacket {
+            func _makePPGPacket() -> XvMusePPGPacket {
                 
                 let packet:XvMusePPGPacket = XvMusePPGPacket(
                     packetIndex: packetIndex,
-                    sensor: i,
+                    sensor: 1, // only use sensor 1 (not 0 or 2)
                     timestamp: timestamp,
                     samples: _parser.getPPGSamples(from: bytes))
                 
-                delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
             
                 return packet // return assembled packet
             }
@@ -258,7 +261,8 @@ public class XvMuse:MuseBluetoothObserver {
                  delegate?.didReceiveUpdate(from: _eeg)
                 
                 //MARK: PPG
-            case XvMuseConstants.CHAR_PPG1:
+            case XvMuseConstants.CHAR_PPG2:
+                
                 /*
                  //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
                  //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
@@ -266,24 +270,17 @@ public class XvMuse:MuseBluetoothObserver {
                 uint:24,uint:24,uint:24
                 UInt24 x 6 samples
                 */
-               
-                let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 0))
                 
-            case XvMuseConstants.CHAR_PPG2:
+                //print(bytes) // <-- use to print out mock PPG samples
                 
                 //heart events examine sensor PPG2
-                if let heartEvent:XvMusePPGHeartEvent = _ppg.update(with: _makePPGPacket(i: 1)) {
+                if let heartEvent:XvMusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
                     
                     //broadcast the heart event
-                    delegate?.didReceive(ppgHeartEvent: heartEvent)
-                    
+                     delegate?.didReceive(ppgHeartEvent: heartEvent)
                 }
                 
-            case XvMuseConstants.CHAR_PPG3:
-            
-                let _:XvMusePPGHeartEvent? = _ppg.update(with: _makePPGPacket(i: 2))
-                
-                //only broadcast the XvMusePPG object once per cycle, giving each sensor the chance to input its new sensor data
+                //send ppg object once per round so application can access the buffer for visualization, etc...
                 delegate?.didReceiveUpdate(from: _ppg)
                 
             case XvMuseConstants.CHAR_ACCEL:

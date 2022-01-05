@@ -118,7 +118,7 @@ public class MuseBluetooth:XvBluetoothObserver {
         connectionCounter += 1
         if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
             keepAlive()
-            print("Connection time:", timeFormatter.string(from: connectionStartTime, to: Date())!)
+            //print("Connection time:", timeFormatter.string(from: connectionStartTime, to: Date())!)
             connectionCounter = 0
         }
         

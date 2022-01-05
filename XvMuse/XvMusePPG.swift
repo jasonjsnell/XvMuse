@@ -27,84 +27,87 @@ public class XvMusePPG {
     //MARK: Init
     
     init(){
-        
         sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
-    
         _bpm = BeatsPerMinute()
-        
-        _npd = NegativePeakDetector(
-            analysisWindowSize: 10,
-            restWindowMin: 2
-        )
-        _sp = SignalProcessor(
-            bins: sensors[1].sampleCount,
-            threshold: threshold,
-            lag: 10,
-            influence: 0.5
-        )
-        
+        buffer = []
     }
     
-    //MARK: Sensors
+    public var buffer:[Double]
     public var sensors:[XvMusePPGSensor]
 
-    //MARK: Data processors
-    fileprivate let _sp:SignalProcessor
-    fileprivate let _npd:NegativePeakDetector
     fileprivate let _bpm:BeatsPerMinute
+    fileprivate var prevAvg:Double = 0.0
+    fileprivate var upwardsMomentum:Int = 0
+    fileprivate var downwardsMomentum:Int = 0
+    fileprivate var beatOn:Bool = false
     
-
     //MARK: Packet processing
     //basic update each time the PPG sensors send in new data
     
-    internal func update(with ppgPacket:XvMusePPGPacket) -> XvMusePPGHeartEvent? {
+    internal func getHeartEvent(from ppgPacket:XvMusePPGPacket) -> XvMusePPGHeartEvent? {
         
-        //send samples into the sensors
-        
-        //if signal packet is returned (doesn't happen until buffer is full)...
-        if let signalPacket:PPGSignalPacket = sensors[ppgPacket.sensor].add(packet: ppgPacket) {
+        //generate buffer and return
+        if let buffer:[Double] = sensors[1].getBuffer(from: ppgPacket) {
             
-            //using sensor 1 (middle-range sensor) to calculate heartbeat
-            if (ppgPacket.sensor == 1) {
+            //save buffer for direct access via the XvMusePPG object
+            self.buffer = buffer
+            
+            //grab the last few values in the buffer
+            let recentValues:[Double] = Array(buffer[(buffer.count-5)...])
+            
+            //average these last few values to smooth out deep spikes or dips
+            let avg:Double = recentValues.reduce(0, +) / Double(recentValues.count)
+            
+            //if the curr average is more than the prev render's average...
+            if (avg > prevAvg) {
                 
-                //do peak detection
-                if let spPacket:SignalProcessorPacket = _sp.process(stream: signalPacket.samples) {
+                upwardsMomentum += 1 //increase the upwards momentum
+                downwardsMomentum = 0 //remove the downwards momentum
+                
+                //if upwards momentum is strong enough...
+                if (upwardsMomentum > 2) {
                     
-                    //if a peak (heartbeat) is detected...
-                    if let peakAmplitude:Double = _npd.getPeakAmplitude(peaks: spPacket.peaks, rawSamples: spPacket.raw) {
+                    //and the beat isn't currently on
+                    if (!beatOn) {
+                        
+                        //beat is on
+                        beatOn = true
+                        
+                        //update the previous value with the current
+                        prevAvg = avg
                         
                         //grab the current bpm with the curr timestamp
                         let bpmPacket:PPGBpmPacket = _bpm.update(with: ppgPacket.timestamp)
-                     
+                        
                         //and return a heart event with peak and bpm data
                         return XvMusePPGHeartEvent(
-                            amplitude: peakAmplitude,
+                            amplitude: recentValues.max()!, //return the highest value from the recent values in buffer
                             currentBpm: bpmPacket.current,
                             averageBpm: bpmPacket.average
                         )
                     }
                 }
+                //print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                
+            } else if (avg < prevAvg) {
+                
+                //else if the average is less..
+                
+                upwardsMomentum = 0 //remove the upwards momentum
+                downwardsMomentum += 1 //increase the downwards momentum
+                
+                //if downwards momentum is strong enough (the value of 1 instead of 2 (like above in upwards) performed with better results in testing)
+                if (downwardsMomentum > 1) {
+                    if (beatOn) { beatOn = false } //if the beat is on, turn it off
+                }
+                //print("<<")
             }
+            
+            //update the previous value with the current
+            prevAvg = avg
         }
         
+        //no heartbeat event this round
         return nil
     }
-    
-    //MARK: peak detection threshold
-    //test to tweak sensor sensitivity
-    
-    fileprivate var threshold:Double = 4.0 //3.3 techno
-    public func increaseHeartbeatPeakDetectionThreshold() {
-        
-        _sp.threshold += 0.1
-        print("PPG: Peak detection threshold", _sp.threshold)
-        
-    }
-    
-    public func decreaseHeartbeatPeakDetectionThreshold() {
-        
-        _sp.threshold -= 0.1
-        print("PPG: Peak detection threshold", _sp.threshold)
-    }
-    
 }
