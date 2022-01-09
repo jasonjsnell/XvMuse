@@ -35,10 +35,14 @@ class PPGAnalyzer {
         //record beatLengths into an array
         beatLengths.append(beatLength)
         
-        //keep array at max length
-        if (beatLengths.count > HISTORY_MAX_LENGTH) { beatLengths.removeFirst() }
+        //init var
+        var hrv:Double = 0.0
         
-        let hrv:Double = Number.getStandardDeviation(ofArray: beatLengths) * 1000
+        //only calculate HRV once the a significant history has been filled
+        if (beatLengths.count > HISTORY_MAX_LENGTH) {
+            beatLengths.removeFirst()
+            hrv = Number.getStandardDeviation(ofArray: beatLengths) * 1000
+        }
         
         //MARK: BPM
         let currBpm:Double = 60 / beatLength
