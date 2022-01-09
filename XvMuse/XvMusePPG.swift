@@ -11,14 +11,14 @@ import Foundation
 
 public class XvMusePPGHeartEvent {
     
-    public init(amplitude:Double = 0, currentBpm:Double = 0, averageBpm:Double = 0) {
+    public init(amplitude:Double = 0.0, bpm:Double = 0.0, hrv:Double = 0.0) {
         self.amplitude = amplitude
-        self.currentBpm = currentBpm
-        self.averageBpm = averageBpm
+        self.bpm = bpm
+        self.hrv = hrv
     }
     public var amplitude:Double
-    public var currentBpm:Double
-    public var averageBpm:Double
+    public var bpm:Double
+    public var hrv:Double
 }
 
 public class XvMusePPG {
@@ -28,14 +28,14 @@ public class XvMusePPG {
     
     init(){
         sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
-        _bpm = BeatsPerMinute()
+        _ppgAnalyzer = PPGAnalyzer()
         buffer = []
     }
     
     public var buffer:[Double]
     public var sensors:[XvMusePPGSensor]
 
-    fileprivate let _bpm:BeatsPerMinute
+    fileprivate let _ppgAnalyzer:PPGAnalyzer
     fileprivate var prevAvg:Double = 0.0
     fileprivate var upwardsMomentum:Int = 0
     fileprivate var downwardsMomentum:Int = 0
@@ -76,14 +76,14 @@ public class XvMusePPG {
                         //update the previous value with the current
                         prevAvg = avg
                         
-                        //grab the current bpm with the curr timestamp
-                        let bpmPacket:PPGBpmPacket = _bpm.update(with: ppgPacket.timestamp)
+                        //grab the current bpm and hrv with the curr timestamp
+                        let ppgAnalysisPacket:PPGAnalysisPacket = _ppgAnalyzer.update(with: ppgPacket.timestamp)
                         
                         //and return a heart event with peak and bpm data
                         return XvMusePPGHeartEvent(
                             amplitude: recentValues.max()!, //return the highest value from the recent values in buffer
-                            currentBpm: bpmPacket.current,
-                            averageBpm: bpmPacket.average
+                            bpm: ppgAnalysisPacket.bpm,
+                            hrv: ppgAnalysisPacket.hrv
                         )
                     }
                 }

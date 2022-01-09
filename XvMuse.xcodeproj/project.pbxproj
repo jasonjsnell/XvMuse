@@ -34,7 +34,7 @@
 		BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857624B100E400376FD4 /* FFTransfomer.swift */; };
 		BB8B857924B118E200376FD4 /* XvMuseEEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857824B118E200376FD4 /* XvMuseEEG.swift */; };
 		BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */; };
-		BB99B22A24CF0AA4007346A4 /* BeatsPerMinute.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */; };
+		BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */; };
 		BB9FEF4626371290004F48B6 /* MockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9FEF4526371290004F48B6 /* MockEEGData.swift */; };
 		BBA6C01A24CDF29700966159 /* DCT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA6C01924CDF29700966159 /* DCT.swift */; };
 		BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA8F0A2499086600DE3691 /* Parser.swift */; };
@@ -71,7 +71,7 @@
 		BB8B857624B100E400376FD4 /* FFTransfomer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTransfomer.swift; sourceTree = "<group>"; };
 		BB8B857824B118E200376FD4 /* XvMuseEEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEG.swift; sourceTree = "<group>"; };
 		BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
-		BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatsPerMinute.swift; sourceTree = "<group>"; };
+		BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPGAnalyzer.swift; sourceTree = "<group>"; };
 		BB9FEF4526371290004F48B6 /* MockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGData.swift; sourceTree = "<group>"; };
 		BBA6C01924CDF29700966159 /* DCT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DCT.swift; sourceTree = "<group>"; };
 		BBAA8F0A2499086600DE3691 /* Parser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
@@ -196,7 +196,7 @@
 		BB99B22824CF0A93007346A4 /* PPG */ = {
 			isa = PBXGroup;
 			children = (
-				BB99B22924CF0AA4007346A4 /* BeatsPerMinute.swift */,
+				BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */,
 				BB4DB0E22783A48C009E6BFF /* MockPPGData.swift */,
 			);
 			path = PPG;
@@ -307,7 +307,7 @@
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
 				BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */,
-				BB99B22A24CF0AA4007346A4 /* BeatsPerMinute.swift in Sources */,
+				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
 				BB419823253E1150003A7375 /* PeakDetector.swift in Sources */,
 				BB7741E424CA1FF0004B8AE5 /* XvBluetooth.swift in Sources */,

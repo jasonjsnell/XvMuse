@@ -51,6 +51,13 @@ public class Number{
         return ofArray.reduce(0, +)
     }
     
+    public class func getStandardDeviation(ofArray:[Double]) -> Double {
+        
+        let length:Double = Double(ofArray.count)
+        let avg:Double = ofArray.reduce(0, {$0 + $1}) / length
+        let sumOfSquaredAvgDiff:Double = ofArray.map { pow($0 - avg, 2.0)}.reduce(0, {$0 + $1})
+        return sqrt(sumOfSquaredAvgDiff / length)
+    }
     
     /*
     //MARK: - ROUNDING
