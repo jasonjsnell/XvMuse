@@ -23,7 +23,6 @@ public class XvMusePPGHeartEvent {
 
 public class XvMusePPG {
     
-    
     //MARK: Init
     
     init(){
