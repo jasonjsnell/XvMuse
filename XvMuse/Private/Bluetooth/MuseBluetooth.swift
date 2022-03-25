@@ -22,6 +22,7 @@ public protocol MuseBluetoothObserver:AnyObject {
 
 public class MuseBluetooth:XvBluetoothObserver {
     
+    fileprivate let bluetooth:XvBluetooth
     public var observer:MuseBluetoothObserver?
     fileprivate var deviceID:CBUUID?
     
@@ -34,8 +35,10 @@ public class MuseBluetooth:XvBluetoothObserver {
         //bluetooth
         deviceID = deviceCBUUID
         
+        bluetooth = XvBluetooth()
+        
         //add bluetooth listeners
-        XvBluetooth.sharedInstance.addListener(
+        bluetooth.addListener(
             observer: self,
             deviceUUID: deviceCBUUID,
             serviceUUID: XvMuseConstants.SERVICE_ID,
@@ -113,7 +116,6 @@ public class MuseBluetooth:XvBluetoothObserver {
         
         observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
         
-        
         //up the counter
         connectionCounter += 1
         if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
@@ -137,11 +139,11 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
     public func connect(){
-        XvBluetooth.sharedInstance.connect()
+        bluetooth.connect()
     }
     
     public func disconnect(){
-        XvBluetooth.sharedInstance.disconnect()
+        bluetooth.disconnect()
     }
     
     //start streaming data
@@ -263,7 +265,7 @@ public class MuseBluetooth:XvBluetoothObserver {
         
         if (deviceID != nil) {
             
-            XvBluetooth.sharedInstance.write(
+            bluetooth.write(
                 data:data,
                 toDeviceWithID: deviceID!,
                 forCharacteristicWithID: XvMuseConstants.CHAR_CONTROL,

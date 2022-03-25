@@ -65,9 +65,7 @@ public class XvBluetooth {
     //vars
     fileprivate var listeners:[BluetoothListener] = []
     
-    //singleton code
-    public static let sharedInstance = XvBluetooth()
-    fileprivate init() {}
+    init() {}
     
     public func addListener(
         observer:XvBluetoothObserver,
@@ -92,11 +90,11 @@ public class XvBluetooth {
             
             //the the device ID is valid, print it
             if (listener.deviceUUID != nil) {
-                print("BLUETOOTH: Attempt connection to", listener.deviceUUID!)
+                print("XvBluetooth: Attempt connection to", listener.deviceUUID!)
                 
             } else if (listener.deviceUUID == nil) {
                 //if not, alert user that a scan of all nearby devices will occur
-                print("Scanning for all nearby Bluetooth devices and will print their CBUUID's")
+                print("XvBluetooth: Scanning for all nearby Bluetooth devices and will print their CBUUID's")
             }
             
             listener.connect()
@@ -105,7 +103,7 @@ public class XvBluetooth {
     
     public func disconnect(){
         
-        //print("BLUETOOTH: Disconnect")
+        //print("XvBluetooth: Disconnect")
         
         for listener in listeners {
             listener.disconnect()
