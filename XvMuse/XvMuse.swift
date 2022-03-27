@@ -26,7 +26,6 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceive(ppgHeartEvent:XvMusePPGHeartEvent)
     //func didReceive(ppgPacket:XvMusePPGPacket)
     
-    
     func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
     func didReceiveUpdate(from battery:XvMuseBattery)
     
@@ -165,13 +164,13 @@ public class XvMuse:MuseBluetoothObserver {
     fileprivate let debug:Bool = true
     
     //MARK: - INIT -
-    public init(deviceID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
+    public init(deviceUUID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
 
         //if a valid device ID string comes in, make a CBUUID for the bluetooth object
         var deviceCBUUID:CBUUID?
         
-        if (deviceID != nil) {
-            deviceCBUUID = CBUUID(string: deviceID!)
+        if (deviceUUID != nil) {
+            deviceCBUUID = CBUUID(string: deviceUUID!)
         }
         
         _eeg = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
