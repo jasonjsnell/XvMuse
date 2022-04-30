@@ -111,37 +111,48 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: Mock Data
     //only engage mock data objects when called directly from external program
-    fileprivate let _mockEEGData:MockEEGData = MockEEGData()
-    public var mockEEG:XvMuseEEG {
-        get {
-
-            //loop through all four sensors, getting mock data and processing it via FFT
-            for i:Int in 0..<4 {
-                let mockEEGPacket:XvMuseEEGPacket = _mockEEGData.getPacket(for: i)
-                _mockEEG.update(with: _fft.process(eegPacket: mockEEGPacket))
-            }
-            //after the four sensors are processed, return the object to use by the application
-            return _mockEEG
+    fileprivate let _mockEEGData:[MockEEGData] = [MockEEGTiredData(), MockEEGStressData()]
+    public func getMockEEG(id:Int) -> XvMuseEEG {
+        
+        //keep in bounds
+        var dataID:Int = id
+        if (dataID >= _mockEEGData.count) {
+            print("XvMuse: getMockEEG(id): Error: ID out of bounds. Using array max")
+            dataID = _mockEEGData.count-1
         }
+        
+        //loop through all four sensors, getting mock data and processing it via FFT
+        for i:Int in 0..<4 {
+            let mockEEGPacket:XvMuseEEGPacket = _mockEEGData[dataID].getPacket(for: i)
+            _mockEEG.update(with: _fft.process(eegPacket: mockEEGPacket))
+        }
+        //after the four sensors are processed, return the object to use by the application
+        return _mockEEG
+        
     }
-    fileprivate let _mockPPGData:MockPPGData = MockPPGData()
-    public var mockPPG:XvMusePPG {
-        get {
-
-            //process middle sensor
-            let mockPPGPacket:XvMusePPGPacket = _mockPPGData.getPacket()
-            if let heartEvent:XvMusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
-                
-                //broadcast the heart event
-                delegate?.didReceive(ppgHeartEvent: heartEvent)
-            }
-            
-            //send to delegate if application wants to visualize the ppg buffer
-            delegate?.didReceiveUpdate(from: _mockPPG)
-           
-            //after the sensors are processed, return the object to use by the application
-            return _mockPPG
+    fileprivate let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGStressData()]
+    public func getMockPPG(id:Int) -> XvMusePPG {
+       
+        //keep in bounds
+        var dataID:Int = id
+        if (dataID >= _mockPPGData.count) {
+            print("XvMuse: getMockPPG(id): Error: ID out of bounds. Using array max")
+            dataID = _mockPPGData.count-1
         }
+        
+        //process middle sensor
+        let mockPPGPacket:XvMusePPGPacket = _mockPPGData[dataID].getPacket()
+        if let heartEvent:XvMusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
+            
+            //broadcast the heart event
+            delegate?.didReceive(ppgHeartEvent: heartEvent)
+        }
+        
+        //send to delegate if application wants to visualize the ppg buffer
+        delegate?.didReceiveUpdate(from: _mockPPG)
+       
+        //after the sensors are processed, return the object to use by the application
+        return _mockPPG
     }
     
     
@@ -208,7 +219,7 @@ public class XvMuse:MuseBluetoothObserver {
                     sensor: i,
                     timestamp: timestamp,
                     samples: _parser.getEEGSamples(from: bytes))
-                
+
                 //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
                 
                 return packet // return assembled packet
@@ -225,6 +236,8 @@ public class XvMuse:MuseBluetoothObserver {
                     samples: _parser.getPPGSamples(from: bytes))
                 
                 //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                
+                print(bytes, ",")
             
                 return packet // return assembled packet
             }
