@@ -6,7 +6,10 @@
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
-class MockEEGData {
+public class XvMockEEGData {
+    
+    public static let SET_TIRED:Int = 0
+    public static let SET_STRESSED:Int = 1
     
     //helper classes
     fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values
@@ -14,9 +17,7 @@ class MockEEGData {
     fileprivate let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
     internal init(){
-        
         sensorsData = []
-        
     }
     
     fileprivate var packetIndex:UInt16 = 0

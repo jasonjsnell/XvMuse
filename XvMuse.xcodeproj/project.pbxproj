@@ -41,7 +41,7 @@
 		BBCDE4FC281C9DF5001B67E7 /* MockEEGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */; };
 		BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */; };
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
-		BBCDE502281CAC31001B67E7 /* MockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* MockEEGData.swift */; };
+		BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */; };
 		BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFCA51F24D879CF00516180 /* DataCaches.swift */; };
 /* End PBXBuildFile section */
 
@@ -82,7 +82,7 @@
 		BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
-		BBCDE501281CAC31001B67E7 /* MockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGData.swift; sourceTree = "<group>"; };
+		BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMockEEGData.swift; sourceTree = "<group>"; };
 		BBFCA51F24D879CF00516180 /* DataCaches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCaches.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -196,7 +196,7 @@
 				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
 				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
-				BBCDE501281CAC31001B67E7 /* MockEEGData.swift */,
+				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
 				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
 				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
 			);
@@ -320,7 +320,7 @@
 				BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */,
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
-				BBCDE502281CAC31001B67E7 /* MockEEGData.swift in Sources */,
+				BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */,
 				BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */,
 				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
