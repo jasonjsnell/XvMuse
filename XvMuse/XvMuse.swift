@@ -111,7 +111,7 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: Mock Data
     //only engage mock data objects when called directly from external program
-    fileprivate let _mockEEGData:[MockEEGData] = [MockEEGTiredData(), MockEEGStressData()]
+    fileprivate let _mockEEGData:[MockEEGData] = [MockEEGStressData(), MockEEGTiredData()]
     public func getMockEEG(id:Int) -> XvMuseEEG {
         
         //keep in bounds
@@ -130,7 +130,7 @@ public class XvMuse:MuseBluetoothObserver {
         return _mockEEG
         
     }
-    fileprivate let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGStressData()]
+    fileprivate let _mockPPGData:[MockPPGData] = [MockPPGStressData(), MockPPGTiredData()]
     public func getMockPPG(id:Int) -> XvMusePPG {
        
         //keep in bounds
