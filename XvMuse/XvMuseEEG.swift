@@ -178,9 +178,7 @@ public class XvMuseEEG {
             if (eegWavesAndRegionProcessing){
                 
                 //MARK: 2. Update wave objects
-                for wave in waves {
-                    wave.update(with: sensors)
-                }
+                for wave in waves { wave.update(with: sensors) }
                 
                 //MARK: 3. Update regions
                 front.update(with: [sensors[1], sensors[2]])
