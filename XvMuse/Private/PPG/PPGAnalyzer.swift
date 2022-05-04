@@ -22,7 +22,8 @@ class PPGAnalyzer {
     fileprivate var prevTimestamp:Double = 0
     fileprivate var bpms:[Double] = []
     fileprivate var beatLengths:[Double] = []
-    fileprivate let HISTORY_MAX_LENGTH:Int = 100
+    fileprivate let BPM_HISTORY_LENGTH_MAX:Int = 100
+    fileprivate let HRV_HISTORY_LENGTH_MAX:Int = 50
 
     internal func update(with timestamp:Double) -> PPGAnalysisPacket {
         
@@ -31,6 +32,7 @@ class PPGAnalyzer {
         
         //MARK: HRV
         //using SDANN to calculate milliseconds
+        //SDANN = standard deviation of the average normal-to-normal
         
         //record beatLengths into an array
         beatLengths.append(beatLength)
@@ -39,7 +41,7 @@ class PPGAnalyzer {
         var hrv:Double = 0.0
         
         //only calculate HRV once the a significant history has been filled
-        if (beatLengths.count > HISTORY_MAX_LENGTH) {
+        if (beatLengths.count > HRV_HISTORY_LENGTH_MAX) {
             beatLengths.removeFirst()
             hrv = Number.getStandardDeviation(ofArray: beatLengths) * 1000
         }
@@ -49,7 +51,7 @@ class PPGAnalyzer {
         
         //add to array and keep array the correct length
         bpms.append(currBpm)
-        if (bpms.count > HISTORY_MAX_LENGTH){ bpms.removeFirst() }
+        if (bpms.count > BPM_HISTORY_LENGTH_MAX){ bpms.removeFirst() }
         
         // average the array
         let averageBpm:Double = bpms.reduce(0, +) / Double(bpms.count)
