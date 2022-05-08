@@ -46,7 +46,7 @@ class PPGAnalyzer {
         }
         //range 0.0-0.9 corresponds to 20 millseconds to 200 millseconds
         let hrv:Double = Number.getStandardDeviation(ofArray: beatLengths)
-        
+    
         //MARK: BPM
         let currBpm:Double = 60 / beatLength
         
