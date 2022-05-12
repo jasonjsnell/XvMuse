@@ -100,7 +100,7 @@ class Parser {
                         } else {
                             
                             //print from here, but don't return to main class
-                            if (debug) { print("PARSER: JSON:", json) }
+                            //if (debug) { print("PARSER: JSON:", json) }
                             return nil
                         }
                         

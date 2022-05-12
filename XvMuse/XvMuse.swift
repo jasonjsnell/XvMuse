@@ -237,7 +237,7 @@ public class XvMuse:MuseBluetoothObserver {
                 
                 //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
                 
-                print(bytes, ",")
+                //print(bytes, ",")
             
                 return packet // return assembled packet
             }
