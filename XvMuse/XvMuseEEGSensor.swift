@@ -71,7 +71,10 @@ public class XvMuseEEGSensor {
     public var decibels:[Double] { get { return psd.decibels } }
     public var magnitudes:[Double] { get { return psd.magnitudes } }
     
+    //Special setters for combining EEG objects into a multi-user eeg
+    public func set(decibels:[Double]) { psd.decibels = decibels }
 
+    
     //MARK: - WAVES -
     
     //vars for calculating wave values on the fly
