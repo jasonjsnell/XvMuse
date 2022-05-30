@@ -23,6 +23,8 @@
 		BB57F8A12496B268003DB78A /* XvMuseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8A02496B268003DB78A /* XvMuseConstants.swift */; };
 		BB65FEE7283E7FEE00C4F4D8 /* MockPPGNoiseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */; };
 		BB65FEE9283E80A400C4F4D8 /* MockEEGNoiseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */; };
+		BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */; };
+		BB65FEED283EC93400C4F4D8 /* MockEEGMeditationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */; };
 		BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741DD24CA1BCF004B8AE5 /* Bytes.swift */; };
 		BB7741E024CA1CF3004B8AE5 /* Number.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741DF24CA1CF3004B8AE5 /* Number.swift */; };
 		BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741E124CA1F27004B8AE5 /* JSON.swift */; };
@@ -66,6 +68,8 @@
 		BB57F8A02496B268003DB78A /* XvMuseConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseConstants.swift; sourceTree = "<group>"; };
 		BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGNoiseData.swift; sourceTree = "<group>"; };
 		BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGNoiseData.swift; sourceTree = "<group>"; };
+		BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGMeditationData.swift; sourceTree = "<group>"; };
+		BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGMeditationData.swift; sourceTree = "<group>"; };
 		BB7741DD24CA1BCF004B8AE5 /* Bytes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bytes.swift; sourceTree = "<group>"; };
 		BB7741DF24CA1CF3004B8AE5 /* Number.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Number.swift; sourceTree = "<group>"; };
 		BB7741E124CA1F27004B8AE5 /* JSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSON.swift; sourceTree = "<group>"; };
@@ -201,8 +205,9 @@
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
 				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
 				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
-				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
 				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
+				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
+				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
 				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
 			);
 			path = EEG;
@@ -214,6 +219,7 @@
 				BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */,
 				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
 				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
+				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
 				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
 				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
 			);
@@ -327,7 +333,9 @@
 				BB9FEF4626371290004F48B6 /* MockEEGStressData.swift in Sources */,
 				BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */,
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
+				BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
+				BB65FEED283EC93400C4F4D8 /* MockEEGMeditationData.swift in Sources */,
 				BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */,
 				BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */,
 				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,

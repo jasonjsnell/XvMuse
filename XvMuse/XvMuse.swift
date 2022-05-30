@@ -111,7 +111,7 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: Mock Data
     //only engage mock data objects when called directly from external program
-    fileprivate let _mockEEGData:[XvMockEEGData] = [MockEEGTiredData(), MockEEGStressData(), MockEEGNoiseData()]
+    fileprivate let _mockEEGData:[XvMockEEGData] = [MockEEGTiredData(), MockEEGMeditationData(), MockEEGStressData(), MockEEGNoiseData()]
     public func getMockEEG(id:Int) -> XvMuseEEG {
         
         //keep in bounds
@@ -130,7 +130,7 @@ public class XvMuse:MuseBluetoothObserver {
         return _mockEEG
         
     }
-    fileprivate let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGStressData(), MockPPGNoiseData()]
+    fileprivate let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGMeditationData(), MockPPGStressData(), MockPPGNoiseData()]
     public func getMockPPG(id:Int) -> XvMusePPG {
        
         //keep in bounds
@@ -221,7 +221,7 @@ public class XvMuse:MuseBluetoothObserver {
                     samples: _parser.getEEGSamples(from: bytes))
 
                 //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
-                //if (i == 3) { print(bytes, ",") }
+                if (i == 2) { print(bytes, ",") }
                 
                 return packet // return assembled packet
             }

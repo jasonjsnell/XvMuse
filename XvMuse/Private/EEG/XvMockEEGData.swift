@@ -9,7 +9,9 @@
 public class XvMockEEGData {
     
     public static let SET_TIRED:Int = 0
-    public static let SET_STRESSED:Int = 1
+    public static let SET_MEDITATION:Int = 1
+    public static let SET_STRESSED:Int = 2
+    
     
     //helper classes
     fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values

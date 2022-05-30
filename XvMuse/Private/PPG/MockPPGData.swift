@@ -10,9 +10,6 @@ import Foundation
 
 class MockPPGData {
     
-    public static let SET_TIRED:Int = 0
-    public static let SET_STRESSED:Int = 1
-    
     //helper classes
     fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values
     fileprivate let _systemLaunchTime:Double = Date().timeIntervalSince1970
