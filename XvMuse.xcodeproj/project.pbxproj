@@ -46,6 +46,7 @@
 		BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */; };
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
 		BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */; };
+		BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */; };
 		BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFCA51F24D879CF00516180 /* DataCaches.swift */; };
 /* End PBXBuildFile section */
 
@@ -91,6 +92,7 @@
 		BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
 		BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMockEEGData.swift; sourceTree = "<group>"; };
+		BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGGammaBurstsData.swift; sourceTree = "<group>"; };
 		BBFCA51F24D879CF00516180 /* DataCaches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCaches.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -204,11 +206,7 @@
 				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
 				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
-				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
-				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
-				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
-				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
-				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
+				BBD7415F2857787F00857B78 /* Mock Data */,
 			);
 			path = EEG;
 			sourceTree = "<group>";
@@ -224,6 +222,19 @@
 				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
 			);
 			path = PPG;
+			sourceTree = "<group>";
+		};
+		BBD7415F2857787F00857B78 /* Mock Data */ = {
+			isa = PBXGroup;
+			children = (
+				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
+				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
+				BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */,
+				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
+				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
+				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
+			);
+			path = "Mock Data";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -334,6 +345,7 @@
 				BB43B3FD24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift in Sources */,
 				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */,
+				BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
 				BB65FEED283EC93400C4F4D8 /* MockEEGMeditationData.swift in Sources */,
 				BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */,
