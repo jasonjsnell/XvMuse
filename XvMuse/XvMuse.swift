@@ -221,7 +221,7 @@ public class XvMuse:MuseBluetoothObserver {
                     samples: _parser.getEEGSamples(from: bytes))
 
                 //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
-                if (i == 2) { print(bytes, ",") }
+                //if (i == 2) { print(bytes, ",") }
                 
                 return packet // return assembled packet
             }
