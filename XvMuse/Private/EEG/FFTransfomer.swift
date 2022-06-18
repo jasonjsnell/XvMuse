@@ -144,12 +144,17 @@ class FFTransformer {
             
             //remove signals underneath the incoming noise flood value
             if (noiseFloor != nil) {
-                vDSP.threshold(
-                    magnitudes,
-                    to: noiseFloor!,
-                    with: .zeroFill,
-                    result: &magnitudes
-                )
+                if #available(iOS 13.0, *) {
+                    vDSP.threshold(
+                        magnitudes,
+                        to: noiseFloor!,
+                        with: .zeroFill,
+                        result: &magnitudes
+                    )
+                } else {
+                    // Fallback on earlier versions
+                    print("XvMuse: FFTransformer: vDSP.threshold NEED CODE HERE")
+                }
             }
             
             
