@@ -36,11 +36,14 @@ public class MuseBluetooth:XvBluetoothObserver {
         deviceID = deviceCBUUID
         
         bluetooth = XvBluetooth()
+    }
+    
+    internal func start(){
         
         //add bluetooth listeners
         bluetooth.addListener(
             observer: self,
-            deviceUUID: deviceCBUUID,
+            deviceUUID: deviceID,
             serviceUUID: XvMuseConstants.SERVICE_ID,
             characteristicsUUIDs: [
                 XvMuseConstants.CHAR_CONTROL,
@@ -57,7 +60,6 @@ public class MuseBluetooth:XvBluetoothObserver {
                 XvMuseConstants.CHAR_PPG3
             ]
         )
-    
     }
     
     

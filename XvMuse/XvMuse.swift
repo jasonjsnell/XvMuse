@@ -99,7 +99,9 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: - VARS -
     
-    //MARK: Public
+    //queue
+    fileprivate let museQueue:DispatchQueue
+    
     /* Receives commands from the view controller (like keyDown), translates and sends them to the Muse, and receives data back via parse(bluetoothCharacteristic func */
     public var bluetooth:MuseBluetooth
     
@@ -177,6 +179,9 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - INIT -
     public init(deviceUUID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
 
+        museQueue = DispatchQueue(label: "jasonjsnell.XvMuse.queue")
+        
+        
         //if a valid device ID string comes in, make a CBUUID for the bluetooth object
         var deviceCBUUID:CBUUID?
         
@@ -192,7 +197,12 @@ public class XvMuse:MuseBluetoothObserver {
         _battery = XvMuseBattery()
         
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
-        bluetooth.observer = self
+        
+        
+        museQueue.async { [self] in
+            bluetooth.observer = self
+            bluetooth.start()
+        }
     }
     
     
@@ -200,154 +210,157 @@ public class XvMuse:MuseBluetoothObserver {
     
     public func parse(bluetoothCharacteristic: CBCharacteristic) {
         
-        if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
+        museQueue.async { [self] in
             
-            var bytes:[UInt8] = [UInt8](_data) //move into an array
-            
-            let packetIndex:UInt16 = _parser.getPacketIndex(fromBytes: bytes) //remove and store package index
-            bytes.removeFirst(2) //2 bytes is 1 UInt16 package index
+            if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
+                
+                var bytes:[UInt8] = [UInt8](_data) //move into an array
+                
+                let packetIndex:UInt16 = _parser.getPacketIndex(fromBytes: bytes) //remove and store package index
+                bytes.removeFirst(2) //2 bytes is 1 UInt16 package index
 
-            //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
-            let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
-            
-            // local func to make EEG packet from the above variables
-            
-            func _makeEEGPacket(i:Int) -> XvMuseEEGPacket {
+                //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
+                let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
                 
-                let packet:XvMuseEEGPacket = XvMuseEEGPacket(
-                    packetIndex: packetIndex,
-                    sensor: i,
-                    timestamp: timestamp,
-                    samples: _parser.getEEGSamples(from: bytes))
-
-                //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
-                //if (i == 2) { print(bytes, ",") }
+                // local func to make EEG packet from the above variables
                 
-                return packet // return assembled packet
-            }
-            
-            // local func to make PPG packet from the above variables
-            
-            func _makePPGPacket() -> XvMusePPGPacket {
-                
-                let packet:XvMusePPGPacket = XvMusePPGPacket(
-                    packetIndex: packetIndex,
-                    sensor: 1, // only use sensor 1 (not 0 or 2)
-                    timestamp: timestamp,
-                    samples: _parser.getPPGSamples(from: bytes))
-                
-                //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
-                
-                //print(bytes, ",")
-            
-                return packet // return assembled packet
-            }
-    
-            //check the char ID and parse data based on it
-            switch bluetoothCharacteristic.uuid {
-            
-                /*
-                uint:12,uint:12,uint:12,uint:12,
-                uint:12,uint:12,uint:12,uint:12,
-                uint:12,uint:12,uint:12,uint:12"
-                UInt12 x 12 time samples
-                eeg order: tp10 af8 tp9 af7
-                */
-                
-                //MARK: EEG
-                //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the XvMuseEEG object
-            //packet order
-            //0 TP10: right ear
-            //1 AF08: right forehead
-            //2 TP09: left ear
-            //3 AF07: left forehead
-            case XvMuseConstants.CHAR_TP10:
-                 _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-            case XvMuseConstants.CHAR_AF8:
-                 _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-            case XvMuseConstants.CHAR_TP9:
-                 _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-            case XvMuseConstants.CHAR_AF7:
-                 _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
-                 
-                 //only broadcast the XvMuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 delegate?.didReceiveUpdate(from: _eeg)
-                
-                //MARK: PPG
-            case XvMuseConstants.CHAR_PPG2:
-                
-                /*
-                 //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
-                 //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
-                uint:24,uint:24,uint:24
-                uint:24,uint:24,uint:24
-                UInt24 x 6 samples
-                */
-                
-                //print(bytes) // <-- use to print out mock PPG samples
-                
-                //heart events examine sensor PPG2
-                if let heartEvent:XvMusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
+                func _makeEEGPacket(i:Int) -> XvMuseEEGPacket {
                     
-                    //broadcast the heart event
-                     delegate?.didReceive(ppgHeartEvent: heartEvent)
+                    let packet:XvMuseEEGPacket = XvMuseEEGPacket(
+                        packetIndex: packetIndex,
+                        sensor: i,
+                        timestamp: timestamp,
+                        samples: _parser.getEEGSamples(from: bytes))
+
+                    //delegate?.didReceive(eegPacket: packet) //send to observer in case someone wants to do their own FFT processing
+                    //if (i == 2) { print(bytes, ",") }
+                    
+                    return packet // return assembled packet
                 }
                 
-                //send ppg object once per round so application can access the buffer for visualization, etc...
-                delegate?.didReceiveUpdate(from: _ppg)
+                // local func to make PPG packet from the above variables
                 
-            case XvMuseConstants.CHAR_ACCEL:
-                
-                //MARK: Accel
-                /*
-                 pattern = "int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16"
-                 Int16 9 xyz samples (x,y,z,x,y,z,x,y,z)
-                */
-                
-                _accel.packetIndex = packetIndex
-                _accel.raw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
-                
-                //parse xyz values
-                _accel.x = _parser.getXYZ(values: _accel.raw, start: 0)
-                _accel.y = _parser.getXYZ(values: _accel.raw, start: 1)
-                _accel.z = _parser.getXYZ(values: _accel.raw, start: 2)
-                
-                delegate?.didReceiveUpdate(from: _accel)
-                
-            case XvMuseConstants.CHAR_BATTERY:
-               
-                //MARK: Battery
-                /*
-                 pattern = "uint:16,uint:16,uint:16,uint:16"
-                 UInt16 battery / 512
-                 UInt16 fuel gauge * 2.2
-                 UInt16 adc volt
-                 UInt16 temperature
-                 //the rest is padding
-                */
-                
-                _battery.packetIndex = packetIndex
-                _battery.raw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
-                
-                //parse the percentage
-                _battery.percentage = _battery.raw[0] / XvMuseConstants.BATTERY_PCT_DIVIDEND
-                
-                delegate?.didReceiveUpdate(from: _battery)
-
-            case XvMuseConstants.CHAR_CONTROL:
-                
-                //MARK: Control Commands
-                //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
-                //getting device info or a control status send back JSON dictionaries with several vars
-                //note: this package does not use packetIndex, so pass in the raw charactersitic value
-                if let commandResponse:[String:Any] =  _parser.parse(controlLine: bluetoothCharacteristic.value) {
+                func _makePPGPacket() -> XvMusePPGPacket {
                     
-                    //if a response more than ["rc":0] comes in, broadcast it
-                    delegate?.didReceive(commandResponse: commandResponse)
+                    let packet:XvMusePPGPacket = XvMusePPGPacket(
+                        packetIndex: packetIndex,
+                        sensor: 1, // only use sensor 1 (not 0 or 2)
+                        timestamp: timestamp,
+                        samples: _parser.getPPGSamples(from: bytes))
+                    
+                    //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                    
+                    //print(bytes, ",")
+                
+                    return packet // return assembled packet
                 }
-               
-            default:
-               break
+        
+                //check the char ID and parse data based on it
+                switch bluetoothCharacteristic.uuid {
+                
+                    /*
+                    uint:12,uint:12,uint:12,uint:12,
+                    uint:12,uint:12,uint:12,uint:12,
+                    uint:12,uint:12,uint:12,uint:12"
+                    UInt12 x 12 time samples
+                    eeg order: tp10 af8 tp9 af7
+                    */
+                    
+                    //MARK: EEG
+                    //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the XvMuseEEG object
+                //packet order
+                //0 TP10: right ear
+                //1 AF08: right forehead
+                //2 TP09: left ear
+                //3 AF07: left forehead
+                case XvMuseConstants.CHAR_TP10:
+                     _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
+                case XvMuseConstants.CHAR_AF8:
+                     _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+                case XvMuseConstants.CHAR_TP9:
+                     _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+                case XvMuseConstants.CHAR_AF7:
+                     _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                     
+                     //only broadcast the XvMuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
+                     delegate?.didReceiveUpdate(from: _eeg)
+                    
+                    //MARK: PPG
+                case XvMuseConstants.CHAR_PPG2:
+                    
+                    /*
+                     //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+                     //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
+                    uint:24,uint:24,uint:24
+                    uint:24,uint:24,uint:24
+                    UInt24 x 6 samples
+                    */
+                    
+                    //print(bytes) // <-- use to print out mock PPG samples
+                    
+                    //heart events examine sensor PPG2
+                    if let heartEvent:XvMusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
+                        
+                        //broadcast the heart event
+                         delegate?.didReceive(ppgHeartEvent: heartEvent)
+                    }
+                    
+                    //send ppg object once per round so application can access the buffer for visualization, etc...
+                    delegate?.didReceiveUpdate(from: _ppg)
+                    
+                case XvMuseConstants.CHAR_ACCEL:
+                    
+                    //MARK: Accel
+                    /*
+                     pattern = "int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16"
+                     Int16 9 xyz samples (x,y,z,x,y,z,x,y,z)
+                    */
+                    
+                    _accel.packetIndex = packetIndex
+                    _accel.raw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
+                    
+                    //parse xyz values
+                    _accel.x = _parser.getXYZ(values: _accel.raw, start: 0)
+                    _accel.y = _parser.getXYZ(values: _accel.raw, start: 1)
+                    _accel.z = _parser.getXYZ(values: _accel.raw, start: 2)
+                    
+                    delegate?.didReceiveUpdate(from: _accel)
+                    
+                case XvMuseConstants.CHAR_BATTERY:
+                   
+                    //MARK: Battery
+                    /*
+                     pattern = "uint:16,uint:16,uint:16,uint:16"
+                     UInt16 battery / 512
+                     UInt16 fuel gauge * 2.2
+                     UInt16 adc volt
+                     UInt16 temperature
+                     //the rest is padding
+                    */
+                    
+                    _battery.packetIndex = packetIndex
+                    _battery.raw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
+                    
+                    //parse the percentage
+                    _battery.percentage = _battery.raw[0] / XvMuseConstants.BATTERY_PCT_DIVIDEND
+                    
+                    delegate?.didReceiveUpdate(from: _battery)
+
+                case XvMuseConstants.CHAR_CONTROL:
+                    
+                    //MARK: Control Commands
+                    //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
+                    //getting device info or a control status send back JSON dictionaries with several vars
+                    //note: this package does not use packetIndex, so pass in the raw charactersitic value
+                    if let commandResponse:[String:Any] =  _parser.parse(controlLine: bluetoothCharacteristic.value) {
+                        
+                        //if a response more than ["rc":0] comes in, broadcast it
+                        delegate?.didReceive(commandResponse: commandResponse)
+                    }
+                   
+                default:
+                   break
+                }
             }
         }
     }
@@ -355,43 +368,51 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - BLUETOOTH CONNECTION
     
     public func isConnecting() {
-        delegate?.museIsConnecting()
+        museQueue.async { [self] in
+            delegate?.museIsConnecting()
+        }
     }
     
     public func didConnect() {
         
-        //communication protocol
-        //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
+        museQueue.async { [self] in
         
-        //version handshake, set to v2
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
-            bluetooth.versionHandshake()
-        }
-        
-        //set preset to 21, meaning no aux sensor is being used
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
+            //communication protocol
+            //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
             
-            //setting the preset turns off the PPG
-            //bluetooth.set(preset: XvMuseConstants.PRESET_20)
-            bluetooth.set(hostPlatform: XvMuseConstants.HOST_PLATFORM_MAC)
-        }
-        
-        //get status
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [self] in
+            //version handshake, set to v2
+            museQueue.asyncAfter(deadline: .now() + 0.5) { [self] in
+                bluetooth.versionHandshake()
+            }
             
-            bluetooth.controlStatus()
+            //set preset to 21, meaning no aux sensor is being used
+            museQueue.asyncAfter(deadline: .now() + 0.9) { [self] in
+                
+                //setting the preset turns off the PPG
+                //bluetooth.set(preset: XvMuseConstants.PRESET_20)
+                bluetooth.set(hostPlatform: XvMuseConstants.HOST_PLATFORM_MAC)
+            }
+            
+            //get status
+            museQueue.asyncAfter(deadline: .now() + 1.0) { [self] in
+                
+                bluetooth.controlStatus()
+            }
+            
+            //notify delegate
+            delegate?.museDidConnect()
         }
-        
-        //notify delegate
-        delegate?.museDidConnect()
-        
     }
     
     public func didDisconnect() {
-        delegate?.museDidDisconnect()
+        museQueue.async { [self] in
+            delegate?.museDidDisconnect()
+        }
     }
     
     public func didLoseConnection() {
-        delegate?.museLostConnection()
+        museQueue.async { [self] in
+            delegate?.museLostConnection()
+        }
     }
 }
