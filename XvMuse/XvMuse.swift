@@ -199,18 +199,21 @@ public class XvMuse:MuseBluetoothObserver {
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         
         
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
             bluetooth.observer = self
             bluetooth.start()
-        }
+        //}
     }
     
     
     //MARK: - DATA PROCESSING -
-    
+    //eeg write flag
+    //ppg write flag
+    //acce write flag
+    //this can then be checked publicly when attemped a read?
     public func parse(bluetoothCharacteristic: CBCharacteristic) {
         
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
             
             if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
                 
@@ -362,20 +365,20 @@ public class XvMuse:MuseBluetoothObserver {
                    break
                 }
             }
-        }
+        //}
     }
     
     //MARK: - BLUETOOTH CONNECTION
     
     public func isConnecting() {
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
             delegate?.museIsConnecting()
-        }
+        //}
     }
     
     public func didConnect() {
         
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
         
             //communication protocol
             //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
@@ -401,18 +404,18 @@ public class XvMuse:MuseBluetoothObserver {
             
             //notify delegate
             delegate?.museDidConnect()
-        }
+        //}
     }
     
     public func didDisconnect() {
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
             delegate?.museDidDisconnect()
-        }
+        //}
     }
     
     public func didLoseConnection() {
-        museQueue.async { [self] in
+        //museQueue.async { [self] in
             delegate?.museLostConnection()
-        }
+        //}
     }
 }
