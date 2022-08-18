@@ -107,6 +107,37 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		BB14EE5228AE86E300B2A14D /* depreciated */ = {
+			isa = PBXGroup;
+			children = (
+				BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGValue.swift */,
+				BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */,
+				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
+				BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */,
+			);
+			path = depreciated;
+			sourceTree = "<group>";
+		};
+		BB14EE5328AE870D00B2A14D /* depreciated */ = {
+			isa = PBXGroup;
+			children = (
+				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
+			);
+			path = depreciated;
+			sourceTree = "<group>";
+		};
+		BB14EE5428AE875300B2A14D /* Mock Data */ = {
+			isa = PBXGroup;
+			children = (
+				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
+				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
+				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
+				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
+				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
+			);
+			path = "Mock Data";
+			sourceTree = "<group>";
+		};
 		BB348905278545F200E6685C /* Archive */ = {
 			isa = PBXGroup;
 			children = (
@@ -138,13 +169,10 @@
 				BB57F8952496B05F003DB78A /* XvMuse.swift */,
 				BB57F8A02496B268003DB78A /* XvMuseConstants.swift */,
 				BB8B857824B118E200376FD4 /* XvMuseEEG.swift */,
-				BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */,
 				BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */,
-				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
-				BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGValue.swift */,
-				BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */,
 				BB43B3FA24CCFA5600E6D3D3 /* XvMusePPG.swift */,
 				BB43B3FC24CCFA8E00E6D3D3 /* XvMusePPGSensor.swift */,
+				BB14EE5228AE86E300B2A14D /* depreciated */,
 				BB57F8942496B04B003DB78A /* Private */,
 			);
 			path = XvMuse;
@@ -205,7 +233,7 @@
 				BB8B857424B0F98200376FD4 /* EpochGenerator.swift */,
 				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
-				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
+				BB14EE5328AE870D00B2A14D /* depreciated */,
 				BBD7415F2857787F00857B78 /* Mock Data */,
 			);
 			path = EEG;
@@ -215,11 +243,7 @@
 			isa = PBXGroup;
 			children = (
 				BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */,
-				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
-				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
-				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
-				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
-				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
+				BB14EE5428AE875300B2A14D /* Mock Data */,
 			);
 			path = PPG;
 			sourceTree = "<group>";

@@ -94,10 +94,10 @@ public struct XvMuseBattery {
     public var raw:[UInt16] = []
 }
 
-
+//MARK: - MUSE -
 public class XvMuse:MuseBluetoothObserver {
     
-    //MARK: - VARS -
+    //MARK: - vars
 
     /* Receives commands from the view controller (like keyDown), translates and sends them to the Muse, and receives data back via parse(bluetoothCharacteristic func */
     public var bluetooth:MuseBluetooth
@@ -108,7 +108,7 @@ public class XvMuse:MuseBluetoothObserver {
     public var eeg:XvMuseEEG { get { return _eeg } }
     public var ppg:XvMusePPG { get { return _ppg } }
     
-    //MARK: Mock Data
+    //MARK: - Mock Data
     //only engage mock data objects when called directly from external program
     fileprivate let _mockEEGData:[XvMockEEGData] = [MockEEGTiredData(), MockEEGMeditationData(), MockEEGStressData(), MockEEGNoiseData()]
     public func getMockEEG(id:Int) -> XvMuseEEG {
@@ -155,7 +155,7 @@ public class XvMuse:MuseBluetoothObserver {
     }
     
     
-    //MARK: Private
+    //MARK: - Private
     //sensor data objects
     fileprivate var _eeg:XvMuseEEG
     fileprivate var _mockEEG:XvMuseEEG
@@ -174,8 +174,8 @@ public class XvMuse:MuseBluetoothObserver {
     fileprivate let debug:Bool = true
     
     //MARK: - INIT -
-    public init(deviceUUID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
-
+    //public init(deviceUUID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
+    public init(deviceUUID:String? = nil) {
        
         //if a valid device ID string comes in, make a CBUUID for the bluetooth object
         var deviceCBUUID:CBUUID?
@@ -184,16 +184,19 @@ public class XvMuse:MuseBluetoothObserver {
             deviceCBUUID = CBUUID(string: deviceUUID!)
         }
         
-        _eeg = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
-        _mockEEG = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
-        _accel = XvMuseAccelerometer()
+        //_eeg = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
+        _eeg = XvMuseEEG()
+        //_mockEEG = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
+        _mockEEG = XvMuseEEG()
+        
         _ppg = XvMusePPG()
         _mockPPG = XvMusePPG()
+        
+        _accel = XvMuseAccelerometer()
+        
         _battery = XvMuseBattery()
         
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
-        
-        
         bluetooth.observer = self
         bluetooth.start()
     }

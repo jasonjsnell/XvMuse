@@ -41,13 +41,13 @@ public class XvMuseEEG {
 
     //MARK: - WAVES -
     
-    public var waves:[XvMuseEEGWave]
-    
-    public var delta:XvMuseEEGWave
-    public var theta:XvMuseEEGWave
-    public var alpha:XvMuseEEGWave
-    public var beta: XvMuseEEGWave
-    public var gamma:XvMuseEEGWave
+//    public var waves:[XvMuseEEGWave]
+//
+//    public var delta:XvMuseEEGWave
+//    public var theta:XvMuseEEGWave
+//    public var alpha:XvMuseEEGWave
+//    public var beta: XvMuseEEGWave
+//    public var gamma:XvMuseEEGWave
     
     
     //MARK: - SENSORS -
@@ -99,20 +99,21 @@ public class XvMuseEEG {
     eeg.right.decibels
     */
     
-    public var regions:[XvMuseEEGRegion]
-    public var front:XvMuseEEGRegion
-    public var sides:XvMuseEEGRegion
-    public var left:XvMuseEEGRegion
-    public var right:XvMuseEEGRegion
+//    public var regions:[XvMuseEEGRegion]
+//    public var front:XvMuseEEGRegion
+//    public var sides:XvMuseEEGRegion
+//    public var left:XvMuseEEGRegion
+//    public var right:XvMuseEEGRegion
     
     //calculate waves and region values, or just the FFT result for each sensor?
-    fileprivate let eegWavesAndRegionProcessing:Bool
+    //fileprivate let eegWavesAndRegionProcessing:Bool
     
     //MARK: - INIT -
     
-    public init(eegWavesAndRegionProcessing:Bool = true) {
+    public init() {
+    //public init(eegWavesAndRegionProcessing:Bool = true) {
         
-        self.eegWavesAndRegionProcessing = eegWavesAndRegionProcessing
+        //self.eegWavesAndRegionProcessing = eegWavesAndRegionProcessing
         
         //init the sensors
         //they are the entry point into this system from the Muse hardware
@@ -122,27 +123,27 @@ public class XvMuseEEG {
         
         //init the waves
         //example: eeg.delta
-        delta = XvMuseEEGWave(waveID: 0)
-        theta = XvMuseEEGWave(waveID: 1)
-        alpha = XvMuseEEGWave(waveID: 2)
-        beta  = XvMuseEEGWave(waveID: 3)
-        gamma = XvMuseEEGWave(waveID: 4)
+//        delta = XvMuseEEGWave(waveID: 0)
+//        theta = XvMuseEEGWave(waveID: 1)
+//        alpha = XvMuseEEGWave(waveID: 2)
+//        beta  = XvMuseEEGWave(waveID: 3)
+//        gamma = XvMuseEEGWave(waveID: 4)
         
         //store in array for user access
         //example: for wave in eeg.waves { }
-        waves = [delta, theta, alpha, beta, gamma]
+        //waves = [delta, theta, alpha, beta, gamma]
       
         
         // init the four regions (front, sides, left, right)
         // by passing those sensors into the region objects
         //example: eeg.front
         
-        front = XvMuseEEGRegion()
-        sides = XvMuseEEGRegion()
-        left  = XvMuseEEGRegion()
-        right = XvMuseEEGRegion()
-        
-        regions = [front, sides, left, right]
+//        front = XvMuseEEGRegion()
+//        sides = XvMuseEEGRegion()
+//        left  = XvMuseEEGRegion()
+//        right = XvMuseEEGRegion()
+//
+//        regions = [front, sides, left, right]
     }
     
     
@@ -175,88 +176,88 @@ public class XvMuseEEG {
             
             //only run these calculation if this varible (passed in at initiation) wants these extra computations
             //the alternative is to custom perform these region and wave computations inside the parent application
-            if (eegWavesAndRegionProcessing){
-                
-                //MARK: 2. Update wave objects
-                for wave in waves { wave.update(with: sensors) }
-                
-                //MARK: 3. Update regions
-                front.update(with: [sensors[1], sensors[2]])
-                sides.update(with: [sensors[0], sensors[3]])
-                left.update( with: [sensors[0], sensors[1]])
-                right.update(with: [sensors[2], sensors[3]])
-                
-                //MARK: 4. Reset averaging processors for entire EEG
-                //reset data on averaging processors
-                _cache.update(with: sensors)
-            }
+//            if (eegWavesAndRegionProcessing){
+//
+//                //MARK: 2. Update wave objects
+//                for wave in waves { wave.update(with: sensors) }
+//
+//                //MARK: 3. Update regions
+//                front.update(with: [sensors[1], sensors[2]])
+//                sides.update(with: [sensors[0], sensors[3]])
+//                left.update( with: [sensors[0], sensors[1]])
+//                right.update(with: [sensors[2], sensors[3]])
+//
+//                //MARK: 4. Reset averaging processors for entire EEG
+//                //reset data on averaging processors
+//                _cache.update(with: sensors)
+//            }
         }
     }
     
     //MARK: - AVERAGED VALUES -
     
-    fileprivate var _cache:SensorCache = SensorCache()
+    //fileprivate var _cache:SensorCache = SensorCache()
     
     //MARK: Magnitudes
     //example: eeg.magnitudes
-    public var magnitudes:[Double] {
-        get { return _cache.getMagnitudes() }
-    }
+//    public var magnitudes:[Double] {
+//        get { return _cache.getMagnitudes() }
+//    }
     
     //MARK: - Decibels
     //example: eeg.decibels
-    public var decibels:[Double] {
-        get { return _cache.getDecibels() }
-    }
+//    public var decibels:[Double] {
+//        get { return _cache.getDecibels() }
+//    }
     
     //MARK: - Noise
-    public var noise:Int {
-        get { return _cache.getNoise() }
-    }
+//    public var noise:Int {
+//        get { return _cache.getNoise() }
+//    }
     
     //MARK: - SETTERS -
     
     //MARK: History Lengths
     //the length of the sensor or wave value history can be changed by the user
-    public var historyLength:Int {
-        
-        get {
-            waves[0].history.historyLength
-        }
-        
-        set {
-            
-            //each wave in each sensor
-            for sensor in sensors {
-               
-                for wave in sensor.waves {
-                    wave.history.historyLength = newValue
-                }
-            }
-            
-            for wave in waves {
-                
-                //each wave
-                wave.history.historyLength = newValue
-                
-                //each sensor in each wave
-                for sensorValue in wave.sensorValues {
-                    sensorValue.history.historyLength = newValue
-                }
-                
-                for region in wave.regions {
-                    region.history.historyLength = newValue
-                }
-            }
-            
-            for region in regions {
-                
-                for wave in region.waves {
-                    wave.history.historyLength = newValue
-                }
-            }
-        }
-    }
+//    public var historyLength:Int {
+//        
+//        get {
+//            waves[0].history.historyLength
+//        }
+//        
+//        set {
+//            
+//            //each wave in each sensor
+//            for sensor in sensors {
+//               
+//                for wave in sensor.waves {
+//                    wave.history.historyLength = newValue
+//                }
+//            }
+//            
+//            for wave in waves {
+//                
+//                //each wave
+//                wave.history.historyLength = newValue
+//                
+//                //each sensor in each wave
+//                for sensorValue in wave.sensorValues {
+//                    sensorValue.history.historyLength = newValue
+//                }
+//                
+//                for region in wave.regions {
+//                    region.history.historyLength = newValue
+//                }
+//            }
+//            
+//            for region in regions {
+//                
+//                for wave in region.waves {
+//                    wave.history.historyLength = newValue
+//                }
+//            }
+//        }
+//    }
     
     //MARK: - GETTERS -
     
@@ -271,49 +272,49 @@ public class XvMuseEEG {
     }
     
     //MARK: Get bin slices
-    public func getDecibelSlice(fromBinRange:[Int]) -> [Double] {
-        
-        return _fm.getSlice(bins: fromBinRange, spectrum: decibels)
-    }
+//    public func getDecibelSlice(fromBinRange:[Int]) -> [Double] {
+//
+//        return _fm.getSlice(bins: fromBinRange, spectrum: decibels)
+//    }
     
-    public func getMagnitudeSlice(fromBinRange:[Int]) -> [Double] {
-        
-        return _fm.getSlice(bins: fromBinRange, spectrum: magnitudes)
-    }
+//    public func getMagnitudeSlice(fromBinRange:[Int]) -> [Double] {
+//
+//        return _fm.getSlice(bins: fromBinRange, spectrum: magnitudes)
+//    }
     
     //MARK: Get spectrum slices
-    public func getDecibelSlice(fromFrequencyRange:[Double]) -> [Double] {
-        
-        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: decibels)
-    }
+//    public func getDecibelSlice(fromFrequencyRange:[Double]) -> [Double] {
+//
+//        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: decibels)
+//    }
     
-    public func getMagnitudeSlice(fromFrequencyRange:[Double]) -> [Double] {
-        
-        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
-    }
+//    public func getMagnitudeSlice(fromFrequencyRange:[Double]) -> [Double] {
+//
+//        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
+//    }
     
     
     //MARK: Get wave value via frequency range
-    public func getDecibel(fromFrequencyRange:[Double]) -> Double {
-        
-        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: decibels)
-    }
+//    public func getDecibel(fromFrequencyRange:[Double]) -> Double {
+//
+//        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: decibels)
+//    }
     
-    public func getMagnitude(fromFrequencyRange:[Double]) -> Double {
-        
-        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
-    }
+//    public func getMagnitude(fromFrequencyRange:[Double]) -> Double {
+//
+//        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: magnitudes)
+//    }
     
     
     //MARK: Get wave value via bins
-    public func getDecibel(fromBinRange:[Int]) -> Double {
-        
-        return _fm.getWaveValue(bins: fromBinRange, spectrum: decibels)
-    }
+//    public func getDecibel(fromBinRange:[Int]) -> Double {
+//
+//        return _fm.getWaveValue(bins: fromBinRange, spectrum: decibels)
+//    }
     
-    public func getMagnitude(fromBinRange:[Int]) -> Double {
-        
-        return _fm.getWaveValue(bins: fromBinRange, spectrum: magnitudes)
-    }
+//    public func getMagnitude(fromBinRange:[Int]) -> Double {
+//        
+//        return _fm.getWaveValue(bins: fromBinRange, spectrum: magnitudes)
+//    }
 
 }

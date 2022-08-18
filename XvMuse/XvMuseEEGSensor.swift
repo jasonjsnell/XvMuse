@@ -64,7 +64,7 @@ public class XvMuseEEGSensor {
         }
         
         //update the data in all the wave value objects owned by this sensor
-        for wave in waves { wave.update(with: self) }
+        //for wave in waves { wave.update(with: self) }
     }
     
     public var noise:Int = 10
@@ -81,18 +81,18 @@ public class XvMuseEEGSensor {
     //eeg.TP9.delta.decibel
     //eeg.TP10.alpha.magnitude
     
-    public var waves:[XvMuseEEGValue]
-    
-    public var delta:XvMuseEEGValue = XvMuseEEGValue(waveID: 0)
-    public var theta:XvMuseEEGValue = XvMuseEEGValue(waveID: 1)
-    public var alpha:XvMuseEEGValue = XvMuseEEGValue(waveID: 2)
-    public var beta: XvMuseEEGValue = XvMuseEEGValue(waveID: 3)
-    public var gamma:XvMuseEEGValue = XvMuseEEGValue(waveID: 4)
+//    public var waves:[XvMuseEEGValue]
+//
+//    public var delta:XvMuseEEGValue = XvMuseEEGValue(waveID: 0)
+//    public var theta:XvMuseEEGValue = XvMuseEEGValue(waveID: 1)
+//    public var alpha:XvMuseEEGValue = XvMuseEEGValue(waveID: 2)
+//    public var beta: XvMuseEEGValue = XvMuseEEGValue(waveID: 3)
+//    public var gamma:XvMuseEEGValue = XvMuseEEGValue(waveID: 4)
 
     //MARK: - INIT
     init(){
         //store wave value in an array
-        waves = [delta, theta, alpha, beta, gamma]
+        //waves = [delta, theta, alpha, beta, gamma]
     }
     
     
