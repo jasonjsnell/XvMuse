@@ -49,7 +49,7 @@ public struct Epoch {
 
 public struct FFTResult {
     public var sensor:Int // same as epoch
-    public var magnitudes:[Double] //absolute, above zero values
+    //public var magnitudes:[Double] //absolute, above zero values
     public var decibels:[Double] //decibels, which go above and below 0
 }
 

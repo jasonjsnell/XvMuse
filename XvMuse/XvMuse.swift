@@ -175,7 +175,7 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: - INIT -
     //public init(deviceUUID:String? = nil, eegWavesAndRegionProcessing:Bool = true) {
-    public init(deviceUUID:String? = nil) {
+    public init(deviceUUID:String? = nil, eegFrequencyRange:[Int]) {
        
         //if a valid device ID string comes in, make a CBUUID for the bluetooth object
         var deviceCBUUID:CBUUID?
@@ -184,10 +184,8 @@ public class XvMuse:MuseBluetoothObserver {
             deviceCBUUID = CBUUID(string: deviceUUID!)
         }
         
-        //_eeg = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
-        _eeg = XvMuseEEG()
-        //_mockEEG = XvMuseEEG(eegWavesAndRegionProcessing: eegWavesAndRegionProcessing)
-        _mockEEG = XvMuseEEG()
+        _eeg = XvMuseEEG(frequencyRange: eegFrequencyRange)
+        _mockEEG = XvMuseEEG(frequencyRange: eegFrequencyRange)
         
         _ppg = XvMusePPG()
         _mockPPG = XvMusePPG()

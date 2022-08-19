@@ -190,7 +190,7 @@ class FFTransformer {
             
             return FFTResult(
                 sensor: fromSensor,
-                magnitudes: magnitudes,
+                //magnitudes: magnitudes,
                 decibels: decibels
             )
  
@@ -201,13 +201,6 @@ class FFTransformer {
     }
     
      //MARK: - HELPERS
-    
-    /*fileprivate func _average(_ x:[Double]) -> [Double] {
-        
-        let sum = x.reduce(0, +)
-        let averageValue:Double = Double(sum) / Double(x.count)
-        return x.map { $0-averageValue }
-    }*/
     
     fileprivate func validate(samples:[Double]) -> [Double] {
         

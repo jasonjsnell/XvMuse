@@ -14,42 +14,17 @@ import Foundation
  There are several ways to access data from this object
 
  AVERAGED PSD VALUES
- eeg.magnitudes
  eeg.decibels
- 
- REGION PSD VALUES
- eeg.front.magnitudes
- eeg.side.decibels
  
  SENSOR PSD VALUES
  can use the location or sensor name
- eeg.TP9.magnitudes
+ eeg.TP9.decibels
  eeg.leftEar.decibels
- 
- AVERAGED WAVE VALUES
- eeg.delta.decibel
- eeg.alpha.magnitudes
- 
- SENSOR-SPECIFIC WAVE VALUES
- can access via the sensor or via the wave
- eeg.TP9.delta.magnitude
- eeg.alpha.TP10.decibel
  
  */
 
 public class XvMuseEEG {
 
-    //MARK: - WAVES -
-    
-//    public var waves:[XvMuseEEGWave]
-//
-//    public var delta:XvMuseEEGWave
-//    public var theta:XvMuseEEGWave
-//    public var alpha:XvMuseEEGWave
-//    public var beta: XvMuseEEGWave
-//    public var gamma:XvMuseEEGWave
-    
-    
     //MARK: - SENSORS -
     
     //return in the order of left ear, left forehead, right forehead, right ear
@@ -80,40 +55,13 @@ public class XvMuseEEG {
     // 1 -> position 2
     // 2 -> position 0
     // 3 -> position 1
-    fileprivate let museSensorFireSequence:[Int] = [2, 3, 1, 0] // old, incorrect [2, 0, 3, 1]
+    fileprivate let museSensorFireSequence:[Int] = [2, 3, 1, 0]
     fileprivate func getSensorPosition(from id:Int) -> Int { return museSensorFireSequence[id] }
     
-    //MARK: - REGIONS -
-    /*
-    Access to sensor values organized by region
-    (1) front or 2) sides of head)
-    
-    examples:
-    eeg.front.magnitudes
-    eeg.sides.magnitudes
-    eeg.front.decibels
-    eeg.sides.decibels
-    eeg.left.magnitudes
-    eeg.left.magnitudes
-    eeg.right.decibels
-    eeg.right.decibels
-    */
-    
-//    public var regions:[XvMuseEEGRegion]
-//    public var front:XvMuseEEGRegion
-//    public var sides:XvMuseEEGRegion
-//    public var left:XvMuseEEGRegion
-//    public var right:XvMuseEEGRegion
-    
-    //calculate waves and region values, or just the FFT result for each sensor?
-    //fileprivate let eegWavesAndRegionProcessing:Bool
-    
     //MARK: - INIT -
+    fileprivate var _binLocs:[Int] = []
     
-    public init() {
-    //public init(eegWavesAndRegionProcessing:Bool = true) {
-        
-        //self.eegWavesAndRegionProcessing = eegWavesAndRegionProcessing
+    public init(frequencyRange:[Int]) {
         
         //init the sensors
         //they are the entry point into this system from the Muse hardware
@@ -121,29 +69,18 @@ public class XvMuseEEG {
         
         sensors = [XvMuseEEGSensor(), XvMuseEEGSensor(), XvMuseEEGSensor(), XvMuseEEGSensor()]
         
-        //init the waves
-        //example: eeg.delta
-//        delta = XvMuseEEGWave(waveID: 0)
-//        theta = XvMuseEEGWave(waveID: 1)
-//        alpha = XvMuseEEGWave(waveID: 2)
-//        beta  = XvMuseEEGWave(waveID: 3)
-//        gamma = XvMuseEEGWave(waveID: 4)
-        
-        //store in array for user access
-        //example: for wave in eeg.waves { }
-        //waves = [delta, theta, alpha, beta, gamma]
-      
-        
-        // init the four regions (front, sides, left, right)
-        // by passing those sensors into the region objects
-        //example: eeg.front
-        
-//        front = XvMuseEEGRegion()
-//        sides = XvMuseEEGRegion()
-//        left  = XvMuseEEGRegion()
-//        right = XvMuseEEGRegion()
-//
-//        regions = [front, sides, left, right]
+        //make sure frequency range is an array of two values
+        if (frequencyRange.count == 2) {
+            
+            //loop through each hz in the frequency range
+            for hz in frequencyRange[0]..<frequencyRange[1] {
+                _binLocs.append(_fm.getBinFor(frequency: Double(hz)))
+            }
+            
+        } else {
+            print("XvMuseEEG: Init: Fatal error: frequencyRange needs to be 2 values. Currently", frequencyRange)
+            fatalError()
+        }
     }
     
     
@@ -156,53 +93,30 @@ public class XvMuseEEG {
         //fftResult is nil when the buffers are loading in the beginning and inbetween Epoch window firings
         
         //so when the fft result is valid...
-        
         if (fftResult != nil) {
             
-            //MARK: 1. Update sensor objects
-            //update the sensor objects first with the FFT's PSD arrays
-            //meaning, not split into delta, alpha, etc... but the full PSD array of values
-            //example: eeg.TP9.magnitudes
-            //example: eeg.TP9.decibels
+            //temp, local array
+            var _spectrum:[Double] = []
             
+            //loop through each hz bin (ex: 0, 1, 3, 4, 6, 7, 9)
+            for i in 0..<_binLocs.count {
+                
+                //grab the db values from the specific bin locations (ex: 0, 1, 3, 4, 6, 7, 9)
+                //save the db from each of those hz bin locations into a spectrum array
+                _spectrum.append(fftResult!.decibels[_binLocs[i]])
+            }
+            
+            //what sensor is this?
             let sensorPosition:Int = getSensorPosition(from: fftResult!.sensor)
     
-            sensors[sensorPosition].updatePsd(
-                psd: XvMuseEEGPsd(
-                    magnitudes: fftResult!.magnitudes,
-                    decibels: fftResult!.decibels
-                )
-            )
-            
-            //only run these calculation if this varible (passed in at initiation) wants these extra computations
-            //the alternative is to custom perform these region and wave computations inside the parent application
-//            if (eegWavesAndRegionProcessing){
-//
-//                //MARK: 2. Update wave objects
-//                for wave in waves { wave.update(with: sensors) }
-//
-//                //MARK: 3. Update regions
-//                front.update(with: [sensors[1], sensors[2]])
-//                sides.update(with: [sensors[0], sensors[3]])
-//                left.update( with: [sensors[0], sensors[1]])
-//                right.update(with: [sensors[2], sensors[3]])
-//
-//                //MARK: 4. Reset averaging processors for entire EEG
-//                //reset data on averaging processors
-//                _cache.update(with: sensors)
-//            }
+            //save spectrum into the sensor
+            sensors[sensorPosition].update(spectrum: _spectrum)
         }
     }
     
     //MARK: - AVERAGED VALUES -
     
     //fileprivate var _cache:SensorCache = SensorCache()
-    
-    //MARK: Magnitudes
-    //example: eeg.magnitudes
-//    public var magnitudes:[Double] {
-//        get { return _cache.getMagnitudes() }
-//    }
     
     //MARK: - Decibels
     //example: eeg.decibels
@@ -266,10 +180,10 @@ public class XvMuseEEG {
     
     
     //MARK: Get bins
-    public func getBins(fromFrequencyRange:[Double]) -> [Int] {
-        
-        return _fm.getBinsFor(frequencyRange: fromFrequencyRange)
-    }
+//    public func getBins(fromFrequencyRange:[Double]) -> [Int] {
+//
+//        return _fm.getBinsFor(frequencyRange: fromFrequencyRange)
+//    }
     
     //MARK: Get bin slices
 //    public func getDecibelSlice(fromBinRange:[Int]) -> [Double] {
