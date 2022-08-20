@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		BB0962FC24B287F600D516D5 /* XvMuseEEGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */; };
+		BB14EEB128B1A08900B2A14D /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */; };
+		BB14EEB228B1A08900B2A14D /* XvSensors.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */; };
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
 		BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */; };
@@ -50,8 +52,33 @@
 		BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFCA51F24D879CF00516180 /* DataCaches.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		BB14EEAE28B1A06F00B2A14D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = BB14EE8328B19E4C00B2A14D;
+			remoteInfo = XvSensors;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB14EEB328B1A08900B2A14D /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				BB14EEB228B1A08900B2A14D /* XvSensors.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		BB0962FB24B287F600D516D5 /* XvMuseEEGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGSensor.swift; sourceTree = "<group>"; };
+		BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvSensors.xcodeproj; path = ../../XvSensors/XvSensors.xcodeproj; sourceTree = "<group>"; };
 		BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGWave.swift; sourceTree = "<group>"; };
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
 		BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGHistory.swift; sourceTree = "<group>"; };
@@ -101,6 +128,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB14EEB128B1A08900B2A14D /* XvSensors.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,6 +166,21 @@
 			path = "Mock Data";
 			sourceTree = "<group>";
 		};
+		BB14EEAB28B1A06F00B2A14D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BB14EEB028B1A08900B2A14D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		BB348905278545F200E6685C /* Archive */ = {
 			isa = PBXGroup;
 			children = (
@@ -151,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				BB57F88A2496B01C003DB78A /* XvMuse */,
+				BB14EEB028B1A08900B2A14D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -166,6 +210,7 @@
 		BB57F88A2496B01C003DB78A /* XvMuse */ = {
 			isa = PBXGroup;
 			children = (
+				BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */,
 				BB57F8952496B05F003DB78A /* XvMuse.swift */,
 				BB57F8A02496B268003DB78A /* XvMuseConstants.swift */,
 				BB8B857824B118E200376FD4 /* XvMuseEEG.swift */,
@@ -283,6 +328,7 @@
 				BB57F8842496B01B003DB78A /* Sources */,
 				BB57F8852496B01B003DB78A /* Frameworks */,
 				BB57F8862496B01B003DB78A /* Resources */,
+				BB14EEB328B1A08900B2A14D /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -319,12 +365,28 @@
 			mainGroup = BB57F87E2496B01B003DB78A;
 			productRefGroup = BB57F8892496B01B003DB78A /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = BB14EEAB28B1A06F00B2A14D /* Products */;
+					ProjectRef = BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				BB57F8872496B01B003DB78A /* XvMuse */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = XvSensors.framework;
+			remoteRef = BB14EEAE28B1A06F00B2A14D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		BB57F8862496B01B003DB78A /* Resources */ = {

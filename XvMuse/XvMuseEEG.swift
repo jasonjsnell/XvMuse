@@ -95,6 +95,7 @@ public class XvMuseEEG {
         //so when the fft result is valid...
         if (fftResult != nil) {
             
+            //MARK: Convert FFT result into Hz bin spectrum
             //temp, local array
             var _spectrum:[Double] = []
             
@@ -106,15 +107,52 @@ public class XvMuseEEG {
                 _spectrum.append(fftResult!.decibels[_binLocs[i]])
             }
             
+            
+            //MARK: Save spectrum into the correct sensor
             //what sensor is this?
             let sensorPosition:Int = getSensorPosition(from: fftResult!.sensor)
     
             //save spectrum into the sensor
             sensors[sensorPosition].update(spectrum: _spectrum)
+            
+            
+            //MARK: Create device's average spectrum
+            //for device averaged spectrum
+            _spectrums.append(_spectrum)
+            
+            //once the 4 sensors populate the _spectrums array...
+            if (_spectrums.count >= sensors.count){
+                
+                //calculate the average spectrum from the spectrums from the 4 sensors
+                if let avg:[Double] = getAverageByIndex(arrays: _spectrums) {
+                    
+                    //save into the public var
+                    spectrum = avg
+                    
+                    //reset the spectrums array so it can be populated again
+                    _spectrums = []
+                }
+            }
         }
     }
     
     //MARK: - AVERAGED VALUES -
+    
+    public var spectrum:[Double] = []
+    fileprivate var _spectrums:[[Double]] = []
+    
+    fileprivate func getAverageByIndex(arrays:[[Double]]) -> [Double]? {
+        
+        guard let length = arrays.first?.count else { return [] }
+
+        // check all the elements have the same length, otherwise returns nil
+        guard !arrays.contains(where:{ $0.count != length }) else { return nil }
+
+        return (0..<length).map { index in
+            let sum = arrays.map { $0[index] }.reduce(0, +)
+            return sum / Double(arrays.count)
+        }
+    }
     
     //fileprivate var _cache:SensorCache = SensorCache()
     

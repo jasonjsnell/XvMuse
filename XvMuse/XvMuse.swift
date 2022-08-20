@@ -11,6 +11,7 @@
 
 import Foundation
 import CoreBluetooth
+import XvSensors
 
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseDelegate:AnyObject {
@@ -18,16 +19,16 @@ public protocol XvMuseDelegate:AnyObject {
     //syntax:
     //didReceiveUpdate from sensor
     //didReceive object
-    
-    func didReceiveUpdate(from eeg:XvMuseEEG)
+
+    func didReceiveUpdate(from eeg:XvEEG)
     //func didReceive(eegPacket:XvMuseEEGPacket)
     
-    func didReceiveUpdate(from ppg:XvMusePPG)
-    func didReceive(ppgHeartEvent:XvMusePPGHeartEvent)
+    func didReceiveUpdate(from ppg:XvPPG)
+    func didReceive(ppgHeartEvent:XvPPGHeartEvent)
     //func didReceive(ppgPacket:XvMusePPGPacket)
     
-    func didReceiveUpdate(from accelerometer:XvMuseAccelerometer)
-    func didReceiveUpdate(from battery:XvMuseBattery)
+    func didReceiveUpdate(from accelerometer:XvAccel)
+    func didReceiveUpdate(from battery:XvBattery)
     
     func didReceive(commandResponse:[String:Any])
     
@@ -111,7 +112,7 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - Mock Data
     //only engage mock data objects when called directly from external program
     fileprivate let _mockEEGData:[XvMockEEGData] = [MockEEGTiredData(), MockEEGMeditationData(), MockEEGStressData(), MockEEGNoiseData()]
-    public func getMockEEG(id:Int) -> XvMuseEEG {
+    public func getMockEEG(id:Int) -> XvEEG {
         
         //keep in bounds
         var dataID:Int = id
@@ -126,11 +127,11 @@ public class XvMuse:MuseBluetoothObserver {
             _mockEEG.update(with: _fft.process(eegPacket: mockEEGPacket))
         }
         //after the four sensors are processed, return the object to use by the application
-        return _mockEEG
+        return convert(museEEG: _mockEEG) 
         
     }
     fileprivate let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGMeditationData(), MockPPGStressData(), MockPPGNoiseData()]
-    public func getMockPPG(id:Int) -> XvMusePPG {
+    public func getMockPPG(id:Int) -> XvPPG {
        
         //keep in bounds
         var dataID:Int = id
@@ -141,17 +142,17 @@ public class XvMuse:MuseBluetoothObserver {
         
         //process middle sensor
         let mockPPGPacket:XvMusePPGPacket = _mockPPGData[dataID].getPacket()
-        if let heartEvent:XvMusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
+        if let mockHeartEvent:XvMusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
             
             //broadcast the heart event
-            delegate?.didReceive(ppgHeartEvent: heartEvent)
+            delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: mockHeartEvent))
         }
         
         //send to delegate if application wants to visualize the ppg buffer
-        delegate?.didReceiveUpdate(from: _mockPPG)
+        delegate?.didReceiveUpdate(from: convert(musePPG: _mockPPG))
        
         //after the sensors are processed, return the object to use by the application
-        return _mockPPG
+        return convert(musePPG: _mockPPG) 
     }
     
     
@@ -278,7 +279,7 @@ public class XvMuse:MuseBluetoothObserver {
                  _eeg.update(with: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  
                  //only broadcast the XvMuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 delegate?.didReceiveUpdate(from: _eeg)
+                 delegate?.didReceiveUpdate(from: convert(museEEG: _eeg))
                 
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG2:
@@ -297,11 +298,13 @@ public class XvMuse:MuseBluetoothObserver {
                 if let heartEvent:XvMusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
                     
                     //broadcast the heart event
-                     delegate?.didReceive(ppgHeartEvent: heartEvent)
+                     delegate?.didReceive(
+                        ppgHeartEvent: convert(musePPGHeartEvent: heartEvent)
+                     )
                 }
                 
                 //send ppg object once per round so application can access the buffer for visualization, etc...
-                delegate?.didReceiveUpdate(from: _ppg)
+                delegate?.didReceiveUpdate(from: convert(musePPG: _ppg))
                 
             case XvMuseConstants.CHAR_ACCEL:
                 
@@ -319,7 +322,7 @@ public class XvMuse:MuseBluetoothObserver {
                 _accel.y = _parser.getXYZ(values: _accel.raw, start: 1)
                 _accel.z = _parser.getXYZ(values: _accel.raw, start: 2)
                 
-                delegate?.didReceiveUpdate(from: _accel)
+                delegate?.didReceiveUpdate(from: convert(museAccel: _accel))
                 
             case XvMuseConstants.CHAR_BATTERY:
                
@@ -339,7 +342,7 @@ public class XvMuse:MuseBluetoothObserver {
                 //parse the percentage
                 _battery.percentage = _battery.raw[0] / XvMuseConstants.BATTERY_PCT_DIVIDEND
                 
-                delegate?.didReceiveUpdate(from: _battery)
+                delegate?.didReceiveUpdate(from: convert(museBattery: _battery))
 
             case XvMuseConstants.CHAR_CONTROL:
                 
@@ -403,5 +406,41 @@ public class XvMuse:MuseBluetoothObserver {
     public func didLoseConnection() {
         connected = false
         delegate?.museLostConnection()
+    }
+    
+    //MARK: - Converters -
+    
+    fileprivate func convert(museEEG:XvMuseEEG) -> XvEEG {
+        
+        return XvEEG(
+            TP9: XvEEGSensor(spectrum: museEEG.TP9.spectrum),
+            FP1: XvEEGSensor(spectrum: museEEG.FP1.spectrum),
+            FP2: XvEEGSensor(spectrum: museEEG.FP2.spectrum),
+            TP10: XvEEGSensor(spectrum: museEEG.TP10.spectrum)
+        )
+    }
+    
+    fileprivate func convert(musePPG:XvMusePPG) -> XvPPG {
+        return XvPPG(waveform: musePPG.buffer)
+    }
+    
+    fileprivate func convert(musePPGHeartEvent:XvMusePPGHeartEvent) -> XvPPGHeartEvent {
+        return XvPPGHeartEvent(
+            amplitude: musePPGHeartEvent.amplitude,
+            bpm: musePPGHeartEvent.bpm,
+            hrv: musePPGHeartEvent.hrv
+        )
+    }
+    
+    fileprivate func convert(museAccel:XvMuseAccelerometer) -> XvAccel {
+        return XvAccel(
+            x: museAccel.x,
+            y: museAccel.y,
+            z: museAccel.z
+        )
+    }
+    
+    fileprivate func convert(museBattery:XvMuseBattery) -> XvBattery {
+        return XvBattery(percentage: museBattery.percentage)
     }
 }
