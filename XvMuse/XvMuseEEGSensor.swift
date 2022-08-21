@@ -19,7 +19,7 @@ public class XvMuseEEGSensor {
     }
     
     public var spectrum:[Double] { get { return _spectrum } }
-    fileprivate var _spectrum:[Double] = [0]
+    fileprivate var _spectrum:[Double] = []
     
     //MARK: - INIT
     init(){}
