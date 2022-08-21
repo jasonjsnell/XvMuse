@@ -60,7 +60,7 @@ class Buffer {
     init(sensor:Int) {
         
         //set the max for the samples and timestamps arrays
-        self._samplesMax = XvMuseConstants.EEG_FFT_BINS
+        self._samplesMax = MuseConstants.EEG_FFT_BINS
         
         //number of timestamps is the length of the sample buffer (ex: 256)
         //divided by 12 samples per incoming packet (12)
@@ -73,7 +73,7 @@ class Buffer {
     }
     
     //fileprivate var _buffer:DataBuffer = DataBuffer()
-    public func add(packet:XvMuseEEGPacket) -> DataStream? {
+    public func add(packet:MuseEEGPacket) -> DataStream? {
         
         //MARK: Samples
         //copy the packet's samples into the sample stream

@@ -10,7 +10,7 @@ import Foundation
 import CoreBluetooth
 
 //the observer receives the values coming in from bluetooth
-public protocol MuseBluetoothObserver:AnyObject {
+internal protocol MuseBluetoothObserver:AnyObject {
     func parse(bluetoothCharacteristic: CBCharacteristic)
     
     //steps of connecting, disconnecting
@@ -23,7 +23,7 @@ public protocol MuseBluetoothObserver:AnyObject {
 public class MuseBluetooth:XvBluetoothObserver {
     
     fileprivate let bluetooth:XvBluetooth
-    public var observer:MuseBluetoothObserver?
+    internal var observer:MuseBluetoothObserver?
     fileprivate var deviceID:CBUUID?
     
     public init(deviceCBUUID:CBUUID?) {
@@ -44,20 +44,20 @@ public class MuseBluetooth:XvBluetoothObserver {
         bluetooth.addListener(
             observer: self,
             deviceUUID: deviceID,
-            serviceUUID: XvMuseConstants.SERVICE_ID,
+            serviceUUID: MuseConstants.SERVICE_ID,
             characteristicsUUIDs: [
-                XvMuseConstants.CHAR_CONTROL,
-                XvMuseConstants.CHAR_TP9,
-                XvMuseConstants.CHAR_AF7,
-                XvMuseConstants.CHAR_AF8,
-                XvMuseConstants.CHAR_TP10,
+                MuseConstants.CHAR_CONTROL,
+                MuseConstants.CHAR_TP9,
+                MuseConstants.CHAR_AF7,
+                MuseConstants.CHAR_AF8,
+                MuseConstants.CHAR_TP10,
                 //XvMuseConstants.CHAR_RAUX,
                 //XvMuseConstants.CHAR_GYRO,
-                XvMuseConstants.CHAR_ACCEL,
-                XvMuseConstants.CHAR_BATTERY,
-                XvMuseConstants.CHAR_PPG1,
-                XvMuseConstants.CHAR_PPG2,
-                XvMuseConstants.CHAR_PPG3
+                MuseConstants.CHAR_ACCEL,
+                MuseConstants.CHAR_BATTERY,
+                MuseConstants.CHAR_PPG1,
+                MuseConstants.CHAR_PPG2,
+                MuseConstants.CHAR_PPG3
             ]
         )
     }
@@ -154,14 +154,14 @@ public class MuseBluetooth:XvBluetoothObserver {
         //reset connection time
         connectionStartTime = Date()
         
-        let data:Data = Data(_:XvMuseConstants.CMND_RESUME)
+        let data:Data = Data(_:MuseConstants.CMND_RESUME)
         sendControlCommand(data: data)
     }
     
     //pause the stream
     public func pauseStreaming(){
         
-        let data:Data = Data(_:XvMuseConstants.CMND_HALT)
+        let data:Data = Data(_:MuseConstants.CMND_HALT)
         sendControlCommand(data: data)
     }
     
@@ -169,44 +169,44 @@ public class MuseBluetooth:XvBluetoothObserver {
     public func versionHandshake(){
         
         //device info is the way to set the command protocol to V2
-        let data:Data = Data(_:XvMuseConstants.CMND_VERSION_HANDSHAKE)
+        let data:Data = Data(_:MuseConstants.CMND_VERSION_HANDSHAKE)
         sendControlCommand(data: data)
     }
     
     public func set(hostPlatform:UInt8){
         
-        var hostHex:UInt8 = XvMuseConstants.HOST_PLATFORM_MAC_HEX
+        var hostHex:UInt8 = MuseConstants.HOST_PLATFORM_MAC_HEX
         
         switch hostPlatform {
         
-        case XvMuseConstants.HOST_PLATFORM_IOS,
-             XvMuseConstants.HOST_PLATFORM_IOS_HEX:
+        case MuseConstants.HOST_PLATFORM_IOS,
+             MuseConstants.HOST_PLATFORM_IOS_HEX:
             print("MuseBluetooth: Set Host Platform to iOS")
-            hostHex = XvMuseConstants.HOST_PLATFORM_IOS_HEX
-        case XvMuseConstants.HOST_PLATFORM_ANDROID,
-             XvMuseConstants.HOST_PLATFORM_ANDROID_HEX:
+            hostHex = MuseConstants.HOST_PLATFORM_IOS_HEX
+        case MuseConstants.HOST_PLATFORM_ANDROID,
+             MuseConstants.HOST_PLATFORM_ANDROID_HEX:
             print("MuseBluetooth: Set Host Platform to Android")
-            hostHex = XvMuseConstants.HOST_PLATFORM_ANDROID_HEX
-        case XvMuseConstants.HOST_PLATFORM_WINDOWS,
-             XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX:
+            hostHex = MuseConstants.HOST_PLATFORM_ANDROID_HEX
+        case MuseConstants.HOST_PLATFORM_WINDOWS,
+             MuseConstants.HOST_PLATFORM_WINDOWS_HEX:
             print("MuseBluetooth: Set Host Platform to Windows")
-            hostHex = XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX
-        case XvMuseConstants.HOST_PLATFORM_MAC,
-             XvMuseConstants.HOST_PLATFORM_MAC_HEX:
+            hostHex = MuseConstants.HOST_PLATFORM_WINDOWS_HEX
+        case MuseConstants.HOST_PLATFORM_MAC,
+             MuseConstants.HOST_PLATFORM_MAC_HEX:
             print("MuseBluetooth: Set Host Platform to Mac")
-            hostHex = XvMuseConstants.HOST_PLATFORM_MAC_HEX
-        case XvMuseConstants.HOST_PLATFORM_LINUX,
-             XvMuseConstants.HOST_PLATFORM_LINUX_HEX:
+            hostHex = MuseConstants.HOST_PLATFORM_MAC_HEX
+        case MuseConstants.HOST_PLATFORM_LINUX,
+             MuseConstants.HOST_PLATFORM_LINUX_HEX:
             print("MuseBluetooth: Set Host Platform to Linux")
-            hostHex = XvMuseConstants.HOST_PLATFORM_LINUX_HEX
+            hostHex = MuseConstants.HOST_PLATFORM_LINUX_HEX
         default:
             print("MuseBluetooth: Error: Host Platform ID", hostPlatform)
             break
         }
     
-        var hostPlatformCmnd:[UInt8] = XvMuseConstants.CMND_HOST_PLATFORM_PRE
+        var hostPlatformCmnd:[UInt8] = MuseConstants.CMND_HOST_PLATFORM_PRE
         hostPlatformCmnd.append(hostHex)
-        hostPlatformCmnd.append(XvMuseConstants.CMND_HOST_PLATFORM_POST)
+        hostPlatformCmnd.append(MuseConstants.CMND_HOST_PLATFORM_POST)
         
         let data:Data = Data(_:hostPlatformCmnd)
         sendControlCommand(data: data)
@@ -216,26 +216,26 @@ public class MuseBluetooth:XvBluetoothObserver {
         
         print("MuseBluetooth: Set Preset to", preset)
         
-        var presetHex:[UInt8] = XvMuseConstants.P21_HEX //default
+        var presetHex:[UInt8] = MuseConstants.P21_HEX //default
         
         switch preset {
         
-        case XvMuseConstants.PRESET_20:
-            presetHex = XvMuseConstants.P20_HEX
-        case XvMuseConstants.PRESET_21:
-            presetHex = XvMuseConstants.P21_HEX
-        case XvMuseConstants.PRESET_22:
-            presetHex = XvMuseConstants.P22_HEX
-        case XvMuseConstants.PRESET_23:
-            presetHex = XvMuseConstants.P23_HEX
+        case MuseConstants.PRESET_20:
+            presetHex = MuseConstants.P20_HEX
+        case MuseConstants.PRESET_21:
+            presetHex = MuseConstants.P21_HEX
+        case MuseConstants.PRESET_22:
+            presetHex = MuseConstants.P22_HEX
+        case MuseConstants.PRESET_23:
+            presetHex = MuseConstants.P23_HEX
         default:
             print("MuseBluetooth: Error: Preset ID", preset)
             break
         }
         
-        var presetCmnd:[UInt8] = XvMuseConstants.CMND_PRESET_PRE
+        var presetCmnd:[UInt8] = MuseConstants.CMND_PRESET_PRE
         presetCmnd += presetHex
-        presetCmnd.append(XvMuseConstants.CMND_PRESET_POST)
+        presetCmnd.append(MuseConstants.CMND_PRESET_POST)
         
         let data:Data = Data(_:presetCmnd)
         sendControlCommand(data: data)
@@ -243,7 +243,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     public func resetMuse(){
         print("MuseBluetooth: Reset Muse")
-        let data:Data = Data(_:XvMuseConstants.CMND_RESET)
+        let data:Data = Data(_:MuseConstants.CMND_RESET)
         sendControlCommand(data: data)
     }
     
@@ -252,13 +252,13 @@ public class MuseBluetooth:XvBluetoothObserver {
     //get status, including battery power (bp)
     public func controlStatus(){
         
-        let data:Data = Data(_:XvMuseConstants.CMND_STATUS)
+        let data:Data = Data(_:MuseConstants.CMND_STATUS)
         sendControlCommand(data: data)
     }
     
     //internal
     internal func keepAlive(){
-        let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
+        let data:Data = Data(_:MuseConstants.CMND_KEEP)
         sendControlCommand(data: data)
     }
     
@@ -270,7 +270,7 @@ public class MuseBluetooth:XvBluetoothObserver {
             bluetooth.write(
                 data:data,
                 toDeviceWithID: deviceID!,
-                forCharacteristicWithID: XvMuseConstants.CHAR_CONTROL,
+                forCharacteristicWithID: MuseConstants.CHAR_CONTROL,
                 withType: .withoutResponse
             )
             

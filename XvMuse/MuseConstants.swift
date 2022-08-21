@@ -9,7 +9,7 @@
 import Foundation
 import CoreBluetooth
 
-public class XvMuseConstants {
+internal class MuseConstants {
     
     public static let EEG_SENSOR_TOTAL:Int = 4
     

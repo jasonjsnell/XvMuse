@@ -9,7 +9,7 @@
 import Foundation
 
 
-public class XvMusePPGHeartEvent {
+internal class MusePPGHeartEvent {
     
     public init(amplitude:Double = 0.0, bpm:Double = 0.0, hrv:Double = 0.0) {
         self.amplitude = amplitude
@@ -21,18 +21,18 @@ public class XvMusePPGHeartEvent {
     public var hrv:Double
 }
 
-public class XvMusePPG {
+internal class MusePPG {
     
     //MARK: Init
     
     init(){
-        sensors = [XvMusePPGSensor(id:0), XvMusePPGSensor(id:1), XvMusePPGSensor(id:2)]
+        sensors = [MusePPGSensor(id:0), MusePPGSensor(id:1), MusePPGSensor(id:2)]
         _ppgAnalyzer = PPGAnalyzer()
         buffer = []
     }
     
     public var buffer:[Double]
-    public var sensors:[XvMusePPGSensor]
+    internal var sensors:[MusePPGSensor]
 
     fileprivate let _ppgAnalyzer:PPGAnalyzer
     fileprivate var prevAvg:Double = 0.0
@@ -43,7 +43,7 @@ public class XvMusePPG {
     //MARK: Packet processing
     //basic update each time the PPG sensors send in new data
     
-    internal func getHeartEvent(from ppgPacket:XvMusePPGPacket) -> XvMusePPGHeartEvent? {
+    internal func getHeartEvent(from ppgPacket:MusePPGPacket) -> MusePPGHeartEvent? {
         
         //generate buffer and return
         if let buffer:[Double] = sensors[1].getBuffer(from: ppgPacket) {
@@ -79,7 +79,7 @@ public class XvMusePPG {
                         let ppgAnalysisPacket:PPGAnalysisPacket = _ppgAnalyzer.update(with: ppgPacket.timestamp)
                         
                         //and return a heart event with peak and bpm data
-                        return XvMusePPGHeartEvent(
+                        return MusePPGHeartEvent(
                             amplitude: recentValues.max()!, //return the highest value from the recent values in buffer
                             bpm: ppgAnalysisPacket.bpm,
                             hrv: ppgAnalysisPacket.hrv

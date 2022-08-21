@@ -8,7 +8,7 @@
 
 import Foundation
 
-public class XvMuseEEGSensor {
+internal class MuseEEGSensor {
     
     //MARK: - DATA UPDATE -
     //example: eeg.TP10.decibels

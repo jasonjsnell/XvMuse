@@ -61,18 +61,18 @@ public class FFT {
     fileprivate var _buffers:[Buffer] = []
     fileprivate var _epochGenerator:EpochGenerator = EpochGenerator()
     fileprivate var _ffTransformer:FFTransformer = FFTransformer(
-        bins: XvMuseConstants.EEG_FFT_BINS
+        bins: MuseConstants.EEG_FFT_BINS
     )
     
-    public init() {
+    internal init() {
         
-        for i in 0..<XvMuseConstants.EEG_SENSOR_TOTAL {
+        for i in 0..<MuseConstants.EEG_SENSOR_TOTAL {
             _buffers.append(Buffer(sensor:i))
         }
     }
     
     //An eeg data packet is sent in from the XvMuse class
-    public func process(eegPacket:XvMuseEEGPacket) -> FFTResult? {
+    internal func process(eegPacket:MuseEEGPacket) -> FFTResult? {
         
         // once the buffer is full (it needs a few seconds of data before it can provide a stream)...
         if let dataStream:DataStream = _buffers[eegPacket.sensor].add(packet: eegPacket) {

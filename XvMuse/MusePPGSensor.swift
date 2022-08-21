@@ -24,7 +24,7 @@ struct PPGSignalPacket {
     }
 }
 
-public class XvMusePPGSensor {
+internal class MusePPGSensor {
     
     fileprivate var id:Int
     
@@ -49,7 +49,7 @@ public class XvMusePPGSensor {
     fileprivate var _maxCount:Int = 128
     fileprivate var _rawSamples:[Double] = []
 
-    internal func getBuffer(from packet:XvMusePPGPacket) -> [Double]? {
+    internal func getBuffer(from packet:MusePPGPacket) -> [Double]? {
         
         //add to the existing array
         _rawSamples += packet.samples

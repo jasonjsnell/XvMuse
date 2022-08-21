@@ -21,7 +21,7 @@ class MockPPGData {
         SENSOR_1_DATA = []
     }
     
-    func getPacket() -> XvMusePPGPacket {
+    func getPacket() -> MusePPGPacket {
         
         //increase packet index within range of UInt16
         packetIndex += 1
@@ -30,7 +30,7 @@ class MockPPGData {
         //grab timestamp
         let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
         
-        return XvMusePPGPacket(
+        return MusePPGPacket(
             packetIndex: packetIndex,
             sensor: 1,
             timestamp: timestamp,

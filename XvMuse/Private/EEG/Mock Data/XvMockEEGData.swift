@@ -26,7 +26,7 @@ public class XvMockEEGData {
     internal var sensorsData:[[[UInt8]]]
     fileprivate var byteCounters:[Int] = [0,0,0,0]
     
-    func getPacket(for sensor:Int) -> XvMuseEEGPacket {
+    func getPacket(for sensor:Int) -> MuseEEGPacket {
         
         //increase packet index within range of UInt16
         packetIndex += 1
@@ -35,7 +35,7 @@ public class XvMockEEGData {
         //grab timestamp
         let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
         
-       return XvMuseEEGPacket(
+       return MuseEEGPacket(
             packetIndex: packetIndex,
             sensor: sensor,
             timestamp: timestamp,

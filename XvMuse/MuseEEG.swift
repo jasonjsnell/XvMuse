@@ -23,25 +23,25 @@ import Foundation
  
  */
 
-public class XvMuseEEG {
+internal class MuseEEG {
 
     //MARK: - SENSORS -
     
     //return in the order of left ear, left forehead, right forehead, right ear
-    public var sensors:[XvMuseEEGSensor]
+    public var sensors:[MuseEEGSensor]
     
     //Access the sensors by either their technical location (TP9) or head location (leftEar)
-    public var leftEar:XvMuseEEGSensor       { get { return sensors[0] } }
-    public var TP9:XvMuseEEGSensor           { get { return sensors[0] } }
+    public var leftEar:MuseEEGSensor       { get { return sensors[0] } }
+    public var TP9:MuseEEGSensor           { get { return sensors[0] } }
     
-    public var leftForehead:XvMuseEEGSensor  { get { return sensors[1] } }
-    public var FP1:XvMuseEEGSensor           { get { return sensors[1] } }
+    public var leftForehead:MuseEEGSensor  { get { return sensors[1] } }
+    public var FP1:MuseEEGSensor           { get { return sensors[1] } }
     
-    public var rightForehead:XvMuseEEGSensor { get { return sensors[2] } }
-    public var FP2:XvMuseEEGSensor           { get { return sensors[2] } }
+    public var rightForehead:MuseEEGSensor { get { return sensors[2] } }
+    public var FP2:MuseEEGSensor           { get { return sensors[2] } }
     
-    public var rightEar:XvMuseEEGSensor      { get { return sensors[3] } }
-    public var TP10:XvMuseEEGSensor          { get { return sensors[3] } }
+    public var rightEar:MuseEEGSensor      { get { return sensors[3] } }
+    public var TP10:MuseEEGSensor          { get { return sensors[3] } }
     
     // the muse fires in the sequences of:
     //0 TP10: right ear
@@ -67,7 +67,7 @@ public class XvMuseEEG {
         //they are the entry point into this system from the Muse hardware
         //example: for sensor in eeg.sensors { }
         
-        sensors = [XvMuseEEGSensor(), XvMuseEEGSensor(), XvMuseEEGSensor(), XvMuseEEGSensor()]
+        sensors = [MuseEEGSensor(), MuseEEGSensor(), MuseEEGSensor(), MuseEEGSensor()]
         
         //make sure frequency range is an array of two values
         if (frequencyRange.count == 2) {
