@@ -21,10 +21,6 @@ public class XvMuseEEGSensor {
     public var spectrum:[Double] { get { return _spectrum } }
     fileprivate var _spectrum:[Double] = [0]
     
-    //Special setters for combining EEG objects into a multi-user eeg
-    public func set(spectrum:[Double]) { _spectrum = spectrum }
-
-    
     //MARK: - INIT
     init(){}
     
