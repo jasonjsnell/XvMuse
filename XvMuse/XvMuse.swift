@@ -410,19 +410,19 @@ public class XvMuse:MuseBluetoothObserver {
         return XvEEGPacket(
             sensors: [
                 XvEEGSensorPacket(
-                    a: XvEEGArea.TP, i:9,
+                    a: XvEEGArea.TP.rawValue, i:9,
                     spectrum: museEEG.TP9.spectrum
                 ),
                 XvEEGSensorPacket(
-                    a: XvEEGArea.FP, i:1,
+                    a: XvEEGArea.FP.rawValue, i:1,
                     spectrum: museEEG.FP1.spectrum
                 ),
                 XvEEGSensorPacket(
-                    a: XvEEGArea.FP, i:2,
+                    a: XvEEGArea.FP.rawValue, i:2,
                     spectrum: museEEG.FP2.spectrum
                 ),
                 XvEEGSensorPacket(
-                    a: XvEEGArea.TP, i:10,
+                    a: XvEEGArea.TP.rawValue, i:10,
                     spectrum: museEEG.TP10.spectrum
                 )
             ]
