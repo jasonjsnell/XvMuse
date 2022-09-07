@@ -91,7 +91,7 @@ internal struct MuseAccel {
 //MARK: Battery
 internal struct MuseBattery {
     internal var packetIndex:UInt16 = 0
-    internal var percentage:UInt16 = 0
+    internal var percentage:Int16 = 0
     internal var raw:[UInt16] = []
 }
 
@@ -335,7 +335,7 @@ public class XvMuse:MuseBluetoothObserver {
                 _battery.raw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
                 
                 //parse the percentage
-                _battery.percentage = _battery.raw[0] / MuseConstants.BATTERY_PCT_DIVIDEND
+                _battery.percentage = Int16(_battery.raw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
                 
                 delegate?.didReceiveUpdate(from: convert(museBattery: _battery))
 
