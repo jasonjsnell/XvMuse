@@ -15,6 +15,7 @@ internal protocol MuseBluetoothObserver:AnyObject {
     
     //steps of connecting, disconnecting
     func isConnecting()
+    func didFindNew(device:String)
     func didConnect()
     func didDisconnect()
     func didLoseConnection()
@@ -26,16 +27,18 @@ public class MuseBluetooth:XvBluetoothObserver {
     internal var observer:MuseBluetoothObserver?
     fileprivate var deviceID:CBUUID?
     
-    public init(deviceCBUUID:CBUUID?) {
+    public init() {
         
         //connection time counter
         timeFormatter = DateComponentsFormatter()
         timeFormatter.allowedUnits = [.second]
         
-        //bluetooth
-        deviceID = deviceCBUUID
-        
+        //bluetooth object
         bluetooth = XvBluetooth()
+    }
+    
+    internal func load(deviceCBUUID:CBUUID?) {
+        deviceID = deviceCBUUID
     }
     
     internal func start(){
@@ -69,8 +72,13 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     public func discovered(targetDevice: CBPeripheral) {
-        print("XvMuse: Discovered target device:", targetDevice.identifier.uuidString)
-        observer?.isConnecting()
+        if (targetDevice.identifier.uuidString == deviceID?.uuidString) {
+            print("XvMuse: Discovered target device:", targetDevice.identifier.uuidString)
+            observer?.isConnecting()
+        } else {
+            print("XvMuse: Discovered new device:", targetDevice.identifier.uuidString)
+            observer?.didFindNew(device: targetDevice.identifier.uuidString)
+        }
     }
     
     public func discovered(nearbyDevice: CBPeripheral) {
@@ -141,10 +149,12 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
     public func connect(){
+        print("MuseBluetooth: Connect")
         bluetooth.connect()
     }
     
     public func disconnect(){
+        print("MuseBluetooth: Disconnect")
         bluetooth.disconnect()
     }
     
