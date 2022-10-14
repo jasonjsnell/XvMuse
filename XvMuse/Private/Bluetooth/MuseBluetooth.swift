@@ -15,30 +15,28 @@ internal protocol MuseBluetoothObserver:AnyObject {
     
     //steps of connecting, disconnecting
     func isConnecting()
-    func didFindNew(device:String)
     func didConnect()
     func didDisconnect()
     func didLoseConnection()
+    func didFindNearby(device:String)
 }
 
 public class MuseBluetooth:XvBluetoothObserver {
     
     fileprivate let bluetooth:XvBluetooth
-    internal var observer:MuseBluetoothObserver?
+    internal var delegate:MuseBluetoothObserver?
     fileprivate var deviceID:CBUUID?
     
-    public init() {
+    public init(deviceCBUUID:CBUUID?) {
         
         //connection time counter
         timeFormatter = DateComponentsFormatter()
         timeFormatter.allowedUnits = [.second]
         
-        //bluetooth object
-        bluetooth = XvBluetooth()
-    }
-    
-    internal func load(deviceCBUUID:CBUUID?) {
+        //bluetooth
         deviceID = deviceCBUUID
+        
+        bluetooth = XvBluetooth()
     }
     
     internal func start(){
@@ -64,6 +62,9 @@ public class MuseBluetooth:XvBluetoothObserver {
             ]
         )
     }
+    func stop(){
+        bluetooth.removeAllListeners()
+    }
     
     
     //MARK: - Updates from the Muse headband via Bluetooth -
@@ -74,10 +75,9 @@ public class MuseBluetooth:XvBluetoothObserver {
     public func discovered(targetDevice: CBPeripheral) {
         if (targetDevice.identifier.uuidString == deviceID?.uuidString) {
             print("XvMuse: Discovered target device:", targetDevice.identifier.uuidString)
-            observer?.isConnecting()
+            delegate?.isConnecting()
         } else {
-            print("XvMuse: Discovered new device:", targetDevice.identifier.uuidString)
-            observer?.didFindNew(device: targetDevice.identifier.uuidString)
+            print("XvMuse: Discovered unregistered device:", targetDevice.identifier.uuidString)
         }
     }
     
@@ -86,27 +86,36 @@ public class MuseBluetooth:XvBluetoothObserver {
         //does the nearby device have a name with "Muse" in the string?
         if nearbyDevice.name?.contains("Muse") ?? false {
             
+            print("Discovered", nearbyDevice.name!, "nearby headband with ID:", nearbyDevice.identifier.uuidString)
+            
+            //stop the search
+            stop()
+            
+            //send ID back to top so it can be loaded from scratch into system
+            delegate?.didFindNearby(device: nearbyDevice.identifier.uuidString)
+            
             //if so, print results and init instructions
-            print("")
-            print("----------------------------")
-            print("")
-            print("Discovered", nearbyDevice.name!, "headband with ID:", nearbyDevice.identifier.uuidString)
-            print("")
-            print("Use the line below to intialize the XvMuse framework with this Muse device.")
-            print("")
-            print("let muse:XvMuse = XvMuse(deviceID: \"\(nearbyDevice.identifier.uuidString)\")")
-            print("")
-            print("----------------------------")
-            print("")
+//            print("")
+//            print("----------------------------")
+//            print("")
+//            print("Discovered", nearbyDevice.name!, "headband with ID:", nearbyDevice.identifier.uuidString)
+//            print("")
+//            print("Use the line below to intialize the XvMuse framework with this Muse device.")
+//            print("")
+//            print("let muse:XvMuse = XvMuse(deviceID: \"\(nearbyDevice.identifier.uuidString)\")")
+//            print("")
+//            print("----------------------------")
+//            print("")
             
         }
-        print("Discovered non-Muse Bluetooth device:", nearbyDevice.identifier.uuidString)
+        print("Searching...")
+        //print("Discovered non-Muse Bluetooth device:", nearbyDevice.identifier.uuidString)
         
     }
     
     public func discovered(service: CBService) {
         print("XvMuse: Discovered service:", service.uuid)
-        observer?.didConnect()
+        delegate?.didConnect()
     }
     
     public func discovered(characteristic: CBCharacteristic) {
@@ -124,7 +133,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
         //print("XvMuse: Received value:", valueFromCharacteristic)
         
-        observer?.parse(bluetoothCharacteristic: valueFromCharacteristic)
+        delegate?.parse(bluetoothCharacteristic: valueFromCharacteristic)
         
         //up the counter
         connectionCounter += 1
@@ -137,24 +146,22 @@ public class MuseBluetooth:XvBluetoothObserver {
     }
     
     public func didLoseConnection() {
-        observer?.didLoseConnection()
+        delegate?.didLoseConnection()
         connect() //reconnect immediately
     }
     
     public func didDisconnect() {
-        observer?.didDisconnect()
+        delegate?.didDisconnect()
     }
     
     //MARK: - Send commands to the Muse headband -
     
     //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
     public func connect(){
-        print("MuseBluetooth: Connect")
         bluetooth.connect()
     }
     
     public func disconnect(){
-        print("MuseBluetooth: Disconnect")
         bluetooth.disconnect()
     }
     

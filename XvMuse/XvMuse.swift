@@ -34,10 +34,10 @@ public protocol XvMuseDelegate:AnyObject {
     
     //bluetooth connection updates
     func museIsConnecting()
-    func didFindNew(muse: String)
     func museDidConnect()
     func museDidDisconnect()
     func museLostConnection()
+    func didFindNearby(museID:String)
     
 }
 
@@ -176,8 +176,15 @@ public class XvMuse:MuseBluetoothObserver {
     fileprivate let debug:Bool = true
     
     //MARK: - INIT -
-    public init(eegFrequencyRange:[Int]) {
+    public init(deviceUUID:String? = nil, eegFrequencyRange:[Int]) {
        
+        //if a valid device ID string comes in, make a CBUUID for the bluetooth object
+        var deviceCBUUID:CBUUID?
+        
+        if (deviceUUID != nil) {
+            deviceCBUUID = CBUUID(string: deviceUUID!)
+        }
+        
         _eeg = MuseEEG(frequencyRange: eegFrequencyRange)
         _mockEEG = MuseEEG(frequencyRange: eegFrequencyRange)
         
@@ -185,22 +192,11 @@ public class XvMuse:MuseBluetoothObserver {
         _mockPPG = MusePPG()
         
         _accel = MuseAccel()
+        
         _battery = MuseBattery()
         
-        bluetooth = MuseBluetooth()
-    }
-    
-    public func load(deviceUUID:String?) {
-        
-        //if a valid device ID string comes in, make a CBUUID for the bluetooth object
-        var deviceCBUUID:CBUUID?
-        
-        if (deviceUUID != nil) {
-            deviceCBUUID = CBUUID(string: deviceUUID!)
-        }
-    
-        bluetooth.load(deviceCBUUID: deviceCBUUID)
-        bluetooth.observer = self
+        bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
+        bluetooth.delegate = self
         bluetooth.start()
     }
     
@@ -369,10 +365,6 @@ public class XvMuse:MuseBluetoothObserver {
         delegate?.museIsConnecting()
     }
     
-    public func didFindNew(device: String) {
-        delegate?.didFindNew(muse: device)
-    }
-    
     public func didConnect() {
     
         connected = true
@@ -410,6 +402,10 @@ public class XvMuse:MuseBluetoothObserver {
     public func didLoseConnection() {
         connected = false
         delegate?.museLostConnection()
+    }
+    
+    public func didFindNearby(device: String) {
+        delegate?.didFindNearby(museID: device)
     }
     
     //MARK: - Converters -

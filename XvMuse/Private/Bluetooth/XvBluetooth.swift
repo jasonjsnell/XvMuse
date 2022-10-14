@@ -72,16 +72,30 @@ public class XvBluetooth {
         deviceUUID:CBUUID?,
         serviceUUID:CBUUID?,
         characteristicsUUIDs:[CBUUID]){
+            
+            //is listener for this object already loaded?
+            var alreadyLoaded:Bool = false
+            for listener in listeners {
+                if (listener.deviceUUID == deviceUUID) {
+                    alreadyLoaded = true
+                }
+            }
+            
+            //if not, load it
+            if (!alreadyLoaded) {
+                let listener:BluetoothListener = BluetoothListener(
+                    observer: observer,
+                    deviceUUID: deviceUUID,
+                    serviceUUID: serviceUUID,
+                    characteristicsUUIDs: characteristicsUUIDs
+                )
+                listeners.append(listener)
+            }
         
-        let listener:BluetoothListener = BluetoothListener(
-            observer: observer,
-            deviceUUID: deviceUUID,
-            serviceUUID: serviceUUID,
-            characteristicsUUIDs: characteristicsUUIDs
-        )
-        
-        listeners.append(listener)
-        
+    }
+    
+    public func removeAllListeners(){
+        listeners = []
     }
     
     public func connect(){
@@ -104,11 +118,9 @@ public class XvBluetooth {
     public func disconnect(){
         
         //print("XvBluetooth: Disconnect")
-        
         for listener in listeners {
             listener.disconnect()
         }
-        
     }
     
     public func write(data:Data, toDeviceWithID:CBUUID, forCharacteristicWithID:CBUUID, withType:CBCharacteristicWriteType) {
