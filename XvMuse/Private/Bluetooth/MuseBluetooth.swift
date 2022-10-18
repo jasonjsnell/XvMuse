@@ -83,6 +83,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     public func discovered(nearbyDevice: CBPeripheral) {
         
+        
         //does the nearby device have a name with "Muse" in the string?
         if nearbyDevice.name?.contains("Muse") ?? false {
             
@@ -108,8 +109,8 @@ public class MuseBluetooth:XvBluetoothObserver {
 //            print("")
             
         }
-        print("Searching...")
-        //print("Discovered non-Muse Bluetooth device:", nearbyDevice.identifier.uuidString)
+        //print("D...", nearbyDevice.name ?? "Device with no name")
+        print("Discovered non-Muse Bluetooth device:", nearbyDevice.name ?? "No name", nearbyDevice.identifier.uuidString)
         
     }
     
