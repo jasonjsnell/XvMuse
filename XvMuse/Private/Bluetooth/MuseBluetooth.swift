@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreBluetooth
+import ExternalAccessory
 
 //the observer receives the values coming in from bluetooth
 internal protocol MuseBluetoothObserver:AnyObject {
@@ -81,8 +82,25 @@ public class MuseBluetooth:XvBluetoothObserver {
         }
     }
     
+    //fileprivate var listOfNearbyDevices:[String] = []
+    
     public func discovered(nearbyDevice: CBPeripheral) {
         
+        //NSArray *devices = [IOBluetoothDevice pairedDevices];
+        //let devices = IOBluetoothDevice.pairedDevices
+//        let manager:EAAccessoryManager = EAAccessoryManager.shared()
+//        print(manager.connectedAccessories)
+        //let connectedAccessories = EAAccessoryManager.sharedAccessoryManager.connectedAccessories
+        //[[ sharedAccessoryManager] connectedAccessories];
+        
+//        let nearbyStr:String = nearbyDevice.identifier.uuidString
+//        if listOfNearbyDevices.contains(nearbyStr) {
+//
+//        } else {
+//
+//            listOfNearbyDevices.append(nearbyStr)
+//            print("new device", nearbyDevice, listOfNearbyDevices.count)
+//        }
         
         //does the nearby device have a name with "Muse" in the string?
         if nearbyDevice.name?.contains("Muse") ?? false {
@@ -110,9 +128,17 @@ public class MuseBluetooth:XvBluetoothObserver {
             
         }
         //print("D...", nearbyDevice.name ?? "Device with no name")
-        print("Discovered non-Muse Bluetooth device:", nearbyDevice.name ?? "No name", nearbyDevice.identifier.uuidString)
+        //print("Discovered non-Muse Bluetooth device:", nearbyDevice.name ?? "No name", nearbyDevice.identifier.uuidString)
+        //print("Nearby device", nearbyDevice)
+        //let name:String = nearbyDevice.name ?? ""
+//        if (name != "") {
+//            print("Discovered device:", nearbyDevice.name ?? "No name", nearbyDevice.identifier.uuidString)
+//        }
+        
+        
         
     }
+    
     
     public func discovered(service: CBService) {
         print("XvMuse: Discovered service:", service.uuid)
