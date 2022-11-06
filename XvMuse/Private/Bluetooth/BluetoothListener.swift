@@ -33,7 +33,7 @@ class BluetoothListener:NSObject {
     //view controller to send updates to
     fileprivate weak var observer:XvBluetoothObserver?
     
-    fileprivate let debug:Bool = false
+    fileprivate let debug:Bool = true
     
     init(
         observer:XvBluetoothObserver,

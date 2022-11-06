@@ -82,24 +82,21 @@ public class MuseBluetooth:XvBluetoothObserver {
         }
     }
     
-    //fileprivate var listOfNearbyDevices:[String] = []
+    fileprivate var listOfNearbyDevices:[String] = []
     
     public func discovered(nearbyDevice: CBPeripheral) {
         
-        //NSArray *devices = [IOBluetoothDevice pairedDevices];
-        //let devices = IOBluetoothDevice.pairedDevices
-//        let manager:EAAccessoryManager = EAAccessoryManager.shared()
-//        print(manager.connectedAccessories)
-        //let connectedAccessories = EAAccessoryManager.sharedAccessoryManager.connectedAccessories
-        //[[ sharedAccessoryManager] connectedAccessories];
+        //print(EAAccessoryManager.shared().connectedAccessories)
+       
+        //let nearbyStr:String = nearbyDevice.identifier.uuidString
         
-//        let nearbyStr:String = nearbyDevice.identifier.uuidString
 //        if listOfNearbyDevices.contains(nearbyStr) {
 //
 //        } else {
 //
 //            listOfNearbyDevices.append(nearbyStr)
-//            print("new device", nearbyDevice, listOfNearbyDevices.count)
+//            //print("new device", nearbyDevice, listOfNearbyDevices.count)
+//            print(nearbyStr)
 //        }
         
         //does the nearby device have a name with "Muse" in the string?
