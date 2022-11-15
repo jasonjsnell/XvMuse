@@ -75,7 +75,7 @@ internal class MusePPGSensor {
             
             //only print the buffer build from one sensor
             if (id == 1) {
-                print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
+                //print("PPG: Building buffer", _rawSamples.count, "/", _maxCount)
             }
         }
         

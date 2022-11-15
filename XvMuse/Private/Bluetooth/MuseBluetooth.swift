@@ -70,7 +70,7 @@ public class MuseBluetooth:XvBluetoothObserver {
     
     //MARK: - Updates from the Muse headband via Bluetooth -
     public func update(state: String) {
-        print("XvMuse: State:", state)
+        //print("XvMuse: State:", state)
     }
     
     public func discovered(targetDevice: CBPeripheral) {
