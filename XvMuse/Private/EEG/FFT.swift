@@ -84,7 +84,7 @@ public class FFT {
                 
                 //perform Fast Fourier Transform
                 if let fftResult:FFTResult = _ffTransformer.transform(epoch: epoch) {
-                    
+                    print(fftResult.sensor, fftResult.decibels)
                     //return the result
                     return fftResult
                 }
