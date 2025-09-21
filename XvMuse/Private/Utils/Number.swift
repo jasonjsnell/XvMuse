@@ -193,5 +193,16 @@ public class Number{
         return value
     }
     */
+    // MARK: - POWER/DB CONVERSION
+    // Converts linear power values to decibels (10 * log10(power)).
+    // Applies a floor at -120 dB for non-positive values.
+    public class func powerToDb(_ power: Double) -> Double {
+        return power > 0 ? 10.0 * log10(power) : -120.0
+    }
+
+    /// Vectorized version for arrays.
+    public class func powerToDb(_ powers: [Double]) -> [Double] {
+        return powers.map { powerToDb($0) }
+    }
 }
 

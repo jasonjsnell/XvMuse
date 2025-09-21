@@ -27,13 +27,13 @@ public class SignalProcessorPacket {
 
 public class SignalProcessor {
     
-    fileprivate let _bins:Int
-    fileprivate var _peaks:[Int] = []
-    fileprivate var _filteredYavg:[Double] = []
-    fileprivate var _filteredYdev:[Double] = []
-    fileprivate var _avgFilter:[Double] = []
-    fileprivate var _devFilter:[Double] = []
-    fileprivate var _buffer:[Double] = []
+    private let _bins:Int
+    private var _peaks:[Int] = []
+    private var _filteredYavg:[Double] = []
+    private var _filteredYdev:[Double] = []
+    private var _avgFilter:[Double] = []
+    private var _devFilter:[Double] = []
+    private var _buffer:[Double] = []
     
     public init(
         bins:Int,
@@ -138,7 +138,7 @@ public class SignalProcessor {
     
     //MARK: - Peak detection -
     
-    fileprivate func _process(rawSamples:[Double]) -> SignalProcessorPacket? {
+    private func _process(rawSamples:[Double]) -> SignalProcessorPacket? {
 
         //grab count
         let N:Int = rawSamples.count
@@ -223,13 +223,13 @@ public class SignalProcessor {
     
     //MARK: - Helpers -
     // Function to calculate the arithmetic mean
-    fileprivate func getMean(array:[Double]) -> Double {
+    private func getMean(array:[Double]) -> Double {
         
         let total:Double = array.reduce(0, +)
         return total / Double(array.count)
     }
     
-    fileprivate func getMedian(array: [Double]) -> Double {
+    private func getMedian(array: [Double]) -> Double {
         
         let sorted:[Double] = array.sorted()
         if (sorted.count % 2 != 0) {
@@ -240,7 +240,7 @@ public class SignalProcessor {
     }
     
     // Function to calculate the standard deviation
-    fileprivate func getStandardDeviation(array:[Double]) -> Double {
+    private func getStandardDeviation(array:[Double]) -> Double {
         
         let length:Double = Double(array.count)
         let avg:Double = array.reduce(0, {$0 + $1}) / length
@@ -248,7 +248,7 @@ public class SignalProcessor {
         return sqrt(sumOfSquaredAvgDiff / length)
     }
     
-    fileprivate func getMeanAbsoluteDeviation(array:[Double]) -> Double {
+    private func getMeanAbsoluteDeviation(array:[Double]) -> Double {
         
         //get mean of the array
         let mean:Double = getMean(array: array)
@@ -262,14 +262,14 @@ public class SignalProcessor {
     }
     
     // Function to extract some range from an array
-    fileprivate func subArray<T>(array: [T], s: Int, e: Int) -> [T] {
+    private func subArray<T>(array: [T], s: Int, e: Int) -> [T] {
         if e > array.count {
             return []
         }
         return Array(array[s..<min(e, array.count)])
     }
     
-    fileprivate func _updateBuffer() -> Bool{
+    private func _updateBuffer() -> Bool{
         
         if (_buffer.count < _bins) {
             print("SignalProcessor: Building buffer", _buffer.count, "/", _bins)
@@ -289,7 +289,7 @@ public class SignalProcessor {
         return true
     }
     
-    fileprivate func _initArrays(){
+    private func _initArrays(){
         
         //buffer starts empty
         _buffer = []
@@ -310,31 +310,31 @@ public class SignalProcessor {
     
     //MARK: - Acccessors -
 
-    fileprivate var _threshold:Double
+    private var _threshold:Double
     public var threshold:Double {
         get { return _threshold }
         set { _threshold = newValue }
     }
     
-    fileprivate var _averagingLag:Int
+    private var _averagingLag:Int
     public var averagingLag:Int {
         get { return _averagingLag }
         set { _averagingLag = newValue }
     }
     
-    fileprivate var _deviationLag:Int
+    private var _deviationLag:Int
     public var deviationLag:Int {
         get { return _deviationLag }
         set { _deviationLag = newValue }
     }
     
-    fileprivate var _averagingInfluence:Double
+    private var _averagingInfluence:Double
     public var averagingInfluence:Double {
         get { return _averagingInfluence }
         set { _averagingInfluence = newValue }
     }
     
-    fileprivate var _deviationInfluence:Double
+    private var _deviationInfluence:Double
     public var deviationInfluence:Double {
         get { return _deviationInfluence }
         set { _deviationInfluence = newValue }

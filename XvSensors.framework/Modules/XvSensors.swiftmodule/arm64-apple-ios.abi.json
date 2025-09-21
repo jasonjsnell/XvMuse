@@ -1,0 +1,3680 @@
+{
+  "ABIRoot": {
+    "kind": "Root",
+    "name": "XvSensors",
+    "printedName": "XvSensors",
+    "children": [
+      {
+        "kind": "TypeDecl",
+        "name": "XvEEGScalpLocation",
+        "printedName": "XvEEGScalpLocation",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "N",
+            "printedName": "N",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1NyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1NyA2CmF",
+            "moduleName": "XvSensors"
+          },
+          {
+            "kind": "Var",
+            "name": "FP",
+            "printedName": "FP",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2FPyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2FPyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "AF",
+            "printedName": "AF",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2AFyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2AFyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "AF7",
+            "printedName": "AF7",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO3AF7yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO3AF7yA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "AF8",
+            "printedName": "AF8",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO3AF8yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO3AF8yA2CmF",
+            "moduleName": "XvSensors"
+          },
+          {
+            "kind": "Var",
+            "name": "F",
+            "printedName": "F",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1FyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1FyA2CmF",
+            "moduleName": "XvSensors"
+          },
+          {
+            "kind": "Var",
+            "name": "FT",
+            "printedName": "FT",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2FTyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2FTyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "FC",
+            "printedName": "FC",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2FCyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2FCyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "T",
+            "printedName": "T",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1TyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1TyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "C",
+            "printedName": "C",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1CyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1CyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "C3",
+            "printedName": "C3",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2C3yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2C3yA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "C4",
+            "printedName": "C4",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2C4yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2C4yA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "A",
+            "printedName": "A",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1AyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1AyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "TP",
+            "printedName": "TP",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2TPyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2TPyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "TP9",
+            "printedName": "TP9",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO3TP9yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO3TP9yA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "TP10",
+            "printedName": "TP10",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO4TP10yA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO4TP10yA2CmF",
+            "moduleName": "XvSensors"
+          },
+          {
+            "kind": "Var",
+            "name": "CP",
+            "printedName": "CP",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2CPyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2CPyA2CmF",
+            "moduleName": "XvSensors"
+          },
+          {
+            "kind": "Var",
+            "name": "P",
+            "printedName": "P",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1PyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1PyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "PO",
+            "printedName": "PO",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO2POyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO2POyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "O",
+            "printedName": "O",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1OyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1OyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "I",
+            "printedName": "I",
+            "children": [
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(XvSensors.XvEEGScalpLocation.Type) -> XvSensors.XvEEGScalpLocation",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Metatype",
+                    "printedName": "XvSensors.XvEEGScalpLocation.Type",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGScalpLocation",
+                        "printedName": "XvSensors.XvEEGScalpLocation",
+                        "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "EnumElement",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO1IyA2CmF",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO1IyA2CmF",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(rawValue:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "XvSensors.XvEEGScalpLocation?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  }
+                ],
+                "usr": "s:Sq"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO8rawValueACSgs5Int16V_tcfc",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO8rawValueACSgs5Int16V_tcfc",
+            "moduleName": "XvSensors",
+            "implicit": true,
+            "init_kind": "Designated"
+          },
+          {
+            "kind": "Var",
+            "name": "rawValue",
+            "printedName": "rawValue",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO8rawValues5Int16Vvp",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO8rawValues5Int16Vvp",
+            "moduleName": "XvSensors",
+            "implicit": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A16EEGScalpLocationO8rawValues5Int16Vvg",
+                "mangledName": "$s9XvSensors0A16EEGScalpLocationO8rawValues5Int16Vvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Function",
+            "name": "from",
+            "printedName": "from(area:index:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "XvSensors.XvEEGScalpLocation?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGScalpLocation",
+                    "printedName": "XvSensors.XvEEGScalpLocation",
+                    "usr": "s:9XvSensors0A16EEGScalpLocationO"
+                  }
+                ],
+                "usr": "s:Sq"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO4from4area5indexACSgs5Int16V_AItFZ",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO4from4area5indexACSgs5Int16V_AItFZ",
+            "moduleName": "XvSensors",
+            "static": true,
+            "declAttributes": [
+              "RawDocComment"
+            ],
+            "isFromExtension": true,
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Var",
+            "name": "areaCode",
+            "printedName": "areaCode",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO8areaCodes5Int16Vvp",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO8areaCodes5Int16Vvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "RawDocComment"
+            ],
+            "isFromExtension": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A16EEGScalpLocationO8areaCodes5Int16Vvg",
+                "mangledName": "$s9XvSensors0A16EEGScalpLocationO8areaCodes5Int16Vvg",
+                "moduleName": "XvSensors",
+                "isFromExtension": true,
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "indexCode",
+            "printedName": "indexCode",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "Swift.Int16?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A16EEGScalpLocationO9indexCodes5Int16VSgvp",
+            "mangledName": "$s9XvSensors0A16EEGScalpLocationO9indexCodes5Int16VSgvp",
+            "moduleName": "XvSensors",
+            "isFromExtension": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "Swift.Int16?",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Int16",
+                        "printedName": "Swift.Int16",
+                        "usr": "s:s5Int16V"
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A16EEGScalpLocationO9indexCodes5Int16VSgvg",
+                "mangledName": "$s9XvSensors0A16EEGScalpLocationO9indexCodes5Int16VSgvg",
+                "moduleName": "XvSensors",
+                "isFromExtension": true,
+                "accessorKind": "get"
+              }
+            ]
+          }
+        ],
+        "declKind": "Enum",
+        "usr": "s:9XvSensors0A16EEGScalpLocationO",
+        "mangledName": "$s9XvSensors0A16EEGScalpLocationO",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl",
+          "RawDocComment"
+        ],
+        "enumRawTypeName": "Int16",
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Equatable",
+            "printedName": "Equatable",
+            "usr": "s:SQ",
+            "mangledName": "$sSQ"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Hashable",
+            "printedName": "Hashable",
+            "usr": "s:SH",
+            "mangledName": "$sSH"
+          },
+          {
+            "kind": "Conformance",
+            "name": "RawRepresentable",
+            "printedName": "RawRepresentable",
+            "children": [
+              {
+                "kind": "TypeWitness",
+                "name": "RawValue",
+                "printedName": "RawValue",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ]
+              }
+            ],
+            "usr": "s:SY",
+            "mangledName": "$sSY"
+          }
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "RawDocComment"
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvEEGPacket",
+        "printedName": "XvEEGPacket",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "deviceID",
+            "printedName": "deviceID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A9EEGPacketV8deviceIDSivp",
+            "mangledName": "$s9XvSensors0A9EEGPacketV8deviceIDSivp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV8deviceIDSivg",
+                "mangledName": "$s9XvSensors0A9EEGPacketV8deviceIDSivg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV8deviceIDSivs",
+                "mangledName": "$s9XvSensors0A9EEGPacketV8deviceIDSivs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV8deviceIDSivM",
+                "mangledName": "$s9XvSensors0A9EEGPacketV8deviceIDSivM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "sensors",
+            "printedName": "sensors",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[XvSensors.XvEEGSensorPacket]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGSensorPacket",
+                    "printedName": "XvSensors.XvEEGSensorPacket",
+                    "usr": "s:9XvSensors0A15EEGSensorPacketV"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvp",
+            "mangledName": "$s9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[XvSensors.XvEEGSensorPacket]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGSensorPacket",
+                        "printedName": "XvSensors.XvEEGSensorPacket",
+                        "usr": "s:9XvSensors0A15EEGSensorPacketV"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvg",
+                "mangledName": "$s9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[XvSensors.XvEEGSensorPacket]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "XvEEGSensorPacket",
+                        "printedName": "XvSensors.XvEEGSensorPacket",
+                        "usr": "s:9XvSensors0A15EEGSensorPacketV"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvs",
+                "mangledName": "$s9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvM",
+                "mangledName": "$s9XvSensors0A9EEGPacketV7sensorsSayAA0A15EEGSensorPacketVGvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(sensors:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvEEGPacket",
+                "printedName": "XvSensors.XvEEGPacket",
+                "usr": "s:9XvSensors0A9EEGPacketV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[XvSensors.XvEEGSensorPacket]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "XvEEGSensorPacket",
+                    "printedName": "XvSensors.XvEEGSensorPacket",
+                    "usr": "s:9XvSensors0A15EEGSensorPacketV"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A9EEGPacketV7sensorsACSayAA0A15EEGSensorPacketVG_tcfc",
+            "mangledName": "$s9XvSensors0A9EEGPacketV7sensorsACSayAA0A15EEGSensorPacketVG_tcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Struct",
+        "usr": "s:9XvSensors0A9EEGPacketV",
+        "mangledName": "$s9XvSensors0A9EEGPacketV",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvEEGSensorPacket",
+        "printedName": "XvEEGSensorPacket",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "area",
+            "printedName": "area",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A15EEGSensorPacketV4areas5Int16Vvp",
+            "mangledName": "$s9XvSensors0A15EEGSensorPacketV4areas5Int16Vvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV4areas5Int16Vvg",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV4areas5Int16Vvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV4areas5Int16Vvs",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV4areas5Int16Vvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV4areas5Int16VvM",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV4areas5Int16VvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "index",
+            "printedName": "index",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvp",
+            "mangledName": "$s9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl",
+              "RawDocComment"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvg",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvs",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV5indexs5Int16Vvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV5indexs5Int16VvM",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV5indexs5Int16VvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "spectrum",
+            "printedName": "spectrum",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[Swift.Double]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvp",
+            "mangledName": "$s9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[Swift.Double]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Double",
+                        "printedName": "Swift.Double",
+                        "usr": "s:Sd"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvg",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[Swift.Double]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Double",
+                        "printedName": "Swift.Double",
+                        "usr": "s:Sd"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvs",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvM",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV8spectrumSaySdGvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "timestamp",
+            "printedName": "timestamp",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Date",
+                "printedName": "Foundation.Date",
+                "usr": "s:10Foundation4DateV"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvp",
+            "mangledName": "$s9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvg",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvs",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvM",
+                "mangledName": "$s9XvSensors0A15EEGSensorPacketV9timestamp10Foundation4DateVvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(area:index:spectrum:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvEEGSensorPacket",
+                "printedName": "XvSensors.XvEEGSensorPacket",
+                "usr": "s:9XvSensors0A15EEGSensorPacketV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[Swift.Double]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A15EEGSensorPacketV4area5index8spectrumACs5Int16V_AHSaySdGtcfc",
+            "mangledName": "$s9XvSensors0A15EEGSensorPacketV4area5index8spectrumACs5Int16V_AHSaySdGtcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Struct",
+        "usr": "s:9XvSensors0A15EEGSensorPacketV",
+        "mangledName": "$s9XvSensors0A15EEGSensorPacketV",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvAccelPacket",
+        "printedName": "XvAccelPacket",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "deviceID",
+            "printedName": "deviceID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A11AccelPacketV8deviceIDSivp",
+            "mangledName": "$s9XvSensors0A11AccelPacketV8deviceIDSivp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV8deviceIDSivg",
+                "mangledName": "$s9XvSensors0A11AccelPacketV8deviceIDSivg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV8deviceIDSivs",
+                "mangledName": "$s9XvSensors0A11AccelPacketV8deviceIDSivs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV8deviceIDSivM",
+                "mangledName": "$s9XvSensors0A11AccelPacketV8deviceIDSivM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "x",
+            "printedName": "x",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A11AccelPacketV1xSdvp",
+            "mangledName": "$s9XvSensors0A11AccelPacketV1xSdvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1xSdvg",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1xSdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1xSdvs",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1xSdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1xSdvM",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1xSdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "y",
+            "printedName": "y",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A11AccelPacketV1ySdvp",
+            "mangledName": "$s9XvSensors0A11AccelPacketV1ySdvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1ySdvg",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1ySdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1ySdvs",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1ySdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1ySdvM",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1ySdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "z",
+            "printedName": "z",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A11AccelPacketV1zSdvp",
+            "mangledName": "$s9XvSensors0A11AccelPacketV1zSdvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1zSdvg",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1zSdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1zSdvs",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1zSdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV1zSdvM",
+                "mangledName": "$s9XvSensors0A11AccelPacketV1zSdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "timestamp",
+            "printedName": "timestamp",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Date",
+                "printedName": "Foundation.Date",
+                "usr": "s:10Foundation4DateV"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvp",
+            "mangledName": "$s9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvg",
+                "mangledName": "$s9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvs",
+                "mangledName": "$s9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvM",
+                "mangledName": "$s9XvSensors0A11AccelPacketV9timestamp10Foundation4DateVvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(x:y:z:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvAccelPacket",
+                "printedName": "XvSensors.XvAccelPacket",
+                "usr": "s:9XvSensors0A11AccelPacketV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A11AccelPacketV1x1y1zACSd_S2dtcfc",
+            "mangledName": "$s9XvSensors0A11AccelPacketV1x1y1zACSd_S2dtcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Struct",
+        "usr": "s:9XvSensors0A11AccelPacketV",
+        "mangledName": "$s9XvSensors0A11AccelPacketV",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvPPGPacket",
+        "printedName": "XvPPGPacket",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "deviceID",
+            "printedName": "deviceID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A9PPGPacketV8deviceIDSivp",
+            "mangledName": "$s9XvSensors0A9PPGPacketV8deviceIDSivp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8deviceIDSivg",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8deviceIDSivg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8deviceIDSivs",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8deviceIDSivs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8deviceIDSivM",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8deviceIDSivM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "waveform",
+            "printedName": "waveform",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[Swift.Double]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A9PPGPacketV8waveformSaySdGvp",
+            "mangledName": "$s9XvSensors0A9PPGPacketV8waveformSaySdGvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[Swift.Double]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Double",
+                        "printedName": "Swift.Double",
+                        "usr": "s:Sd"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8waveformSaySdGvg",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8waveformSaySdGvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[Swift.Double]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Double",
+                        "printedName": "Swift.Double",
+                        "usr": "s:Sd"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8waveformSaySdGvs",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8waveformSaySdGvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV8waveformSaySdGvM",
+                "mangledName": "$s9XvSensors0A9PPGPacketV8waveformSaySdGvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "timestamp",
+            "printedName": "timestamp",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Date",
+                "printedName": "Foundation.Date",
+                "usr": "s:10Foundation4DateV"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvp",
+            "mangledName": "$s9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvg",
+                "mangledName": "$s9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvs",
+                "mangledName": "$s9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvM",
+                "mangledName": "$s9XvSensors0A9PPGPacketV9timestamp10Foundation4DateVvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(waveform:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvPPGPacket",
+                "printedName": "XvSensors.XvPPGPacket",
+                "usr": "s:9XvSensors0A9PPGPacketV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Array",
+                "printedName": "[Swift.Double]",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "usr": "s:Sa"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A9PPGPacketV8waveformACSaySdG_tcfc",
+            "mangledName": "$s9XvSensors0A9PPGPacketV8waveformACSaySdG_tcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Struct",
+        "usr": "s:9XvSensors0A9PPGPacketV",
+        "mangledName": "$s9XvSensors0A9PPGPacketV",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvPPGHeartEvent",
+        "printedName": "XvPPGHeartEvent",
+        "children": [
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(amplitude:bpm:hrv:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvPPGHeartEvent",
+                "printedName": "XvSensors.XvPPGHeartEvent",
+                "usr": "s:9XvSensors0A13PPGHeartEventC"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A13PPGHeartEventC9amplitude3bpm3hrvACSd_S2dtcfc",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC9amplitude3bpm3hrvACSd_S2dtcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          },
+          {
+            "kind": "Var",
+            "name": "deviceID",
+            "printedName": "deviceID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13PPGHeartEventC8deviceIDSivp",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC8deviceIDSivp",
+            "moduleName": "XvSensors",
+            "isOpen": true,
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC8deviceIDSivg",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC8deviceIDSivg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC8deviceIDSivs",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC8deviceIDSivs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC8deviceIDSivM",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC8deviceIDSivM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "amplitude",
+            "printedName": "amplitude",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13PPGHeartEventC9amplitudeSdvp",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC9amplitudeSdvp",
+            "moduleName": "XvSensors",
+            "isOpen": true,
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9amplitudeSdvg",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9amplitudeSdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9amplitudeSdvs",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9amplitudeSdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9amplitudeSdvM",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9amplitudeSdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "bpm",
+            "printedName": "bpm",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13PPGHeartEventC3bpmSdvp",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC3bpmSdvp",
+            "moduleName": "XvSensors",
+            "isOpen": true,
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3bpmSdvg",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3bpmSdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3bpmSdvs",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3bpmSdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3bpmSdvM",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3bpmSdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "hrv",
+            "printedName": "hrv",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Double",
+                "printedName": "Swift.Double",
+                "usr": "s:Sd"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13PPGHeartEventC3hrvSdvp",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC3hrvSdvp",
+            "moduleName": "XvSensors",
+            "isOpen": true,
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3hrvSdvg",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3hrvSdvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Double",
+                    "printedName": "Swift.Double",
+                    "usr": "s:Sd"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3hrvSdvs",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3hrvSdvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC3hrvSdvM",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC3hrvSdvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "timestamp",
+            "printedName": "timestamp",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Date",
+                "printedName": "Foundation.Date",
+                "usr": "s:10Foundation4DateV"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvp",
+            "mangledName": "$s9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvp",
+            "moduleName": "XvSensors",
+            "isOpen": true,
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvg",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvs",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvM",
+                "mangledName": "$s9XvSensors0A13PPGHeartEventC9timestamp10Foundation4DateVvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "isOpen": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          }
+        ],
+        "declKind": "Class",
+        "usr": "s:9XvSensors0A13PPGHeartEventC",
+        "mangledName": "$s9XvSensors0A13PPGHeartEventC",
+        "moduleName": "XvSensors",
+        "isOpen": true,
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "XvBatteryPacket",
+        "printedName": "XvBatteryPacket",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "deviceID",
+            "printedName": "deviceID",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13BatteryPacketV8deviceIDSivp",
+            "mangledName": "$s9XvSensors0A13BatteryPacketV8deviceIDSivp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasInitialValue",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV8deviceIDSivg",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV8deviceIDSivg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV8deviceIDSivs",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV8deviceIDSivs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV8deviceIDSivM",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV8deviceIDSivM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "percentage",
+            "printedName": "percentage",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13BatteryPacketV10percentages5Int16Vvp",
+            "mangledName": "$s9XvSensors0A13BatteryPacketV10percentages5Int16Vvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV10percentages5Int16Vvg",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV10percentages5Int16Vvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int16",
+                    "printedName": "Swift.Int16",
+                    "usr": "s:s5Int16V"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV10percentages5Int16Vvs",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV10percentages5Int16Vvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV10percentages5Int16VvM",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV10percentages5Int16VvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "timestamp",
+            "printedName": "timestamp",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Date",
+                "printedName": "Foundation.Date",
+                "usr": "s:10Foundation4DateV"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvp",
+            "mangledName": "$s9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvp",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvg",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvg",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Date",
+                    "printedName": "Foundation.Date",
+                    "usr": "s:10Foundation4DateV"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvs",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvs",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvM",
+                "mangledName": "$s9XvSensors0A13BatteryPacketV9timestamp10Foundation4DateVvM",
+                "moduleName": "XvSensors",
+                "implicit": true,
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Constructor",
+            "name": "init",
+            "printedName": "init(percentage:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "XvBatteryPacket",
+                "printedName": "XvSensors.XvBatteryPacket",
+                "usr": "s:9XvSensors0A13BatteryPacketV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Int16",
+                "printedName": "Swift.Int16",
+                "usr": "s:s5Int16V"
+              }
+            ],
+            "declKind": "Constructor",
+            "usr": "s:9XvSensors0A13BatteryPacketV10percentageACs5Int16V_tcfc",
+            "mangledName": "$s9XvSensors0A13BatteryPacketV10percentageACs5Int16V_tcfc",
+            "moduleName": "XvSensors",
+            "declAttributes": [
+              "AccessControl"
+            ],
+            "init_kind": "Designated"
+          }
+        ],
+        "declKind": "Struct",
+        "usr": "s:9XvSensors0A13BatteryPacketV",
+        "mangledName": "$s9XvSensors0A13BatteryPacketV",
+        "moduleName": "XvSensors",
+        "declAttributes": [
+          "AccessControl"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          }
+        ]
+      }
+    ],
+    "json_format_version": 8
+  },
+  "ConstValues": [
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 149,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 188,
+      "length": 1,
+      "value": "1"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 224,
+      "length": 1,
+      "value": "2"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 253,
+      "length": 3,
+      "value": "207"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 272,
+      "length": 3,
+      "value": "208"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 295,
+      "length": 1,
+      "value": "3"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 322,
+      "length": 1,
+      "value": "4"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 356,
+      "length": 1,
+      "value": "5"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 389,
+      "length": 1,
+      "value": "6"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 417,
+      "length": 1,
+      "value": "7"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 444,
+      "length": 3,
+      "value": "703"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 482,
+      "length": 3,
+      "value": "704"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 522,
+      "length": 1,
+      "value": "8"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 551,
+      "length": 1,
+      "value": "9"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 602,
+      "length": 3,
+      "value": "909"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 622,
+      "length": 3,
+      "value": "910"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 645,
+      "length": 2,
+      "value": "10"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 681,
+      "length": 2,
+      "value": "11"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 709,
+      "length": 2,
+      "value": "12"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 747,
+      "length": 2,
+      "value": "13"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvEEGScalpLocation.swift",
+      "kind": "IntegerLiteral",
+      "offset": 776,
+      "length": 2,
+      "value": "14"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvSensors.swift",
+      "kind": "IntegerLiteral",
+      "offset": 165,
+      "length": 1,
+      "value": "1"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvSensors.swift",
+      "kind": "IntegerLiteral",
+      "offset": 741,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvSensors.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1059,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvSensors.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1485,
+      "length": 1,
+      "value": "0"
+    },
+    {
+      "filePath": "\/Users\/jasonsnell\/Work\/XV\/dev\/Frameworks\/USER_INPUT\/XvSensors\/XvSensors\/XvSensors.swift",
+      "kind": "IntegerLiteral",
+      "offset": 1671,
+      "length": 1,
+      "value": "0"
+    }
+  ]
+}

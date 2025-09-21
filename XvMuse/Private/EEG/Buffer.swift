@@ -53,9 +53,9 @@ import Foundation
 
 class Buffer {
     
-    fileprivate var _dataStream:DataStream // object which holds the samples and timestamps arrays
-    fileprivate var _samplesMax:Int //max size of the samples array
-    fileprivate var _timestampsMax:Int //max size of timestampls array
+    private var _dataStream:DataStream // object which holds the samples and timestamps arrays
+    private var _samplesMax:Int //max size of the samples array
+    private var _timestampsMax:Int //max size of timestampls array
     
     init(sensor:Int) {
         
@@ -72,12 +72,12 @@ class Buffer {
         
     }
     
-    //fileprivate var _buffer:DataBuffer = DataBuffer()
+    //private var _buffer:DataBuffer = DataBuffer()
     public func add(packet:MuseEEGPacket) -> DataStream? {
         
         //MARK: Samples
-        //copy the packet's samples into the sample stream
-        _dataStream.samples += packet.samples
+        //append content the packet's samples into the sample stream
+        _dataStream.samples.append(contentsOf: packet.samples)
         
         //if this pushes the stream's sample array over the max
         if (_dataStream.samples.count > _samplesMax) {
@@ -104,7 +104,9 @@ class Buffer {
             return _dataStream
         } else {
             
-            print("EEG: Building buffer", _dataStream.samples.count, "/", _samplesMax)
+            //print every 16th iteration during the initialization process
+            if _dataStream.samples.count % 16 == 0 { print("EEG: Building buffer", _dataStream.samples.count, "/", _samplesMax) }
+            
             return nil //otherwise if it is still building, return nothing
         }
     }

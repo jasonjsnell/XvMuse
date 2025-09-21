@@ -10,7 +10,7 @@ import Foundation
 
 class Parser {
     
-    fileprivate let debug:Bool = true
+    private let debug:Bool = true
     
 
     //MARK: - PACKET INDEX
@@ -59,7 +59,7 @@ class Parser {
     //MARK: - CONTROL MESSAGES -
     
     //var to concat incoming messages to
-    fileprivate var controlMsg:String = ""
+    private var controlMsg:String = ""
     
     internal func parse(controlLine:Data?) -> [String:Any]? {
         

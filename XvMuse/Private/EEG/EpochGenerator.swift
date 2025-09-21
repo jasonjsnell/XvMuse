@@ -18,21 +18,15 @@ class EpochGenerator {
     // this is the time interval at which epochs are released, in milliseconds
     //0.1 = every 100 milliseconds
     //1.0 = every second
-    fileprivate var interval:Double
-    
-    //number of samples in the epoch
-    //best if power of 2 (2, 4, 8, 16, 32... 256, etc)
-    //and matches the FFT bin number
-    fileprivate var duration:Int
+    private var interval:Double
     
     //an array of start times for each sensor
     //note: rather than making multiple epoch generators, like there are multiple Buffers, the only thing that is unique to each sensor's data is this start time data, so this one var can manage all the sensor's data when creating an epoch
-    fileprivate var _startTimes:[Double] = []
+    private var _startTimes:[Double] = []
     
     init(){
         
         self.interval = MuseConstants.EPOCH_REFRESH_TIME
-        self.duration = MuseConstants.EEG_FFT_BINS
         
         //make a unique slot for each sensors start time
         for _ in 0..<MuseConstants.EEG_SENSOR_TOTAL{
@@ -68,10 +62,5 @@ class EpochGenerator {
             print("EpochGenerator: Error: Incoming timestamp array is blank.")
             return nil
         }
-        
     }
-    
-    
-    
 }
-

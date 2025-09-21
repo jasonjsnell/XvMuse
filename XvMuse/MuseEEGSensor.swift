@@ -10,47 +10,14 @@ import Foundation
 
 internal class MuseEEGSensor {
     
-    //MARK: - DATA UPDATE -
-    //example: eeg.TP10.decibels
-    
-    //this is the entry point into the EEG system from the processed FFT data
-    internal func update(spectrum:[Double]) {
-        self._spectrum = spectrum
+    // receive update from FFT result
+    internal func update(withFftPowerSpectrum: [Double]) {
+        self.linearSpectrum = withFftPowerSpectrum
     }
+
+    //delegate access this spectrum to pass up to parent app
+    public var linearSpectrum: [Double] = []
     
-    public var spectrum:[Double] { get { return _spectrum } }
-    fileprivate var _spectrum:[Double] = []
-    
-    //MARK: - INIT
     init(){}
-    
-    
-    //MARK: - GETTERS -
-    //MARK: Accessing custom frequency ranges
-    
-    //fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
-    
-    //MARK: Get bin slices
-//    public func getDecibelSlice(fromBinRange:[Int]) -> [Double] {
-//        return _fm.getSlice(bins: fromBinRange, spectrum: decibels)
-//    }
-    
-//    public func getDecibel(fromBin:Int) -> Double {
-//        return _fm.getDecibel(fromBin: fromBin, spectrum: decibels)
-//    }
-    
-    //MARK: Get spectrum slices
-//    public func getDecibelSlice(fromFrequencyRange:[Double]) -> [Double] {
-//        return _fm.getSlice(frequencyRange: fromFrequencyRange, spectrum: decibels)
-//    }
-    
-    //MARK: Get wave value via frequency range
-//    public func getDecibel(fromFrequencyRange:[Double]) -> Double {
-//        return _fm.getWaveValue(frequencyRange: fromFrequencyRange, spectrum: decibels)
-//    }
-    
-    //MARK: Get wave value via bins
-//    public func getDecibel(fromBinRange:[Int]) -> Double {
-//        return _fm.getWaveValue(bins: fromBinRange, spectrum: decibels)
-//    }
+
 }

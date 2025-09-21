@@ -20,7 +20,7 @@ class MockEEGGammaBurstData:XvMockEEGData {
         ]
     }
     
-    fileprivate let SENSOR_1_DATA:[[UInt8]] = [
+    private let SENSOR_1_DATA:[[UInt8]] = [
         
         
         [125, 183, 235, 129, 72, 16, 127, 23, 211, 126, 71, 254, 127, 39, 206, 126, 184, 19] ,
@@ -1294,7 +1294,7 @@ class MockEEGGammaBurstData:XvMockEEGData {
     ]
     
     
-    fileprivate let SENSOR_2_DATA:[[UInt8]] = [
+    private let SENSOR_2_DATA:[[UInt8]] = [
         
         
         [125, 183, 235, 129, 72, 16, 127, 23, 211, 126, 71, 254, 127, 39, 206, 126, 184, 19] ,
@@ -2567,7 +2567,7 @@ class MockEEGGammaBurstData:XvMockEEGData {
 
     ]
     
-    fileprivate let SENSOR_3_DATA:[[UInt8]] = [
+    private let SENSOR_3_DATA:[[UInt8]] = [
         
         
         [125, 183, 235, 129, 72, 16, 127, 23, 211, 126, 71, 254, 127, 39, 206, 126, 184, 19] ,
@@ -3840,7 +3840,7 @@ class MockEEGGammaBurstData:XvMockEEGData {
 
     ]
     
-    fileprivate let SENSOR_4_DATA:[[UInt8]] = [
+    private let SENSOR_4_DATA:[[UInt8]] = [
         
         
         [125, 183, 235, 129, 72, 16, 127, 23, 211, 126, 71, 254, 127, 39, 206, 126, 184, 19] ,

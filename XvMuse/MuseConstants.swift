@@ -125,14 +125,33 @@ internal class MuseConstants {
     public static let GYRO_SCALE_FACTOR:Double = 0.0074768
     
     
-    //MARK: EEG
+    //MARK: - EEG
     //Muse bands: https://web.archive.org/web/20181105231756/http://developer.choosemuse.com/tools/available-data#Absolute_Band_Powers
     
-    public static let FREQUENCY_BAND_DELTA:[Double] = [1.5,  4.0]
-    public static let FREQUENCY_BAND_THETA:[Double] = [4.0,  8.0]
-    public static let FREQUENCY_BAND_ALPHA:[Double] = [7.5,  13.0]
-    public static let FREQUENCY_BAND_BETA :[Double] = [13.0, 30.0]
-    public static let FREQUENCY_BAND_GAMMA:[Double] = [30.0, 44.0]
+    //MARK: BINS
+    public static let FREQUENCY_BAND_LOW:Int = 0
+    
+    public static let FREQUENCY_BAND_DELTA:[Int] = [2,  3]
+    public static let FREQUENCY_BAND_THETA:[Int] = [4,  7]
+    public static let FREQUENCY_BAND_ALPHA:[Int] = [8,  12]
+    public static let FREQUENCY_BAND_BETA :[Int] = [14, 30]
+    public static let FREQUENCY_BAND_GAMMA:[Int] = [31, 44]
+    
+    public static let FREQUENCY_BAND_HIGH:Int = 45
+    
+    //MARK: WAVES
+    public static let WAVE_ID_DELTA:Int = 0
+    public static let WAVE_ID_THETA:Int = 1
+    public static let WAVE_ID_ALPHA:Int = 2
+    public static let WAVE_ID_BETA:Int  = 3
+    public static let WAVE_ID_GAMMA:Int = 4
+    
+    //MARK: REGIONS
+    public static let REGION_ID_FRONT:Int = 0
+    public static let REGION_ID_SIDES:Int = 1
+    public static let REGION_ID_LEFT:Int = 2
+    public static let REGION_ID_RIGHT:Int = 3
+    
     
     /*
     //order of sensors as the data comes in from muse
@@ -151,8 +170,8 @@ internal class MuseConstants {
     //MARK: FFT
     //sampling rate Hz listed here:
     //https://sites.google.com/a/interaxon.ca/muse-developer-site/museio/presets
-    public static let SAMPLING_RATE:Double = 220.0
-    public static let FREQUENCY_SLICE_MAX:Double = 110.0 //half the sampling rate
+    public static let SAMPLING_RATE:Double = 256.0 //256.0 Muse 2
+    public static let FREQUENCY_SLICE_MAX:Int = 128 //half the sampling rate
     public static let EEG_FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     
@@ -160,9 +179,5 @@ internal class MuseConstants {
     public static let PPG_RESTING:Int = 0
     public static let PPG_S1_EVENT:Int = 1
     public static let PPG_S2_EVENT:Int = 2
-    
-    
-    
-    
     
 }

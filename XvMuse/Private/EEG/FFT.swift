@@ -1,97 +1,190 @@
 //
-//  FFT.swift
-//  FFT
+//  FFTransformer.swift
+//  XvFFT
 //
-//  Created by Jason Snell on 6/24/20.
+//  Created by Jason Snell on 6/29/20.
 //  Copyright © 2020 Jason Snell. All rights reserved.
 //
+// https://github.com/christopherhelf/Swift-FFT-Example/blob/master/ffttest/fft.swift
+
 
 import Foundation
-
-/*
-
-Each time the Muse headband fires off an EEG sensor update (order is: tp10 af8 tp9 af7),
-the XvMuse class puts that data into XvMuseEEGPackets
-and sends it here to create a streaming buffer, slice out epoch windows, and return Fast Fourier Transformed array of frequency data
-       
-       ch1     ch2     ch3     ch4  < EEG sensors tp10 af8 tp9 af7
-                       ---     ---
-0:00    p       p     | p |   | p | < XvMuseEEGPacket is one packet of a 12 sample EEG reading, index, timestamp, channel ID
-0:01    p       p     | p |    ---
-0:02    p       p     | p |     p
-0:03    p       p     | p |     p
-0:04    p       p     | p |     p
-0:05    p       p     | p |     p
-                       ___
-
-                        ^ DataBuffer of streaming samples. Each channel has it's own buffer
-
-*/
-
- // Flow: Packet --> Buffer --> Epoch --> FFT
-
-/* A circular, updating stream of samples (each sensor has it's own sample array). It includes a corresponding timestamp array, which has fewer slots, since there is one timestamp per every 12 samples. This stream is produced by the Buffer object */
-
-public struct DataStream {
-    public var sensor:Int // same as data packet
-    public var samples:[Double] = [] // streaming samples of EEG sensor data
-    public var timestamps:[Double] = [] //series of recent timestamps
-}
-
-/* This is a snapshot of data from the data stream, containing values in a specific window of time. This object is released from the Epoch Manager every X milliseconds and has a bin length equal to the Buffer */
-
-public struct Epoch {
-    public var sensor:Int // same as data stream
-    public var samples:[Double] = [] // X amount of EEG samples in a specific window of time
-}
-
-/* This stores the different FFT result arrays, including magnitudes (above zero, absolute values) and decibels (which the Muse SDK outputs) */
-
-public struct FFTResult {
-    public var sensor:Int // same as epoch
-    //public var magnitudes:[Double] //absolute, above zero values
-    public var decibels:[Double] //decibels, which go above and below 0
-}
+import Accelerate
 
 
-public class FFT {
+
+
+
+class FFT {
     
-    /* Instead of doing 2D arrays of 256 samples for each sensor, I'm optmizing the FFT processing by resuing the Epoch Generator and FFT Transformer for all data. The Buffers needs one object per sensor because it is storing an ongoing stream of data from each sensor. The epoch generator is just one object, but has an array of start times, since that's the only var that needs to be sensor-specific. And the FFT transformer processes different data each func call, with no data persisting inbetween calls, so I'm using one object to process the data of all the sensors (they all take turns sending in and processing their samples, getting their returned FFT data) */
+    //MARK: - Vars
     
-    fileprivate var _buffers:[Buffer] = []
-    fileprivate var _epochGenerator:EpochGenerator = EpochGenerator()
-    fileprivate var _ffTransformer:FFTransformer = FFTransformer(
-        bins: MuseConstants.EEG_FFT_BINS
-    )
+    // One-sided linear POWER per bin (|X[k]|^2), scaled for FFT length and window.
+    public var power: [Double] = []
     
-    internal init() {
+    private var fftSetup:FFTSetup
+    
+    private var N:Int
+    private var N2:UInt
+    private var LOG_N:UInt
+    
+    private var hammingWindow:[Double] = []
+    private var enbwBins: Double = 1.0 // ~1.36 for Hamming; 1.0 for rectangular
+    
+    // Coherent gain (sum(window)/N) and Equivalent Noise Bandwidth in bins
+    private var coherentGain: Double = 1.0
+    
+    
+    
+    //MARK: - Init
+    
+    init(bins:Int){
         
-        for i in 0..<MuseConstants.EEG_SENSOR_TOTAL {
-            _buffers.append(Buffer(sensor:i))
-        }
+        //size of the sample buffer that is being analyzed
+        N = bins
+        
+        //half of N, 128
+        N2 = vDSP_Length(N/2)
+        
+        //log of N, 8
+        LOG_N = vDSP_Length(log2(Double(N)))
+
+        //set up FFT
+        //The calls are expensive and should be performed rarely.
+        fftSetup = vDSP_create_fftsetupD(LOG_N, FFTRadix(kFFTRadix2))!
     }
     
-    //An eeg data packet is sent in from the XvMuse class
-    internal func process(eegPacket:MuseEEGPacket) -> FFTResult? {
+    deinit {
+        // destroy the fft setup object
+        //The destroy calls are expensive and should be performed rarely.
+        vDSP_destroy_fftsetupD(fftSetup)
+    }
+    
+    //MARK: - FFT Processing
+    public func transform(epoch:Epoch) -> FFTResult? {
         
-        // once the buffer is full (it needs a few seconds of data before it can provide a stream)...
-        if let dataStream:DataStream = _buffers[eegPacket.sensor].add(packet: eegPacket) {
+        return transform(
+            samples: epoch.samples,
+            fromSensor: epoch.sensor
+        )        
+    }
+    
+    public func transform(samples:[Double], fromSensor:Int) -> FFTResult? {
+        
+        //MARK: Validation
+        //validate incoming samples
+        var samples:[Double] = validate(samples: samples)
+        
+        //validate length
+        if (samples.count != N){
+            print("FFT: Error: incoming epoch array does not have", N, "samples")
+            return nil
+        }
+        
+        //MARK: Apply Hamming window
+        
+        //Muse docs: We use a Hamming window of 256 samples(at 220Hz),
+        //init if empty
+        if hammingWindow.isEmpty {
             
-            //send the data stream to the epoch manager
+            //init empty container
+            hammingWindow = [Double](repeating: 0.0, count: N)
             
-            //once the epoch interval is complete...
-            if let epoch:Epoch = _epochGenerator.getEpoch(from: dataStream) {
+            //apply window
+            vDSP_hamm_windowD(&hammingWindow, UInt(N), 0)
+            
+            // Precompute coherent gain and ENBW for the current window
+            coherentGain = vDSP.sum(hammingWindow) / Double(N)
+            let sumW2 = vDSP.sum(vDSP.multiply(hammingWindow, hammingWindow))
+            enbwBins = (sumW2 / (coherentGain * coherentGain)) / Double(N) // ≈1.36 for Hamming
+        }
+        
+        // Apply the window to incoming samples
+        vDSP_vmulD(samples, 1, hammingWindow, 1, &samples, 1, UInt(samples.count))
+        
+        
+        // MARK: Create the split complex buffer
+        
+        // one for real numbers (x-axis)
+        // and one for imaginary numbere (y-axis)
+        var realComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
+        var imagComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
+        
+        var splitComplex:DSPDoubleSplitComplex?
+
+        //Safe way to create these is with buffer pointers
+        realComplexBuffer.withUnsafeMutableBufferPointer { realBP in
+            imagComplexBuffer.withUnsafeMutableBufferPointer { imagBP in
                 
-                //perform Fast Fourier Transform
-                if let fftResult:FFTResult = _ffTransformer.transform(epoch: epoch) {
-                    
-                    //return the result
-                    return fftResult
-                }
+                splitComplex = DSPDoubleSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
             }
         }
         
-        return nil
+        if (splitComplex != nil) {
+            
+            //MARK: Real array to even-odd array
+            // This formats the array for the FFT
+        
+            var valuesAsComplex:UnsafeMutablePointer<DSPDoubleComplex>? = nil
+            
+            samples.withUnsafeMutableBytes {
+                valuesAsComplex = $0.baseAddress?.bindMemory(to: DSPDoubleComplex.self, capacity: N)
+            }
+            
+            vDSP_ctozD(valuesAsComplex!, 2, &splitComplex!, 1, N2)
+
+            // MARK: Perform forward FFT
+            // The Accelerate FFT is packed, meaning that all FFT results after the frequency N/2 are automatically discarded
+            // N bins becomes N/2 + 1 bins
+            // 256 --> 128 + 1 = 129 bins
+            vDSP_fft_zripD(fftSetup, &splitComplex!, 1, LOG_N, FFTDirection(FFT_FORWARD))
+            
+           
+            
+            // --- POWER SPECTRUM (one-sided), properly scaled ---
+            // 1) Unscaled power = Re^2 + Im^2 per bin
+            var power = [Double](repeating: 0.0, count: N/2)
+            vDSP_zvmagsD(&splitComplex!, 1, &power, 1, N2)
+
+            // 2) Normalize for FFT length (vDSP is unnormalized) and window coherent gain
+            let nSquared = Double(N * N)
+            let windowPow = coherentGain * coherentGain
+            let baseScale = 1.0 / (nSquared * windowPow)
+            vDSP.multiply(baseScale, power, result: &power)
+
+            // 3) One-sided correction: double interior bins (keep DC at index 0 as-is)
+            if N/2 > 1 {
+                var interior = Array(power[1..<(N/2)])
+                vDSP.multiply(2.0, interior, result: &interior)
+                power.replaceSubrange(1..<(N/2), with: interior)
+            }
+
+            // 4) Save linear power and its dB view (10*log10(power))
+            power = validate(samples: power)
+            
+            return FFTResult(
+                sensor: fromSensor,
+                power: power
+            )
+ 
+        } else {
+            print("FFT: Error: Split Complex object is nil")
+            return nil
+        }
+    }
+    
+     //MARK: - HELPERS
+    
+    private func validate(samples:[Double]) -> [Double] {
+        
+        var validSamples:[Double] = samples
+        
+        //replace any NaN or infinite values with zero
+        validSamples = validSamples.map {
+            if ($0.isNaN || $0.isInfinite) { return 0 }
+            return $0
+        }
+        
+        return validSamples
     }
 }
-

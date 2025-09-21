@@ -14,17 +14,17 @@ public class XvMockEEGData {
     
     
     //helper classes
-    fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values
-    fileprivate var _fft:FFT = FFT()
-    fileprivate let _systemLaunchTime:Double = Date().timeIntervalSince1970
+    private let _parser:Parser = Parser() //processes incoming data into useable / readable values
+    private var _fft:FFTManager = FFTManager()
+    private let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
     internal init(){
         sensorsData = []
     }
     
-    fileprivate var packetIndex:UInt16 = 0
+    private var packetIndex:UInt16 = 0
     internal var sensorsData:[[[UInt8]]]
-    fileprivate var byteCounters:[Int] = [0,0,0,0]
+    private var byteCounters:[Int] = [0,0,0,0]
     
     func getPacket(for sensor:Int) -> MuseEEGPacket {
         
@@ -45,7 +45,7 @@ public class XvMockEEGData {
         )
     }
     
-    fileprivate func _getMockBytes(for sensor:Int) -> [UInt8] {
+    private func _getMockBytes(for sensor:Int) -> [UInt8] {
         
         //increase count
         byteCounters[sensor] += 1

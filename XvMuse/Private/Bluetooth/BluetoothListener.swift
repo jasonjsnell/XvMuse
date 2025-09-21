@@ -19,32 +19,35 @@ import CoreBluetooth
 class BluetoothListener:NSObject {
     
     //bluetooth objects
-    fileprivate var _centralManager: CBCentralManager?
-    fileprivate var _device: CBPeripheral?
-    fileprivate var _services:[CBService] = []
-    fileprivate var _characteristics:[CBCharacteristic] = []
+    private var _centralManager: CBCentralManager?
+    private var _device: CBPeripheral?
+    private var _services:[CBService] = []
+    private var _characteristics:[CBCharacteristic] = []
     
     //device, service, characteristics IDs
-    public var deviceUUID:CBUUID? { get { return _deviceUUID }}
-    fileprivate var _deviceUUID:CBUUID?
-    fileprivate var _serviceUUID:CBUUID?
-    fileprivate var _characteristicsUUIDs:[CBUUID]?
+    public var deviceUUID:CBUUID? {
+        get { return _deviceUUID }
+        set { _deviceUUID = newValue }
+    }
+    private var _deviceUUID:CBUUID?
+    private var _serviceUUID:CBUUID?
+    private var _characteristicsUUIDs:[CBUUID]?
     
     //view controller to send updates to
-    fileprivate weak var observer:XvBluetoothObserver?
+    internal weak var delegate:XvBluetoothDelegagte?
     
-    fileprivate let debug:Bool = false
+    private let debug:Bool = false
     
     init(
-        observer:XvBluetoothObserver,
-        deviceUUID:CBUUID?,
+        observer:XvBluetoothDelegagte,
+        deviceUUID:CBUUID?, // can be nil
         serviceUUID:CBUUID?, // can be nil
         characteristicsUUIDs: [CBUUID]){
         
         super.init()
         
         //capture vc
-        self.observer = observer
+        self.delegate = observer
         
         //capture IDs
         _deviceUUID = deviceUUID
@@ -62,6 +65,11 @@ class BluetoothListener:NSObject {
         
     }
     
+    //hard reset
+    internal func reset(){
+        _deviceUUID = nil
+    }
+    
     internal func connect(){
         
         if (_centralManager != nil) {
@@ -69,7 +77,10 @@ class BluetoothListener:NSObject {
             //init connection
             disconnect()
             
-            //print("BLUETOOTH: Connect")
+            if (debug){
+                print("BLUETOOTH: Connect")
+            }
+            
             
             if (_serviceUUID != nil && _deviceUUID != nil) {
                 
@@ -137,7 +148,7 @@ extension BluetoothListener: CBCentralManagerDelegate {
             BluetoothUtils.printState(state: central.state) //output status during debugging
         }
         
-        observer?.update(state: BluetoothUtils.getDesc(forState: central.state))
+        delegate?.update(state: BluetoothUtils.getDesc(forState: central.state))
         
     }
     
@@ -154,9 +165,9 @@ extension BluetoothListener: CBCentralManagerDelegate {
         if (debug){ print("BLUETOOTH: Scanning nearby devices...", peripheral.identifier.uuidString) }
         
         if (deviceUUID != nil) {
-            observer?.discovered(targetDevice: peripheral) //if the device with the target UUID is found
+            delegate?.discovered(targetDevice: peripheral) //if the device with the target UUID is found
         } else {
-            observer?.discovered(nearbyDevice: peripheral) //if no device CBUUID is avail, show scan results for all nearby devices
+            delegate?.discovered(nearbyDevice: peripheral) //if no device CBUUID is avail, show scan results for all nearby devices
         }
         
         
@@ -212,12 +223,12 @@ extension BluetoothListener: CBCentralManagerDelegate {
         // 6 = out of range.
         if let error:Error = error {
             print("BLUETOOTH: Disconnect:", error)
-            observer?.didLoseConnection()
+            delegate?.didLoseConnection()
             
         } else {
             // Likely a deliberate unpairing.
              print("BLUETOOTH: Disconnect: Unpaired")
-            observer?.didDisconnect()
+            delegate?.didDisconnect()
         }
     }
 }
@@ -241,7 +252,7 @@ extension BluetoothListener: CBPeripheralDelegate {
             
             if (debug){ print("BLUETOOTH: Discovered service", service) }
             
-            observer?.discovered(service: service)
+            delegate?.discovered(service: service)
             
             //search for its characteristics
             _device!.discoverCharacteristics(nil, for: service)
@@ -265,7 +276,7 @@ extension BluetoothListener: CBPeripheralDelegate {
         //loop through the incoming characteristics
         for characteristic in characteristics {
             
-            observer?.discovered(characteristic: characteristic)
+            delegate?.discovered(characteristic: characteristic)
             
             if (debug) {
                 print("BLUETOOTH: Discovered characteristic", characteristic.description)
@@ -307,7 +318,7 @@ extension BluetoothListener: CBPeripheralDelegate {
         
         if (debug) { print("BLUETOOTH: Update value", characteristic.description, characteristic.value as Any) }
         
-        observer?.received(valueFromCharacteristic: characteristic, fromDevice: peripheral)
+        delegate?.received(valueFromCharacteristic: characteristic, fromDevice: peripheral)
 
     }
     
@@ -370,7 +381,7 @@ extension BluetoothListener: CBPeripheralDelegate {
         
     }
     
-    fileprivate func _getCharacteristic(fromID:CBUUID) -> CBCharacteristic? {
+    private func _getCharacteristic(fromID:CBUUID) -> CBCharacteristic? {
         
         for characteristic in _characteristics {
             

@@ -11,11 +11,11 @@ import Foundation
 class MockPPGData {
     
     //helper classes
-    fileprivate let _parser:Parser = Parser() //processes incoming data into useable / readable values
-    fileprivate let _systemLaunchTime:Double = Date().timeIntervalSince1970
+    private let _parser:Parser = Parser() //processes incoming data into useable / readable values
+    private let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
-    fileprivate var packetIndex:UInt16 = 0
-    fileprivate var byteCounter:Int = 0
+    private var packetIndex:UInt16 = 0
+    private var byteCounter:Int = 0
     
     internal init(){
         SENSOR_1_DATA = []
@@ -37,7 +37,7 @@ class MockPPGData {
             samples: _parser.getPPGSamples(from: _getMockBytes()))
     }
     
-    fileprivate func _getMockBytes() -> [UInt8] {
+    private func _getMockBytes() -> [UInt8] {
         
         //increase count
         byteCounter += 1

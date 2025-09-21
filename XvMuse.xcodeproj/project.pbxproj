@@ -3,18 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		BB0962FC24B287F600D516D5 /* MuseEEGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */; };
-		BB14EEB128B1A08900B2A14D /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */; };
-		BB14EEB228B1A08900B2A14D /* XvSensors.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */; };
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
-		BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */; };
-		BB2DB3B824BA67A100AA7DD4 /* XvMuseEEGRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */; };
-		BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGValue.swift */; };
+		BB3166692E7D5D8E00FDA29D /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB3166672E7D5D8900FDA29D /* XvSensors.framework */; platformFilter = ios; };
 		BB419823253E1150003A7375 /* PeakDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB419822253E1150003A7375 /* PeakDetector.swift */; };
 		BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */; };
 		BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */; };
@@ -34,10 +29,10 @@
 		BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741E624CA202B004B8AE5 /* BluetoothConstants.swift */; };
 		BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741E824CA2066004B8AE5 /* BluetoothListener.swift */; };
 		BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741EA24CA2087004B8AE5 /* BluetoothUtils.swift */; };
-		BB8B856D24B0E81700376FD4 /* FFT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B856C24B0E81700376FD4 /* FFT.swift */; };
+		BB8B856D24B0E81700376FD4 /* FFTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B856C24B0E81700376FD4 /* FFTManager.swift */; };
 		BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857224B0EDF000376FD4 /* Buffer.swift */; };
 		BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857424B0F98200376FD4 /* EpochGenerator.swift */; };
-		BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857624B100E400376FD4 /* FFTransfomer.swift */; };
+		BB8B857724B100E400376FD4 /* FFT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857624B100E400376FD4 /* FFT.swift */; };
 		BB8B857924B118E200376FD4 /* MuseEEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857824B118E200376FD4 /* MuseEEG.swift */; };
 		BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */; };
 		BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */; };
@@ -49,41 +44,12 @@
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
 		BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */; };
 		BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */; };
-		BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFCA51F24D879CF00516180 /* DataCaches.swift */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		BB14EEAE28B1A06F00B2A14D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = BB14EE8328B19E4C00B2A14D;
-			remoteInfo = XvSensors;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		BB14EEB328B1A08900B2A14D /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				BB14EEB228B1A08900B2A14D /* XvSensors.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseEEGSensor.swift; sourceTree = "<group>"; };
-		BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = XvSensors.xcodeproj; path = ../../XvSensors/XvSensors.xcodeproj; sourceTree = "<group>"; };
-		BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGWave.swift; sourceTree = "<group>"; };
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
-		BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGHistory.swift; sourceTree = "<group>"; };
-		BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGRegion.swift; sourceTree = "<group>"; };
-		BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseEEGValue.swift; sourceTree = "<group>"; };
+		BB3166672E7D5D8900FDA29D /* XvSensors.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = XvSensors.framework; sourceTree = "<group>"; };
 		BB419822253E1150003A7375 /* PeakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDetector.swift; sourceTree = "<group>"; };
 		BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPG.swift; sourceTree = "<group>"; };
 		BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPGSensor.swift; sourceTree = "<group>"; };
@@ -105,10 +71,10 @@
 		BB7741E624CA202B004B8AE5 /* BluetoothConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothConstants.swift; sourceTree = "<group>"; };
 		BB7741E824CA2066004B8AE5 /* BluetoothListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothListener.swift; sourceTree = "<group>"; };
 		BB7741EA24CA2087004B8AE5 /* BluetoothUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothUtils.swift; sourceTree = "<group>"; };
-		BB8B856C24B0E81700376FD4 /* FFT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFT.swift; sourceTree = "<group>"; };
+		BB8B856C24B0E81700376FD4 /* FFTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTManager.swift; sourceTree = "<group>"; };
 		BB8B857224B0EDF000376FD4 /* Buffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buffer.swift; sourceTree = "<group>"; };
 		BB8B857424B0F98200376FD4 /* EpochGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpochGenerator.swift; sourceTree = "<group>"; };
-		BB8B857624B100E400376FD4 /* FFTransfomer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTransfomer.swift; sourceTree = "<group>"; };
+		BB8B857624B100E400376FD4 /* FFT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFT.swift; sourceTree = "<group>"; };
 		BB8B857824B118E200376FD4 /* MuseEEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseEEG.swift; sourceTree = "<group>"; };
 		BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
 		BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPGAnalyzer.swift; sourceTree = "<group>"; };
@@ -120,40 +86,18 @@
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
 		BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMockEEGData.swift; sourceTree = "<group>"; };
 		BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGGammaBurstsData.swift; sourceTree = "<group>"; };
-		BBFCA51F24D879CF00516180 /* DataCaches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCaches.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		BB57F8852496B01B003DB78A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
-				BB14EEB128B1A08900B2A14D /* XvSensors.framework in Frameworks */,
+				BB3166692E7D5D8E00FDA29D /* XvSensors.framework in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		BB14EE5228AE86E300B2A14D /* depreciated */ = {
-			isa = PBXGroup;
-			children = (
-				BB2DB3B924BA87C700AA7DD4 /* XvMuseEEGValue.swift */,
-				BB2DB3B724BA67A100AA7DD4 /* XvMuseEEGRegion.swift */,
-				BB18026A24B75DE400DCC932 /* XvMuseEEGWave.swift */,
-				BB2DB3B124BA2F9300AA7DD4 /* XvMuseEEGHistory.swift */,
-			);
-			path = depreciated;
-			sourceTree = "<group>";
-		};
-		BB14EE5328AE870D00B2A14D /* depreciated */ = {
-			isa = PBXGroup;
-			children = (
-				BBFCA51F24D879CF00516180 /* DataCaches.swift */,
-			);
-			path = depreciated;
-			sourceTree = "<group>";
-		};
 		BB14EE5428AE875300B2A14D /* Mock Data */ = {
 			isa = PBXGroup;
 			children = (
@@ -164,14 +108,6 @@
 				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
 			);
 			path = "Mock Data";
-			sourceTree = "<group>";
-		};
-		BB14EEAB28B1A06F00B2A14D /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 		BB14EEB028B1A08900B2A14D /* Frameworks */ = {
@@ -193,6 +129,7 @@
 		BB57F87E2496B01B003DB78A = {
 			isa = PBXGroup;
 			children = (
+				BB3166672E7D5D8900FDA29D /* XvSensors.framework */,
 				BB57F88A2496B01C003DB78A /* XvMuse */,
 				BB14EEB028B1A08900B2A14D /* Frameworks */,
 			);
@@ -210,14 +147,12 @@
 		BB57F88A2496B01C003DB78A /* XvMuse */ = {
 			isa = PBXGroup;
 			children = (
-				BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */,
 				BB57F8952496B05F003DB78A /* XvMuse.swift */,
 				BB57F8A02496B268003DB78A /* MuseConstants.swift */,
 				BB8B857824B118E200376FD4 /* MuseEEG.swift */,
 				BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */,
 				BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */,
 				BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */,
-				BB14EE5228AE86E300B2A14D /* depreciated */,
 				BB57F8942496B04B003DB78A /* Private */,
 			);
 			path = XvMuse;
@@ -273,12 +208,11 @@
 		BB8B857124B0E81E00376FD4 /* EEG */ = {
 			isa = PBXGroup;
 			children = (
-				BB8B856C24B0E81700376FD4 /* FFT.swift */,
+				BB8B856C24B0E81700376FD4 /* FFTManager.swift */,
 				BB8B857224B0EDF000376FD4 /* Buffer.swift */,
 				BB8B857424B0F98200376FD4 /* EpochGenerator.swift */,
-				BB8B857624B100E400376FD4 /* FFTransfomer.swift */,
+				BB8B857624B100E400376FD4 /* FFT.swift */,
 				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
-				BB14EE5328AE870D00B2A14D /* depreciated */,
 				BBD7415F2857787F00857B78 /* Mock Data */,
 			);
 			path = EEG;
@@ -311,11 +245,9 @@
 /* Begin PBXHeadersBuildPhase section */
 		BB57F8832496B01B003DB78A /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				BB57F88D2496B01C003DB78A /* XvMuse.h in Headers */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXHeadersBuildPhase section */
 
@@ -328,11 +260,8 @@
 				BB57F8842496B01B003DB78A /* Sources */,
 				BB57F8852496B01B003DB78A /* Frameworks */,
 				BB57F8862496B01B003DB78A /* Resources */,
-				BB14EEB328B1A08900B2A14D /* Embed Frameworks */,
 			);
 			buildRules = (
-			);
-			dependencies = (
 			);
 			name = XvMuse;
 			productName = XvMuse;
@@ -345,7 +274,8 @@
 		BB57F87F2496B01B003DB78A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1640;
 				ORGANIZATIONNAME = "Jason Snell";
 				TargetAttributes = {
 					BB57F8872496B01B003DB78A = {
@@ -355,7 +285,6 @@
 				};
 			};
 			buildConfigurationList = BB57F8822496B01B003DB78A /* Build configuration list for PBXProject "XvMuse" */;
-			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -363,14 +292,9 @@
 				Base,
 			);
 			mainGroup = BB57F87E2496B01B003DB78A;
+			preferredProjectObjectVersion = 90;
 			productRefGroup = BB57F8892496B01B003DB78A /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = BB14EEAB28B1A06F00B2A14D /* Products */;
-					ProjectRef = BB14EEAA28B1A06F00B2A14D /* XvSensors.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				BB57F8872496B01B003DB78A /* XvMuse */,
@@ -378,47 +302,30 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXReferenceProxy section */
-		BB14EEAF28B1A06F00B2A14D /* XvSensors.framework */ = {
-			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = XvSensors.framework;
-			remoteRef = BB14EEAE28B1A06F00B2A14D /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-/* End PBXReferenceProxy section */
-
 /* Begin PBXResourcesBuildPhase section */
 		BB57F8862496B01B003DB78A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BB57F8842496B01B003DB78A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */,
 				BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */,
-				BB2DB3B824BA67A100AA7DD4 /* XvMuseEEGRegion.swift in Sources */,
 				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
-				BBFCA52024D879CF00516180 /* DataCaches.swift in Sources */,
 				BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */,
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
-				BB18026B24B75DE400DCC932 /* XvMuseEEGWave.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
-				BB8B857724B100E400376FD4 /* FFTransfomer.swift in Sources */,
+				BB8B857724B100E400376FD4 /* FFT.swift in Sources */,
 				BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */,
-				BB8B856D24B0E81700376FD4 /* FFT.swift in Sources */,
+				BB8B856D24B0E81700376FD4 /* FFTManager.swift in Sources */,
 				BB65FEE7283E7FEE00C4F4D8 /* MockPPGNoiseData.swift in Sources */,
-				BB2DB3BA24BA87C700AA7DD4 /* XvMuseEEGValue.swift in Sources */,
 				BB7741E024CA1CF3004B8AE5 /* Number.swift in Sources */,
 				BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */,
 				BBA6C01A24CDF29700966159 /* DCT.swift in Sources */,
@@ -429,7 +336,6 @@
 				BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */,
 				BB9FEF4626371290004F48B6 /* MockEEGStressData.swift in Sources */,
 				BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */,
-				BB2DB3B224BA2F9300AA7DD4 /* XvMuseEEGHistory.swift in Sources */,
 				BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */,
 				BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
@@ -444,12 +350,11 @@
 				BBCDE4FC281C9DF5001B67E7 /* MockEEGTiredData.swift in Sources */,
 				BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		BB57F88E2496B01C003DB78A /* Debug */ = {
+		BB57F88E2496B01C003DB78A /* Debug configuration for PBXProject "XvMuse" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -485,8 +390,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = LN2HJCURK9;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -501,7 +408,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -513,7 +420,7 @@
 			};
 			name = Debug;
 		};
-		BB57F88F2496B01C003DB78A /* Release */ = {
+		BB57F88F2496B01C003DB78A /* Release configuration for PBXProject "XvMuse" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -549,8 +456,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = LN2HJCURK9;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -559,7 +468,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -571,58 +480,74 @@
 			};
 			name = Release;
 		};
-		BB57F8912496B01C003DB78A /* Debug */ = {
+		BB57F8912496B01C003DB78A /* Debug configuration for PBXNativeTarget "XvMuse" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = LN2HJCURK9;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/2025\\ 09",
+				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
-				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 12.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonjsnell.XvMuse;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		BB57F8922496B01C003DB78A /* Release */ = {
+		BB57F8922496B01C003DB78A /* Release configuration for PBXNativeTarget "XvMuse" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = LN2HJCURK9;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/2025\\ 09",
+				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.4;
-				"IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]" = 12.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonjsnell.XvMuse;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -634,19 +559,17 @@
 		BB57F8822496B01B003DB78A /* Build configuration list for PBXProject "XvMuse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB57F88E2496B01C003DB78A /* Debug */,
-				BB57F88F2496B01C003DB78A /* Release */,
+				BB57F88E2496B01C003DB78A /* Debug configuration for PBXProject "XvMuse" */,
+				BB57F88F2496B01C003DB78A /* Release configuration for PBXProject "XvMuse" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		BB57F8902496B01C003DB78A /* Build configuration list for PBXNativeTarget "XvMuse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB57F8912496B01C003DB78A /* Debug */,
-				BB57F8922496B01C003DB78A /* Release */,
+				BB57F8912496B01C003DB78A /* Debug configuration for PBXNativeTarget "XvMuse" */,
+				BB57F8922496B01C003DB78A /* Release configuration for PBXNativeTarget "XvMuse" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */

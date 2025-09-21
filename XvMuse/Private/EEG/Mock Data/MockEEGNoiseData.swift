@@ -22,7 +22,7 @@ class MockEEGNoiseData:XvMockEEGData {
         ]
     }
     
-    fileprivate let SENSOR_1_DATA:[[UInt8]] = [
+    private let SENSOR_1_DATA:[[UInt8]] = [
         
         [154, 113, 188, 126, 96, 0, 97, 177, 137, 158, 208, 0, 83, 193, 79, 193, 16, 0] ,
         [25, 158, 59, 2, 244, 105, 0, 8, 155, 28, 232, 219, 0, 6, 1, 24, 233, 242] ,
@@ -246,7 +246,7 @@ class MockEEGNoiseData:XvMockEEGData {
     ]
     
     
-    fileprivate let SENSOR_2_DATA:[[UInt8]] = [
+    private let SENSOR_2_DATA:[[UInt8]] = [
         
         [18, 130, 194, 119, 5, 144, 18, 50, 57, 115, 39, 14, 24, 161, 112, 90, 56, 53] ,
 
@@ -750,7 +750,7 @@ class MockEEGNoiseData:XvMockEEGData {
         
     ]
     
-    fileprivate let SENSOR_3_DATA:[[UInt8]] = [
+    private let SENSOR_3_DATA:[[UInt8]] = [
         
        
         [109, 48, 0, 99, 177, 104, 159, 160, 0, 69, 0, 255, 172, 240, 0, 6, 60, 204] ,
@@ -1169,7 +1169,7 @@ class MockEEGNoiseData:XvMockEEGData {
 
     ]
     
-    fileprivate let SENSOR_4_DATA:[[UInt8]] = [
+    private let SENSOR_4_DATA:[[UInt8]] = [
     
         
         [13, 117, 153, 0, 6, 79, 21, 137, 184, 0, 4, 130, 16, 74, 17, 0, 0, 114] ,

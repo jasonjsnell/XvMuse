@@ -34,11 +34,11 @@ internal class MusePPG {
     public var buffer:[Double]
     internal var sensors:[MusePPGSensor]
 
-    fileprivate let _ppgAnalyzer:PPGAnalyzer
-    fileprivate var prevAvg:Double = 0.0
-    fileprivate var upwardsMomentum:Int = 0
-    fileprivate var downwardsMomentum:Int = 0
-    fileprivate var beatOn:Bool = false
+    private let _ppgAnalyzer:PPGAnalyzer
+    private var prevAvg:Double = 0.0
+    private var upwardsMomentum:Int = 0
+    private var downwardsMomentum:Int = 0
+    private var beatOn:Bool = false
     
     //MARK: Packet processing
     //basic update each time the PPG sensors send in new data

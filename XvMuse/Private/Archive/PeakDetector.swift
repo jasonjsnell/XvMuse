@@ -11,10 +11,10 @@ import Foundation
 
 public class PeakDetector {
     
-    fileprivate let _analysisWindowSize:Int
-    fileprivate let _restWindowMin:Int
+    private let _analysisWindowSize:Int
+    private let _restWindowMin:Int
     
-    fileprivate var _restCount:Int = 0
+    private var _restCount:Int = 0
     
     //anaylsis window size: how many of the recent samples are examined for a peak value
     //rest window min: how many rest signals need to happen before processor starts looking for a peak again

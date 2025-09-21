@@ -26,19 +26,10 @@ struct PPGSignalPacket {
 
 internal class MusePPGSensor {
     
-    fileprivate var id:Int
-    
-    //data processors
-    //fileprivate var _ffTransformer:FFTransformer
-    //fileprivate var _dct:DCT
+    private var id:Int
     
     init(id:Int) {
-        
         self.id = id
-        //_dct = DCT(bins: _maxCount)
-        //_ffTransformer = FFTransformer(bins: _maxCount)
-        //_LFO1 = []
-        //_LFO2 = []
     }
     
     //MARK: - Incoming Data
@@ -46,8 +37,8 @@ internal class MusePPGSensor {
     //this is where packets from the device, via bluetooth, come in for processing
     //these raw, time-based samples are what create the heartbeat pattern
     
-    fileprivate var _maxCount:Int = 128
-    fileprivate var _rawSamples:[Double] = []
+    private var _maxCount:Int = 128
+    private var _rawSamples:[Double] = []
 
     internal func getBuffer(from packet:MusePPGPacket) -> [Double]? {
         
@@ -145,7 +136,7 @@ internal class MusePPGSensor {
         get { return _maxCount }
     }
     
-    fileprivate var _timeBasedSamples:[Double] = []
+    private var _timeBasedSamples:[Double] = []
     
     //access to the raw, time-based ppg samples for each sensor
     public var samples:[Double]? {
@@ -165,7 +156,7 @@ internal class MusePPGSensor {
     /*
     //MARK: - FREQUENCY SPECTRUM
     //access to the frequency spectrum for each sensor
-    fileprivate var _frequencySpectrum:[Double] = []
+    private var _frequencySpectrum:[Double] = []
     public var frequencySpectrum:[Double]? {
         
         get {
@@ -182,7 +173,7 @@ internal class MusePPGSensor {
         }
     }
     
-    fileprivate func _getFrequencySpectrum(from timeSamples:[Double]) -> [Double]? {
+    private func _getFrequencySpectrum(from timeSamples:[Double]) -> [Double]? {
         
         //convert to frequency and apply noise gate reduce noise
         let dctResult:[Double] = _dct.transform(
@@ -195,8 +186,8 @@ internal class MusePPGSensor {
     
     /*
     //MARK: - LFO -
-    fileprivate let _fm:FrequencyManager = FrequencyManager.sharedInstance
-    fileprivate func _update(lfo:Int, fs:[Double], binRange:[Int]) {
+    private let _fm:FrequencyManager = FrequencyManager.sharedInstance
+    private func _update(lfo:Int, fs:[Double], binRange:[Int]) {
         
         let binValues:[Double] = _fm.getSlice(bins: binRange, spectrum: fs)
         if (binValues.count > 0) {
@@ -216,12 +207,12 @@ internal class MusePPGSensor {
         }
     }
     
-    fileprivate var _LFO1:[Double]
+    private var _LFO1:[Double]
     public var LFO1:[Double] {
         get { return _LFO1 }
     }
     
-    fileprivate var _LFO2:[Double]
+    private var _LFO2:[Double]
     public var LFO2:[Double] {
         get { return _LFO2 }
     }

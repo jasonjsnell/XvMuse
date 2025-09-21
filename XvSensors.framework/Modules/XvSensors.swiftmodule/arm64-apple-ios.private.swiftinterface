@@ -1,0 +1,82 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.1.2 effective-5.10 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
+// swift-module-flags: -target arm64-apple-ios12.4 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -Onone -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name XvSensors
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -interface-compiler-version 6.1.2
+import Foundation
+import Swift
+@_exported import XvSensors
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+public enum XvEEGScalpLocation : Swift.Int16 {
+  case N
+  case FP
+  case AF
+  case AF7
+  case AF8
+  case F
+  case FT
+  case FC
+  case T
+  case C
+  case C3
+  case C4
+  case A
+  case TP
+  case TP9
+  case TP10
+  case CP
+  case P
+  case PO
+  case O
+  case I
+  public init?(rawValue: Swift.Int16)
+  public typealias RawValue = Swift.Int16
+  public var rawValue: Swift.Int16 {
+    get
+  }
+}
+public struct XvEEGPacket {
+  public var deviceID: Swift.Int
+  public var sensors: [XvSensors.XvEEGSensorPacket]
+  public init(sensors: [XvSensors.XvEEGSensorPacket])
+}
+public struct XvEEGSensorPacket {
+  public var area: Swift.Int16
+  public var index: Swift.Int16
+  public var spectrum: [Swift.Double]
+  public var timestamp: Foundation.Date
+  public init(area: Swift.Int16, index: Swift.Int16, spectrum: [Swift.Double])
+}
+public struct XvAccelPacket {
+  public var deviceID: Swift.Int
+  public var x: Swift.Double
+  public var y: Swift.Double
+  public var z: Swift.Double
+  public var timestamp: Foundation.Date
+  public init(x: Swift.Double, y: Swift.Double, z: Swift.Double)
+}
+public struct XvPPGPacket {
+  public var deviceID: Swift.Int
+  public var waveform: [Swift.Double]
+  public var timestamp: Foundation.Date
+  public init(waveform: [Swift.Double])
+}
+public class XvPPGHeartEvent {
+  public init(amplitude: Swift.Double, bpm: Swift.Double, hrv: Swift.Double)
+  public var deviceID: Swift.Int
+  public var amplitude: Swift.Double
+  public var bpm: Swift.Double
+  public var hrv: Swift.Double
+  public var timestamp: Foundation.Date
+  @objc deinit
+}
+public struct XvBatteryPacket {
+  public var deviceID: Swift.Int
+  public var percentage: Swift.Int16
+  public var timestamp: Foundation.Date
+  public init(percentage: Swift.Int16)
+}
+extension XvSensors.XvEEGScalpLocation : Swift.Equatable {}
+extension XvSensors.XvEEGScalpLocation : Swift.Hashable {}
+extension XvSensors.XvEEGScalpLocation : Swift.RawRepresentable {}

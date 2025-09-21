@@ -12,10 +12,10 @@ import Accelerate
 
 class DCT{
     
-    fileprivate var _bins:Int
+    private var _bins:Int
     
-    fileprivate var forwardDCTSetup:vDSP.DCT
-    //fileprivate var inverseDCTSetup:vDSP.DCT
+    private var forwardDCTSetup:vDSP.DCT
+    //private var inverseDCTSetup:vDSP.DCT
     
     init(bins:Int) {
         

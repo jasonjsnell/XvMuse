@@ -19,11 +19,11 @@ struct PPGAnalysisPacket {
 }
 class PPGAnalyzer {
     
-    fileprivate var prevTimestamp:Double = 0
-    fileprivate var bpms:[Double] = []
-    fileprivate var beatLengths:[Double] = []
-    fileprivate let BPM_HISTORY_LENGTH_MAX:Int = 100
-    fileprivate let HRV_HISTORY_LENGTH_MAX:Int = 600
+    private var prevTimestamp:Double = 0
+    private var bpms:[Double] = []
+    private var beatLengths:[Double] = []
+    private let BPM_HISTORY_LENGTH_MAX:Int = 100
+    private let HRV_HISTORY_LENGTH_MAX:Int = 600
 
     internal func update(with timestamp:Double) -> PPGAnalysisPacket {
         
@@ -45,7 +45,12 @@ class PPGAnalyzer {
             beatLengths.removeFirst()
         }
         //range 0.0-0.9 corresponds to 20 millseconds to 200 millseconds
-        let hrv:Double = Number.getStandardDeviation(ofArray: beatLengths)
+        var hrv:Double = Number.getStandardDeviation(ofArray: beatLengths)
+        
+        //error handling
+        if (hrv.isInfinite || hrv.isNaN) {
+            hrv = 0
+        }
     
         //MARK: BPM
         let currBpm:Double = 60 / beatLength

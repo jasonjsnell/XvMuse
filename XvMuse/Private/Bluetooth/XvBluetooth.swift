@@ -40,7 +40,7 @@ import CoreBluetooth
 
 //MARK: - View Controller -
 
-public protocol XvBluetoothObserver:AnyObject {
+public protocol XvBluetoothDelegagte:AnyObject {
     
     func update(state:String)
     
@@ -53,6 +53,9 @@ public protocol XvBluetoothObserver:AnyObject {
     //receive data
     func received(valueFromCharacteristic:CBCharacteristic, fromDevice:CBPeripheral)
     
+    //attempting
+    func isAttemptingConnection()
+    
     //disconnecting
     func didLoseConnection() // headband connection fails
     func didDisconnect() //head receives disconnect command
@@ -63,15 +66,24 @@ public protocol XvBluetoothObserver:AnyObject {
 public class XvBluetooth {
     
     //vars
-    fileprivate var listeners:[BluetoothListener] = []
+    private var listeners:[BluetoothListener] = []
     
     init() {}
     
+    //hard reset
+    public func reset(){
+        for listener in listeners {
+            listener.reset()
+        }
+    }
+    
     public func addListener(
-        observer:XvBluetoothObserver,
+        observer:XvBluetoothDelegagte,
         deviceUUID:CBUUID?,
         serviceUUID:CBUUID?,
         characteristicsUUIDs:[CBUUID]){
+            
+            print("XvBluetooth: addListener for device:", deviceUUID as Any)
             
             //is listener for this object already loaded?
             var alreadyLoaded:Bool = false
@@ -91,7 +103,6 @@ public class XvBluetooth {
                 )
                 listeners.append(listener)
             }
-        
     }
     
     public func removeAllListeners(){
@@ -100,15 +111,18 @@ public class XvBluetooth {
     
     public func connect(){
         
+        //print("XvBluetooth: Connect")
+        
         for listener in listeners {
             
             //the the device ID is valid, print it
             if (listener.deviceUUID != nil) {
                 print("XvBluetooth: Attempt connection to", listener.deviceUUID!)
+                listener.delegate?.isAttemptingConnection()
                 
             } else if (listener.deviceUUID == nil) {
                 //if not, alert user that a scan of all nearby devices will occur
-                print("XvBluetooth: Scanning for all nearby Bluetooth devices and will print their CBUUID's")
+                print("XvBluetooth: Scanning for all nearby Bluetooth devices")
             }
             
             listener.connect()

@@ -22,7 +22,7 @@ class MockEEGMeditationData:XvMockEEGData {
         ]
     }
     
-    fileprivate let SENSOR_1_DATA:[[UInt8]] = [
+    private let SENSOR_1_DATA:[[UInt8]] = [
         
         [119, 167, 178, 129, 119, 244, 121, 39, 183, 129, 8, 6, 125, 23, 230, 129, 103, 250] ,
         [123, 23, 170, 125, 231, 253, 125, 119, 181, 126, 248, 24, 126, 23, 187, 126, 103, 253] ,
@@ -812,7 +812,7 @@ class MockEEGMeditationData:XvMockEEGData {
     ]
     
     
-    fileprivate let SENSOR_2_DATA:[[UInt8]] = [
+    private let SENSOR_2_DATA:[[UInt8]] = [
         
         [126, 168, 14, 130, 248, 36, 128, 200, 54, 133, 184, 47, 127, 152, 26, 132, 136, 32] ,
         [126, 104, 5, 130, 88, 17, 127, 23, 227, 127, 120, 13, 126, 247, 189, 126, 104, 23] ,
@@ -1279,7 +1279,7 @@ class MockEEGMeditationData:XvMockEEGData {
   
     ]
     
-    fileprivate let SENSOR_3_DATA:[[UInt8]] = [
+    private let SENSOR_3_DATA:[[UInt8]] = [
         
        
         [126, 55, 189, 125, 200, 26, 129, 87, 202, 124, 120, 23, 130, 151, 216, 123, 71, 245] ,
@@ -1955,7 +1955,7 @@ class MockEEGMeditationData:XvMockEEGData {
         [127, 119, 244, 128, 248, 22, 127, 135, 251, 127, 119, 202, 125, 71, 199, 121, 55, 192] ,
     ]
     
-    fileprivate let SENSOR_4_DATA:[[UInt8]] = [
+    private let SENSOR_4_DATA:[[UInt8]] = [
     
         [129, 215, 214, 122, 23, 219, 128, 199, 226, 123, 103, 204, 126, 215, 235, 125, 23, 192] ,
         [125, 248, 6, 125, 199, 171, 125, 72, 14, 127, 231, 210, 126, 56, 19, 129, 55, 236] ,

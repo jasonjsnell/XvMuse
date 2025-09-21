@@ -1,0 +1,11 @@
+framework module XvSensors {
+  umbrella header "XvSensors.h"
+  export *
+
+  module * { export * }
+}
+
+module XvSensors.Swift {
+  header "XvSensors-Swift.h"
+  requires objc
+}
