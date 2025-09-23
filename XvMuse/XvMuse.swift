@@ -45,10 +45,9 @@ public protocol XvMuseDelegate:AnyObject {
     
 }
 
-//MARK: - STRUCTS -
+//MARK: - PACKETS -
 //data objects that get sent to the observer when updates come in from the headband
 
-//MARK: Packets
 /* Each time the Muse headband fires off an EEG sensor update (order is: tp10 af8 tp9 af7),
 the XvMuse class puts that data into MuseEEGPackets
 and sends it here to create a streaming buffer, slice out epoch windows, and return Fast Fourier Transformed array of frequency data
@@ -81,10 +80,11 @@ internal class MusePacket {
     }
 }
 
+//MARK: - EEG / PPG
 internal class MuseEEGPacket:MusePacket {}
 internal class MusePPGPacket:MusePacket {}
 
-//MARK: Accel
+//MARK: - Accel
 internal struct MuseAccel {
     internal var packetIndex:UInt16 = 0
     internal var x:Double = 0 //head forward / back
@@ -93,7 +93,7 @@ internal struct MuseAccel {
     internal var raw:[Int16] = []
 }
 
-//MARK: Battery
+//MARK: - Battery
 internal struct MuseBattery {
     internal var packetIndex:UInt16 = 0
     internal var percentage:Int16 = 0
@@ -111,54 +111,7 @@ public class XvMuse:MuseBluetoothObserver {
     //the view controller that receives EEG, accel, PPG, etc updates
     public weak var delegate:XvMuseDelegate?
     
-    //public var eeg:XvEEG { get { return _eeg } }
-    //public var ppg:XvPPG { get { return _ppg } }
     
-    //MARK: - Mock Data
-    //only engage mock data objects when called directly from external program
-    private let _mockEEGData:[XvMockEEGData] = [MockEEGTiredData(), MockEEGMeditationData(), MockEEGStressData(), MockEEGNoiseData()]
-    public func getMockEEG(id:Int) -> XvEEGPacket {
-        
-        //keep in bounds
-        var dataID:Int = id
-        if (dataID >= _mockEEGData.count) {
-            print("XvMuse: getMockEEG(id): Error: ID out of bounds. Using array max")
-            dataID = _mockEEGData.count-1
-        }
-        
-        //loop through all four sensors, getting mock data and processing it via FFT
-        for i:Int in 0..<4 {
-            let mockEEGPacket:MuseEEGPacket = _mockEEGData[dataID].getPacket(for: i)
-            _mockEEG.update(withFFTResult: _fft.process(eegPacket: mockEEGPacket))
-        }
-        //after the four sensors are processed, return the object to use by the application
-        return convert(museEEG: _mockEEG) 
-        
-    }
-    private let _mockPPGData:[MockPPGData] = [MockPPGTiredData(), MockPPGMeditationData(), MockPPGStressData(), MockPPGNoiseData()]
-    public func getMockPPG(id:Int) -> XvPPGPacket {
-       
-        //keep in bounds
-        var dataID:Int = id
-        if (dataID >= _mockPPGData.count) {
-            print("XvMuse: getMockPPG(id): Error: ID out of bounds. Using array max")
-            dataID = _mockPPGData.count-1
-        }
-        
-        //process middle sensor
-        let mockPPGPacket:MusePPGPacket = _mockPPGData[dataID].getPacket()
-        if let mockHeartEvent:MusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
-            
-            //broadcast the heart event
-            delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: mockHeartEvent))
-        }
-        
-        //send to delegate if application wants to visualize the ppg buffer
-        delegate?.didReceive(ppgPacket: convert(musePPG: _mockPPG))
-       
-        //after the sensors are processed, return the object to use by the application
-        return convert(musePPG: _mockPPG) 
-    }
     
     
     //MARK: - Private
@@ -180,6 +133,23 @@ public class XvMuse:MuseBluetoothObserver {
     private var deviceUUID:String?
     
     private let debug:Bool = true
+    
+    //matrix to store bytes from 4 sensors when recording mock data
+    private var eegSensorBytes: [[[UInt8]]] = Array(repeating: [], count: 4)
+    private var ppgSensorBytes:[[UInt8]] = []
+    public func printEEGPPGSensorBytes() {
+        print("========== EEG/PPG Data Start ==========")
+        for (sensorIndex, packets) in eegSensorBytes.enumerated() {
+            print("EEG \(sensorIndex + 1):")
+            print(packets)
+            print("") // blank line between sensors
+        }
+        print("")
+        print("PPG")
+        print(ppgSensorBytes)
+        print("========== EEG/PPG Data End ==========")
+    }
+    
     
     //MARK: - INIT -
     //default range is 0 Hz delta to 45 Hz gamma
@@ -212,6 +182,7 @@ public class XvMuse:MuseBluetoothObserver {
         bluetooth.start()
     }
     
+    //MARK: - Device API -
     public func lookForNearbyMuses(){
         
         if (debug) { print("XvMuse: lookForNearbyMuses") }
@@ -250,7 +221,6 @@ public class XvMuse:MuseBluetoothObserver {
         processingQ.async { [weak self] in
             guard let self = self else { return }
         
-        
             if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
                 
                 var bytes:[UInt8] = [UInt8](_data) //move into an array
@@ -271,6 +241,11 @@ public class XvMuse:MuseBluetoothObserver {
                         timestamp: timestamp,
                         samples: _parser.getEEGSamples(from: bytes))
 
+                    //uncomment to store bytes for mock data recording
+                    //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
+                    eegSensorBytes[i].append(bytes)
+                    
+                    //to see a single packet for testing
                     //if (i == 2) { print(bytes, ",") }
                     
                     return packet // return assembled packet
@@ -288,6 +263,11 @@ public class XvMuse:MuseBluetoothObserver {
                     
                     //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
                     
+                    //uncomment to store bytes for mock data recording
+                    //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
+                    ppgSensorBytes.append(bytes)
+                    
+                    //print off a single packet for testing
                     //print(bytes, ",")
                 
                     return packet // return assembled packet
@@ -403,6 +383,69 @@ public class XvMuse:MuseBluetoothObserver {
                 }
             }
         }
+    }
+    
+    //MARK: - Mock Data
+    //only engage mock data objects when called directly from external program
+    private let _mockEEGData:[XvMockEEGData] = [
+        MockEEGNoiseData(),
+        MockEEGStressData(),
+        MockEEGMeditationData(),
+        MockEEGTiredData(),
+        MockEEGFallingAlseepData(),
+        MockEEGSleepingData(),
+        
+    ]
+    public func getMockEEG(id:Int) -> XvEEGPacket {
+        
+        //keep in bounds
+        var dataID:Int = id
+        if (dataID >= _mockEEGData.count) {
+            print("XvMuse: getMockEEG(id): Error: ID out of bounds. Using array max")
+            dataID = _mockEEGData.count-1
+        }
+        
+        //loop through all four sensors, getting mock data and processing it via FFT
+        for i:Int in 0..<4 {
+            let mockEEGPacket:MuseEEGPacket = _mockEEGData[dataID].getPacket(for: i)
+            _mockEEG.update(withFFTResult: _fft.process(eegPacket: mockEEGPacket))
+        }
+        //after the four sensors are processed, return the object to use by the application
+        return convert(museEEG: _mockEEG)
+        
+    }
+    private let _mockPPGData:[MockPPGData] = [
+        MockPPGNoiseData(),
+        MockPPGStressData(),
+        MockPPGMeditationData(),
+        MockPPGTiredData(),
+        MockPPGFallingAsleepData(),
+        MockPPGSleepingData(),
+        
+        
+    ]
+    public func getMockPPG(id:Int) -> XvPPGPacket {
+       
+        //keep in bounds
+        var dataID:Int = id
+        if (dataID >= _mockPPGData.count) {
+            print("XvMuse: getMockPPG(id): Error: ID out of bounds. Using array max")
+            dataID = _mockPPGData.count-1
+        }
+        
+        //process middle sensor
+        let mockPPGPacket:MusePPGPacket = _mockPPGData[dataID].getPacket()
+        if let mockHeartEvent:MusePPGHeartEvent = _mockPPG.getHeartEvent(from: mockPPGPacket) {
+            
+            //broadcast the heart event
+            delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: mockHeartEvent))
+        }
+        
+        //send to delegate if application wants to visualize the ppg buffer
+        delegate?.didReceive(ppgPacket: convert(musePPG: _mockPPG))
+       
+        //after the sensors are processed, return the object to use by the application
+        return convert(musePPG: _mockPPG)
     }
     
     //MARK: - BLUETOOTH CONNECTION

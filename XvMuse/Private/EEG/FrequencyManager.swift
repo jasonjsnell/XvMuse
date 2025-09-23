@@ -12,11 +12,11 @@ class FrequencyManager {
     
     public var bins:[[Int]] = []
     
-    fileprivate var frequencies:[Double]
+    private var frequencies:[Double]
     
     public static let sharedInstance = FrequencyManager()
        
-    fileprivate init() {
+    private init() {
         
         let freqInc:Double = MuseConstants.SAMPLING_RATE / Double(MuseConstants.EEG_FFT_BINS)
         //print("EEG: FrequencyManager: Frequency increment per bin", freqInc)

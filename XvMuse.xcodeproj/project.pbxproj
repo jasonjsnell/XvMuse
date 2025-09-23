@@ -44,6 +44,10 @@
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
 		BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */; };
 		BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */; };
+		BBEFB4E32E834077005AEC3B /* MockEEGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */; };
+		BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */; };
+		BBEFB4E72E8344C7005AEC3B /* MockEEGFallingAsleepData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */; };
+		BBEFB4E92E834502005AEC3B /* MockPPGFallingAsleepData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,6 +90,10 @@
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
 		BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMockEEGData.swift; sourceTree = "<group>"; };
 		BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGGammaBurstsData.swift; sourceTree = "<group>"; };
+		BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGSleepingData.swift; sourceTree = "<group>"; };
+		BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGSleepingData.swift; sourceTree = "<group>"; };
+		BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGFallingAsleepData.swift; sourceTree = "<group>"; };
+		BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGFallingAsleepData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,10 +110,12 @@
 			isa = PBXGroup;
 			children = (
 				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
-				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
-				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
-				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
 				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
+				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
+				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
+				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
+				BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */,
+				BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */,
 			);
 			path = "Mock Data";
 			sourceTree = "<group>";
@@ -231,11 +241,13 @@
 			isa = PBXGroup;
 			children = (
 				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
-				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
-				BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */,
-				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
-				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
 				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
+				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
+				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
+				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
+				BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */,
+				BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */,
+				BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */,
 			);
 			path = "Mock Data";
 			sourceTree = "<group>";
@@ -275,7 +287,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2600;
 				ORGANIZATIONNAME = "Jason Snell";
 				TargetAttributes = {
 					BB57F8872496B01B003DB78A = {
@@ -319,6 +331,7 @@
 				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
 				BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */,
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
+				BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
@@ -330,11 +343,13 @@
 				BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */,
 				BBA6C01A24CDF29700966159 /* DCT.swift in Sources */,
 				BB57F8A12496B268003DB78A /* MuseConstants.swift in Sources */,
+				BBEFB4E72E8344C7005AEC3B /* MockEEGFallingAsleepData.swift in Sources */,
 				BB0962FC24B287F600D516D5 /* MuseEEGSensor.swift in Sources */,
 				BB65FEE9283E80A400C4F4D8 /* MockEEGNoiseData.swift in Sources */,
 				BB8B857924B118E200376FD4 /* MuseEEG.swift in Sources */,
 				BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */,
 				BB9FEF4626371290004F48B6 /* MockEEGStressData.swift in Sources */,
+				BBEFB4E92E834502005AEC3B /* MockPPGFallingAsleepData.swift in Sources */,
 				BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */,
 				BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */,
 				BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */,
@@ -347,6 +362,7 @@
 				BB419823253E1150003A7375 /* PeakDetector.swift in Sources */,
 				BB7741E424CA1FF0004B8AE5 /* XvBluetooth.swift in Sources */,
 				BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */,
+				BBEFB4E32E834077005AEC3B /* MockEEGSleepingData.swift in Sources */,
 				BBCDE4FC281C9DF5001B67E7 /* MockEEGTiredData.swift in Sources */,
 				BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */,
 			);
@@ -413,6 +429,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -472,6 +489,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -494,7 +512,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
-					"$(PROJECT_DIR)/2025\\ 09",
 				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -531,7 +548,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
-					"$(PROJECT_DIR)/2025\\ 09",
 				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
