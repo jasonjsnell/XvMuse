@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGTiredData:XvMockEEGData {
+class MockEEGTiredData:MockEEGData {
     
     override internal init(){
         

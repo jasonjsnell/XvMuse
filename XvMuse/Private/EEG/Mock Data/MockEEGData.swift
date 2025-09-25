@@ -6,7 +6,7 @@
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
-public class XvMockEEGData {
+class MockEEGData {
     
     public static let SET_TIRED:Int = 0
     public static let SET_MEDITATION:Int = 1

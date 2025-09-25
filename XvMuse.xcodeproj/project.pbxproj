@@ -11,6 +11,24 @@
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
 		BB3166692E7D5D8E00FDA29D /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB3166672E7D5D8900FDA29D /* XvSensors.framework */; platformFilter = ios; };
 		BB419823253E1150003A7375 /* PeakDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB419822253E1150003A7375 /* PeakDetector.swift */; };
+		BB42285C2E8544BB001E6DB9 /* MockEEGCodingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42285B2E8544B5001E6DB9 /* MockEEGCodingData.swift */; };
+		BB42285F2E8544D0001E6DB9 /* MockPPGCodingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42285E2E8544CB001E6DB9 /* MockPPGCodingData.swift */; };
+		BB4228612E854501001E6DB9 /* MockPPGReadingNewsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228602E8544FA001E6DB9 /* MockPPGReadingNewsData.swift */; };
+		BB4228632E854510001E6DB9 /* MockEEGReadingNewsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228622E85450B001E6DB9 /* MockEEGReadingNewsData.swift */; };
+		BB4228652E854557001E6DB9 /* MockEEGRestingFocusData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228642E85454F001E6DB9 /* MockEEGRestingFocusData.swift */; };
+		BB4228682E85457D001E6DB9 /* MockPPGRestingFocusData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228672E854576001E6DB9 /* MockPPGRestingFocusData.swift */; };
+		BB42286A2E8545EA001E6DB9 /* MockEEGTypingEmailData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228692E8545E4001E6DB9 /* MockEEGTypingEmailData.swift */; };
+		BB42286C2E8545FC001E6DB9 /* MockPPGTypingEmailData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42286B2E8545F5001E6DB9 /* MockPPGTypingEmailData.swift */; };
+		BB42286E2E854647001E6DB9 /* MockEEGSocialMediaData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42286D2E85463D001E6DB9 /* MockEEGSocialMediaData.swift */; };
+		BB4228702E854657001E6DB9 /* MockPPGSocialMediaData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42286F2E85464F001E6DB9 /* MockPPGSocialMediaData.swift */; };
+		BB4228742E85469C001E6DB9 /* MockEEGLooseFitData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228732E854697001E6DB9 /* MockEEGLooseFitData.swift */; };
+		BB4228762E8546B1001E6DB9 /* MockPPGLooseFitData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228752E8546A8001E6DB9 /* MockPPGLooseFitData.swift */; };
+		BB4228782E854713001E6DB9 /* MockEEGBlinksData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228772E854706001E6DB9 /* MockEEGBlinksData.swift */; };
+		BB42287B2E85472A001E6DB9 /* MockPPGBlinksData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42287A2E854722001E6DB9 /* MockPPGBlinksData.swift */; };
+		BB42287E2E8547CB001E6DB9 /* MockEEGForeheadData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42287D2E8547C5001E6DB9 /* MockEEGForeheadData.swift */; };
+		BB4228802E8547E2001E6DB9 /* MockPPGForeheadData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42287F2E8547DC001E6DB9 /* MockPPGForeheadData.swift */; };
+		BB4228822E854825001E6DB9 /* MockEEGJawData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228812E854820001E6DB9 /* MockEEGJawData.swift */; };
+		BB4228842E854831001E6DB9 /* MockPPGJawData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228832E85482C001E6DB9 /* MockPPGJawData.swift */; };
 		BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */; };
 		BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */; };
 		BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */; };
@@ -42,12 +60,22 @@
 		BBCDE4FC281C9DF5001B67E7 /* MockEEGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */; };
 		BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */; };
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
-		BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */; };
+		BBCDE502281CAC31001B67E7 /* MockEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* MockEEGData.swift */; };
 		BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */; };
 		BBEFB4E32E834077005AEC3B /* MockEEGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */; };
 		BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */; };
 		BBEFB4E72E8344C7005AEC3B /* MockEEGFallingAsleepData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */; };
 		BBEFB4E92E834502005AEC3B /* MockPPGFallingAsleepData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */; };
+		BBEFB4FD2E853F7C005AEC3B /* MockEEGClearMindData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4FC2E853F75005AEC3B /* MockEEGClearMindData.swift */; };
+		BBEFB5002E853FD5005AEC3B /* MockPPGClearMindData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4FF2E853FCF005AEC3B /* MockPPGClearMindData.swift */; };
+		BBEFB5022E854085005AEC3B /* MockEEGHoldingBreathData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5012E85407E005AEC3B /* MockEEGHoldingBreathData.swift */; };
+		BBEFB5042E8540A1005AEC3B /* MockPPGHoldingBreathData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5032E85409A005AEC3B /* MockPPGHoldingBreathData.swift */; };
+		BBEFB5062E8540BD005AEC3B /* MocEEGEyesClosedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5052E8540B7005AEC3B /* MocEEGEyesClosedData.swift */; };
+		BBEFB5082E8540CA005AEC3B /* MockPPGEyesClosedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5072E8540C4005AEC3B /* MockPPGEyesClosedData.swift */; };
+		BBEFB50C2E85416C005AEC3B /* MockEEGArousalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50B2E854167005AEC3B /* MockEEGArousalData.swift */; };
+		BBEFB50E2E85417C005AEC3B /* MockPPGArousalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50D2E854177005AEC3B /* MockPPGArousalData.swift */; };
+		BBEFB5102E8541C4005AEC3B /* MockPPGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */; };
+		BBEFB5122E854291005AEC3B /* MockEEGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5112E85428C005AEC3B /* MockEEGCoffeeData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +83,24 @@
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
 		BB3166672E7D5D8900FDA29D /* XvSensors.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = XvSensors.framework; sourceTree = "<group>"; };
 		BB419822253E1150003A7375 /* PeakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDetector.swift; sourceTree = "<group>"; };
+		BB42285B2E8544B5001E6DB9 /* MockEEGCodingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGCodingData.swift; sourceTree = "<group>"; };
+		BB42285E2E8544CB001E6DB9 /* MockPPGCodingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGCodingData.swift; sourceTree = "<group>"; };
+		BB4228602E8544FA001E6DB9 /* MockPPGReadingNewsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGReadingNewsData.swift; sourceTree = "<group>"; };
+		BB4228622E85450B001E6DB9 /* MockEEGReadingNewsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGReadingNewsData.swift; sourceTree = "<group>"; };
+		BB4228642E85454F001E6DB9 /* MockEEGRestingFocusData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGRestingFocusData.swift; sourceTree = "<group>"; };
+		BB4228672E854576001E6DB9 /* MockPPGRestingFocusData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGRestingFocusData.swift; sourceTree = "<group>"; };
+		BB4228692E8545E4001E6DB9 /* MockEEGTypingEmailData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGTypingEmailData.swift; sourceTree = "<group>"; };
+		BB42286B2E8545F5001E6DB9 /* MockPPGTypingEmailData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGTypingEmailData.swift; sourceTree = "<group>"; };
+		BB42286D2E85463D001E6DB9 /* MockEEGSocialMediaData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGSocialMediaData.swift; sourceTree = "<group>"; };
+		BB42286F2E85464F001E6DB9 /* MockPPGSocialMediaData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGSocialMediaData.swift; sourceTree = "<group>"; };
+		BB4228732E854697001E6DB9 /* MockEEGLooseFitData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGLooseFitData.swift; sourceTree = "<group>"; };
+		BB4228752E8546A8001E6DB9 /* MockPPGLooseFitData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGLooseFitData.swift; sourceTree = "<group>"; };
+		BB4228772E854706001E6DB9 /* MockEEGBlinksData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGBlinksData.swift; sourceTree = "<group>"; };
+		BB42287A2E854722001E6DB9 /* MockPPGBlinksData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGBlinksData.swift; sourceTree = "<group>"; };
+		BB42287D2E8547C5001E6DB9 /* MockEEGForeheadData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGForeheadData.swift; sourceTree = "<group>"; };
+		BB42287F2E8547DC001E6DB9 /* MockPPGForeheadData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGForeheadData.swift; sourceTree = "<group>"; };
+		BB4228812E854820001E6DB9 /* MockEEGJawData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGJawData.swift; sourceTree = "<group>"; };
+		BB4228832E85482C001E6DB9 /* MockPPGJawData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGJawData.swift; sourceTree = "<group>"; };
 		BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPG.swift; sourceTree = "<group>"; };
 		BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPGSensor.swift; sourceTree = "<group>"; };
 		BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGStressData.swift; sourceTree = "<group>"; };
@@ -88,12 +134,22 @@
 		BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
-		BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMockEEGData.swift; sourceTree = "<group>"; };
+		BBCDE501281CAC31001B67E7 /* MockEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGData.swift; sourceTree = "<group>"; };
 		BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGGammaBurstsData.swift; sourceTree = "<group>"; };
 		BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGSleepingData.swift; sourceTree = "<group>"; };
 		BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGSleepingData.swift; sourceTree = "<group>"; };
 		BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGFallingAsleepData.swift; sourceTree = "<group>"; };
 		BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGFallingAsleepData.swift; sourceTree = "<group>"; };
+		BBEFB4FC2E853F75005AEC3B /* MockEEGClearMindData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGClearMindData.swift; sourceTree = "<group>"; };
+		BBEFB4FF2E853FCF005AEC3B /* MockPPGClearMindData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGClearMindData.swift; sourceTree = "<group>"; };
+		BBEFB5012E85407E005AEC3B /* MockEEGHoldingBreathData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGHoldingBreathData.swift; sourceTree = "<group>"; };
+		BBEFB5032E85409A005AEC3B /* MockPPGHoldingBreathData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGHoldingBreathData.swift; sourceTree = "<group>"; };
+		BBEFB5052E8540B7005AEC3B /* MocEEGEyesClosedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MocEEGEyesClosedData.swift; sourceTree = "<group>"; };
+		BBEFB5072E8540C4005AEC3B /* MockPPGEyesClosedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGEyesClosedData.swift; sourceTree = "<group>"; };
+		BBEFB50B2E854167005AEC3B /* MockEEGArousalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGArousalData.swift; sourceTree = "<group>"; };
+		BBEFB50D2E854177005AEC3B /* MockPPGArousalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGArousalData.swift; sourceTree = "<group>"; };
+		BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGCoffeeData.swift; sourceTree = "<group>"; };
+		BBEFB5112E85428C005AEC3B /* MockEEGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEEGCoffeeData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,12 +166,11 @@
 			isa = PBXGroup;
 			children = (
 				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
-				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
-				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
-				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
-				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
-				BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */,
-				BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */,
+				BB42287C2E8547AC001E6DB9 /* Tension */,
+				BB4228722E854677001E6DB9 /* Noise */,
+				BB4228662E85456E001E6DB9 /* Focus */,
+				BBEFB50A2E85414A005AEC3B /* Arousal */,
+				BBEFB4FE2E853FC7005AEC3B /* Rest */,
 			);
 			path = "Mock Data";
 			sourceTree = "<group>";
@@ -134,6 +189,68 @@
 				BBA6C01924CDF29700966159 /* DCT.swift */,
 			);
 			path = Archive;
+			sourceTree = "<group>";
+		};
+		BB42285D2E8544C3001E6DB9 /* Focus */ = {
+			isa = PBXGroup;
+			children = (
+				BB4228642E85454F001E6DB9 /* MockEEGRestingFocusData.swift */,
+				BB42286D2E85463D001E6DB9 /* MockEEGSocialMediaData.swift */,
+				BB4228622E85450B001E6DB9 /* MockEEGReadingNewsData.swift */,
+				BB4228692E8545E4001E6DB9 /* MockEEGTypingEmailData.swift */,
+				BB42285B2E8544B5001E6DB9 /* MockEEGCodingData.swift */,
+			);
+			path = Focus;
+			sourceTree = "<group>";
+		};
+		BB4228662E85456E001E6DB9 /* Focus */ = {
+			isa = PBXGroup;
+			children = (
+				BB4228672E854576001E6DB9 /* MockPPGRestingFocusData.swift */,
+				BB42286F2E85464F001E6DB9 /* MockPPGSocialMediaData.swift */,
+				BB4228602E8544FA001E6DB9 /* MockPPGReadingNewsData.swift */,
+				BB42286B2E8545F5001E6DB9 /* MockPPGTypingEmailData.swift */,
+				BB42285E2E8544CB001E6DB9 /* MockPPGCodingData.swift */,
+			);
+			path = Focus;
+			sourceTree = "<group>";
+		};
+		BB4228712E854670001E6DB9 /* Noise */ = {
+			isa = PBXGroup;
+			children = (
+				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
+				BB4228732E854697001E6DB9 /* MockEEGLooseFitData.swift */,
+			);
+			path = Noise;
+			sourceTree = "<group>";
+		};
+		BB4228722E854677001E6DB9 /* Noise */ = {
+			isa = PBXGroup;
+			children = (
+				BB65FEE6283E7FEE00C4F4D8 /* MockPPGNoiseData.swift */,
+				BB4228752E8546A8001E6DB9 /* MockPPGLooseFitData.swift */,
+			);
+			path = Noise;
+			sourceTree = "<group>";
+		};
+		BB4228792E85471A001E6DB9 /* Tension */ = {
+			isa = PBXGroup;
+			children = (
+				BB4228772E854706001E6DB9 /* MockEEGBlinksData.swift */,
+				BB42287D2E8547C5001E6DB9 /* MockEEGForeheadData.swift */,
+				BB4228812E854820001E6DB9 /* MockEEGJawData.swift */,
+			);
+			path = Tension;
+			sourceTree = "<group>";
+		};
+		BB42287C2E8547AC001E6DB9 /* Tension */ = {
+			isa = PBXGroup;
+			children = (
+				BB42287A2E854722001E6DB9 /* MockPPGBlinksData.swift */,
+				BB42287F2E8547DC001E6DB9 /* MockPPGForeheadData.swift */,
+				BB4228832E85482C001E6DB9 /* MockPPGJawData.swift */,
+			);
+			path = Tension;
 			sourceTree = "<group>";
 		};
 		BB57F87E2496B01B003DB78A = {
@@ -240,16 +357,63 @@
 		BBD7415F2857787F00857B78 /* Mock Data */ = {
 			isa = PBXGroup;
 			children = (
-				BBCDE501281CAC31001B67E7 /* XvMockEEGData.swift */,
-				BB65FEE8283E80A400C4F4D8 /* MockEEGNoiseData.swift */,
-				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
+				BBCDE501281CAC31001B67E7 /* MockEEGData.swift */,
+				BB4228792E85471A001E6DB9 /* Tension */,
+				BB4228712E854670001E6DB9 /* Noise */,
+				BB42285D2E8544C3001E6DB9 /* Focus */,
+				BBEFB5092E854143005AEC3B /* Arousal */,
+				BBEFB4FB2E853F5B005AEC3B /* Rest */,
+			);
+			path = "Mock Data";
+			sourceTree = "<group>";
+		};
+		BBEFB4FB2E853F5B005AEC3B /* Rest */ = {
+			isa = PBXGroup;
+			children = (
+				BBEFB5012E85407E005AEC3B /* MockEEGHoldingBreathData.swift */,
+				BBEFB4FC2E853F75005AEC3B /* MockEEGClearMindData.swift */,
+				BBEFB5052E8540B7005AEC3B /* MocEEGEyesClosedData.swift */,
 				BB65FEEC283EC93400C4F4D8 /* MockEEGMeditationData.swift */,
 				BBCDE4FB281C9DF5001B67E7 /* MockEEGTiredData.swift */,
 				BBEFB4E62E8344BA005AEC3B /* MockEEGFallingAsleepData.swift */,
 				BBEFB4E22E83406B005AEC3B /* MockEEGSleepingData.swift */,
-				BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */,
 			);
-			path = "Mock Data";
+			path = Rest;
+			sourceTree = "<group>";
+		};
+		BBEFB4FE2E853FC7005AEC3B /* Rest */ = {
+			isa = PBXGroup;
+			children = (
+				BBEFB5032E85409A005AEC3B /* MockPPGHoldingBreathData.swift */,
+				BBEFB4FF2E853FCF005AEC3B /* MockPPGClearMindData.swift */,
+				BBEFB5072E8540C4005AEC3B /* MockPPGEyesClosedData.swift */,
+				BB65FEEA283EC8EC00C4F4D8 /* MockPPGMeditationData.swift */,
+				BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */,
+				BBEFB4E82E8344FA005AEC3B /* MockPPGFallingAsleepData.swift */,
+				BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */,
+			);
+			path = Rest;
+			sourceTree = "<group>";
+		};
+		BBEFB5092E854143005AEC3B /* Arousal */ = {
+			isa = PBXGroup;
+			children = (
+				BB9FEF4526371290004F48B6 /* MockEEGStressData.swift */,
+				BBD741602857789500857B78 /* MockEEGGammaBurstsData.swift */,
+				BBEFB50B2E854167005AEC3B /* MockEEGArousalData.swift */,
+				BBEFB5112E85428C005AEC3B /* MockEEGCoffeeData.swift */,
+			);
+			path = Arousal;
+			sourceTree = "<group>";
+		};
+		BBEFB50A2E85414A005AEC3B /* Arousal */ = {
+			isa = PBXGroup;
+			children = (
+				BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */,
+				BBEFB50D2E854177005AEC3B /* MockPPGArousalData.swift */,
+				BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */,
+			);
+			path = Arousal;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -327,13 +491,18 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */,
+				BB4228612E854501001E6DB9 /* MockPPGReadingNewsData.swift in Sources */,
 				BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */,
 				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
+				BB42285C2E8544BB001E6DB9 /* MockEEGCodingData.swift in Sources */,
 				BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */,
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
 				BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */,
+				BBEFB5002E853FD5005AEC3B /* MockPPGClearMindData.swift in Sources */,
+				BBEFB50C2E85416C005AEC3B /* MockEEGArousalData.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
+				BB4228822E854825001E6DB9 /* MockEEGJawData.swift in Sources */,
 				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
 				BB8B857724B100E400376FD4 /* FFT.swift in Sources */,
 				BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */,
@@ -343,10 +512,14 @@
 				BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */,
 				BBA6C01A24CDF29700966159 /* DCT.swift in Sources */,
 				BB57F8A12496B268003DB78A /* MuseConstants.swift in Sources */,
+				BB42286E2E854647001E6DB9 /* MockEEGSocialMediaData.swift in Sources */,
 				BBEFB4E72E8344C7005AEC3B /* MockEEGFallingAsleepData.swift in Sources */,
+				BBEFB5022E854085005AEC3B /* MockEEGHoldingBreathData.swift in Sources */,
+				BBEFB5102E8541C4005AEC3B /* MockPPGCoffeeData.swift in Sources */,
 				BB0962FC24B287F600D516D5 /* MuseEEGSensor.swift in Sources */,
 				BB65FEE9283E80A400C4F4D8 /* MockEEGNoiseData.swift in Sources */,
 				BB8B857924B118E200376FD4 /* MuseEEG.swift in Sources */,
+				BB4228702E854657001E6DB9 /* MockPPGSocialMediaData.swift in Sources */,
 				BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */,
 				BB9FEF4626371290004F48B6 /* MockEEGStressData.swift in Sources */,
 				BBEFB4E92E834502005AEC3B /* MockPPGFallingAsleepData.swift in Sources */,
@@ -355,16 +528,35 @@
 				BBD741612857789500857B78 /* MockEEGGammaBurstsData.swift in Sources */,
 				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
 				BB65FEED283EC93400C4F4D8 /* MockEEGMeditationData.swift in Sources */,
-				BBCDE502281CAC31001B67E7 /* XvMockEEGData.swift in Sources */,
+				BB4228842E854831001E6DB9 /* MockPPGJawData.swift in Sources */,
+				BBCDE502281CAC31001B67E7 /* MockEEGData.swift in Sources */,
 				BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */,
+				BB42287B2E85472A001E6DB9 /* MockPPGBlinksData.swift in Sources */,
+				BB4228652E854557001E6DB9 /* MockEEGRestingFocusData.swift in Sources */,
 				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,
+				BB4228802E8547E2001E6DB9 /* MockPPGForeheadData.swift in Sources */,
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
+				BB4228742E85469C001E6DB9 /* MockEEGLooseFitData.swift in Sources */,
+				BB42285F2E8544D0001E6DB9 /* MockPPGCodingData.swift in Sources */,
+				BBEFB4FD2E853F7C005AEC3B /* MockEEGClearMindData.swift in Sources */,
+				BB42287E2E8547CB001E6DB9 /* MockEEGForeheadData.swift in Sources */,
+				BBEFB5122E854291005AEC3B /* MockEEGCoffeeData.swift in Sources */,
+				BB4228632E854510001E6DB9 /* MockEEGReadingNewsData.swift in Sources */,
 				BB419823253E1150003A7375 /* PeakDetector.swift in Sources */,
 				BB7741E424CA1FF0004B8AE5 /* XvBluetooth.swift in Sources */,
+				BB4228682E85457D001E6DB9 /* MockPPGRestingFocusData.swift in Sources */,
+				BB4228782E854713001E6DB9 /* MockEEGBlinksData.swift in Sources */,
+				BB42286A2E8545EA001E6DB9 /* MockEEGTypingEmailData.swift in Sources */,
+				BBEFB5082E8540CA005AEC3B /* MockPPGEyesClosedData.swift in Sources */,
 				BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */,
+				BBEFB5062E8540BD005AEC3B /* MocEEGEyesClosedData.swift in Sources */,
 				BBEFB4E32E834077005AEC3B /* MockEEGSleepingData.swift in Sources */,
+				BB4228762E8546B1001E6DB9 /* MockPPGLooseFitData.swift in Sources */,
 				BBCDE4FC281C9DF5001B67E7 /* MockEEGTiredData.swift in Sources */,
+				BBEFB50E2E85417C005AEC3B /* MockPPGArousalData.swift in Sources */,
+				BB42286C2E8545FC001E6DB9 /* MockPPGTypingEmailData.swift in Sources */,
 				BBAA8F0B2499086600DE3691 /* Parser.swift in Sources */,
+				BBEFB5042E8540A1005AEC3B /* MockPPGHoldingBreathData.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */

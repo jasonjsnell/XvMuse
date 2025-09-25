@@ -387,13 +387,25 @@ public class XvMuse:MuseBluetoothObserver {
     
     //MARK: - Mock Data
     //only engage mock data objects when called directly from external program
-    private let _mockEEGData:[XvMockEEGData] = [
+    private let _mockEEGData:[MockEEGData] = [
         MockEEGNoiseData(),
+        MockEEGLooseFitData(),
         MockEEGStressData(),
         MockEEGMeditationData(),
         MockEEGTiredData(),
         MockEEGFallingAlseepData(),
         MockEEGSleepingData(),
+        
+    ]
+    private let _mockPPGData:[MockPPGData] = [
+        MockPPGNoiseData(),
+        MockPPGLooseFitData(),
+        MockPPGStressData(),
+        MockPPGMeditationData(),
+        MockPPGTiredData(),
+        MockPPGFallingAsleepData(),
+        MockPPGSleepingData(),
+        
         
     ]
     public func getMockEEG(id:Int) -> XvEEGPacket {
@@ -414,16 +426,7 @@ public class XvMuse:MuseBluetoothObserver {
         return convert(museEEG: _mockEEG)
         
     }
-    private let _mockPPGData:[MockPPGData] = [
-        MockPPGNoiseData(),
-        MockPPGStressData(),
-        MockPPGMeditationData(),
-        MockPPGTiredData(),
-        MockPPGFallingAsleepData(),
-        MockPPGSleepingData(),
-        
-        
-    ]
+    
     public func getMockPPG(id:Int) -> XvPPGPacket {
        
         //keep in bounds

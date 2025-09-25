@@ -6,7 +6,7 @@
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
-class MockEEGGammaBurstData:XvMockEEGData {
+class MockEEGGammaBurstData:MockEEGData {
     
     override internal init(){
         
