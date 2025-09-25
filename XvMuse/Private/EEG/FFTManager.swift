@@ -48,9 +48,8 @@ public struct Epoch {
 /* This stores the different FFT result arrays, including magnitudes (above zero, absolute values) and decibels (which the Muse SDK outputs) */
 
 public struct FFTResult {
-    public var sensor: Int          // same as epoch / channel id
-    // One-sided linear POWER per bin (|X[k]|^2), scaled for FFT length and window.
-    public var power: [Double]
+    public var sensor: Int // same as epoch / channel id
+    public var power: [Double] // One-sided linear POWER per bin (|X[k]|^2), scaled for FFT length and window.
 }
 
 
@@ -85,6 +84,7 @@ public class FFTManager {
         // once the buffer is full (it needs a few seconds of data before it can provide a stream)...
         if let dataStream:DataStream = _buffers[eegPacket.sensor].add(packet: eegPacket) {
             
+            
             //send the data stream to the epoch manager
             
             //once the epoch interval is complete...
@@ -92,10 +92,14 @@ public class FFTManager {
                 
                 //perform Fast Fourier Transform
                 if let fftResult:FFTResult = _fft.transform(epoch: epoch) {
-                    
+                    print("result being produced from FFT", fftResult.sensor, fftResult.power.count, fftResult.power[8])
                     //return the result
                     return fftResult
+                } else {
+                    print("FFT error")
                 }
+            } else {
+                print("epoch error")
             }
         }
         

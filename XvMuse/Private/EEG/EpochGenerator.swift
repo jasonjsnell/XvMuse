@@ -40,27 +40,35 @@ class EpochGenerator {
         //get the current sensor
         let sensor:Int = dataStream.sensor
         
-        //get first (oldest) timestamp in the data stream's timestamp array
-        if let startTime:Double = dataStream.timestamps.first {
-            
-            //if the interval time has passed...
-            if (startTime-interval >= _startTimes[sensor]){
-                
-                //reset curr start time
-                _startTimes[sensor] = startTime
-               
-                //return epoch for the FFT to process
-                return Epoch(sensor: sensor, samples: dataStream.samples)
-            
-            } else {
-                //if epoch is still being built, return nil
-                //print("Epoch: Incoming timestamp:", startTime)
-                return nil
-            }
-            
-        } else {
+        // Safety check: make sure the sensor index is valid for the _startTimes array
+        guard sensor >= 0 && sensor < _startTimes.count else {
+            print("EpochGenerator: Invalid sensor index:", sensor)
+            return nil
+        }
+        
+        // Get the most recent timestamp from the incoming EEG data stream.
+        // .last is used because new data packets append their timestamp here,
+        // so this reflects the current "end" of the rolling buffer (i.e., most recent EEG arrival time).
+        guard let latestTime:Double = dataStream.timestamps.last else {
             print("EpochGenerator: Error: Incoming timestamp array is blank.")
             return nil
         }
+        
+        // Check if enough time has passed since the last epoch was released.
+        // Each sensor has its own _startTimes[sensor].
+        // If the latest timestamp is greater than or equal to the previous start time + interval,
+        // then we know it's time to generate another epoch.
+        if latestTime >= _startTimes[sensor] + interval {
+            
+            // Update the reference point for this sensor so we don't emit epochs too quickly.
+            _startTimes[sensor] = latestTime
+            
+            // Return a new Epoch object representing the *current snapshot*
+            // of EEG data in the rolling buffer.
+            // Defensive 'Array(...)' copy ensures the Epoch has its own sample data
+            // and won’t be affected if the Buffer keeps appending/removing samples later.
+            return Epoch(sensor: sensor, samples: Array(dataStream.samples))
+        }
+        return nil
     }
 }

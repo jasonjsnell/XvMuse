@@ -243,11 +243,11 @@ public class XvMuse:MuseBluetoothObserver {
 
                     //uncomment to store bytes for mock data recording
                     //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
-                    eegSensorBytes[i].append(bytes)
+                    //eegSensorBytes[i].append(bytes)
                     
                     //to see a single packet for testing
                     //if (i == 2) { print(bytes, ",") }
-                    
+            
                     return packet // return assembled packet
                 }
                 
@@ -265,7 +265,7 @@ public class XvMuse:MuseBluetoothObserver {
                     
                     //uncomment to store bytes for mock data recording
                     //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
-                    ppgSensorBytes.append(bytes)
+                    //ppgSensorBytes.append(bytes)
                     
                     //print off a single packet for testing
                     //print(bytes, ",")
@@ -292,13 +292,14 @@ public class XvMuse:MuseBluetoothObserver {
                 //2 TP09: left ear
                 //3 AF07: left forehead
                 case MuseConstants.CHAR_TP10:
+                    print(" ")
                      _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-                case MuseConstants.CHAR_AF8:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-                case MuseConstants.CHAR_TP9:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-                case MuseConstants.CHAR_AF7:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                //case MuseConstants.CHAR_AF8:
+                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+                //case MuseConstants.CHAR_TP9:
+                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+                //case MuseConstants.CHAR_AF7:
+                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                      
                      //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
                      delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
@@ -388,9 +389,9 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - Mock Data
     //only engage mock data objects when called directly from external program
     private let _mockEEGData:[MockEEGData] = [
-//        MockEEGNoiseData(),
+        MockEEGNoiseData(),
 //        MockEEGLooseFitData(),
-//        MockEEGStressData(),
+        MockEEGStressData(),
 //        MockEEGMeditationData(),
 //        MockEEGTiredData(),
 //        MockEEGFallingAlseepData(),
@@ -398,9 +399,9 @@ public class XvMuse:MuseBluetoothObserver {
         
     ]
     private let _mockPPGData:[MockPPGData] = [
-//        MockPPGNoiseData(),
+        MockPPGNoiseData(),
 //        MockPPGLooseFitData(),
-//        MockPPGStressData(),
+        MockPPGStressData(),
 //        MockPPGMeditationData(),
 //        MockPPGTiredData(),
 //        MockPPGFallingAsleepData(),
@@ -411,9 +412,9 @@ public class XvMuse:MuseBluetoothObserver {
     public func getMockEEG(id:Int) -> XvEEGPacket {
         
         //keep in bounds
-        var dataID:Int = id
+        var dataID:Int = id-1
         if (dataID >= _mockEEGData.count) {
-            print("XvMuse: getMockEEG(id): Error: ID out of bounds. Using array max")
+            print("XvMuse: getMockEEG(id): Error: ID", dataID, "out of bounds of", _mockEEGData.count, "- Using array max")
             dataID = _mockEEGData.count-1
         }
         
@@ -430,9 +431,9 @@ public class XvMuse:MuseBluetoothObserver {
     public func getMockPPG(id:Int) -> XvPPGPacket {
        
         //keep in bounds
-        var dataID:Int = id
+        var dataID:Int = id-1
         if (dataID >= _mockPPGData.count) {
-            print("XvMuse: getMockPPG(id): Error: ID out of bounds. Using array max")
+            print("XvMuse: getMockPPG(id): Error: ID", dataID, "out of bounds of", _mockPPGData.count, "- Using array max")
             dataID = _mockPPGData.count-1
         }
         

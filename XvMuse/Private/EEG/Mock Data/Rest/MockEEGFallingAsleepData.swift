@@ -10,6 +10,7 @@ import Foundation
 
 class MockEEGFallingAlseepData:MockEEGData {
     
+    /*
     override internal init(){
         
         super.init()
@@ -12042,5 +12043,5 @@ class MockEEGFallingAlseepData:MockEEGData {
         [124, 55, 195, 123, 247, 188, 123, 119, 186, 123, 215, 195, 124, 183, 198, 123, 199, 191],
         [123, 135, 171, 123, 87, 185, 123, 87, 181, 123, 23, 166, 122, 119, 171, 122, 199, 179],
     ]
-    
+    */
 }

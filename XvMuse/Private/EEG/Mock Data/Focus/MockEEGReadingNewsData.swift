@@ -10,6 +10,7 @@ import Foundation
 
 class MockEEGReadingNewsData:MockEEGData {
     
+    /*
     override internal init(){
         
         super.init()
@@ -16271,4 +16272,5 @@ private let SENSOR_4_DATA:[[UInt8]] = [
  [123, 167, 188, 124, 7, 181, 123, 23, 184, 124, 7, 200, 124, 55, 203, 125, 151, 224],
  [126, 183, 237, 126, 87, 237, 127, 55, 237, 126, 23, 220, 125, 103, 196, 123, 215, 186]
 ]
+     */
 }

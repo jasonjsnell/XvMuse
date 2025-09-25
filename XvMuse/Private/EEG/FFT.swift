@@ -145,12 +145,13 @@ class FFT {
             // 1) Unscaled power = Re^2 + Im^2 per bin
             var power = [Double](repeating: 0.0, count: N/2)
             vDSP_zvmagsD(&splitComplex!, 1, &power, 1, N2)
-
+            
             // 2) Normalize for FFT length (vDSP is unnormalized) and window coherent gain
             let nSquared = Double(N * N)
             let windowPow = coherentGain * coherentGain
             let baseScale = 1.0 / (nSquared * windowPow)
             vDSP.multiply(baseScale, power, result: &power)
+            
 
             // 3) One-sided correction: double interior bins (keep DC at index 0 as-is)
             if N/2 > 1 {
@@ -158,6 +159,7 @@ class FFT {
                 vDSP.multiply(2.0, interior, result: &interior)
                 power.replaceSubrange(1..<(N/2), with: interior)
             }
+            
 
             // 4) Save linear power and its dB view (10*log10(power))
             power = validate(samples: power)

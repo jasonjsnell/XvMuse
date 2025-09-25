@@ -9,7 +9,7 @@
 import Foundation
 
 class MockEEGRestingFocusData:MockEEGData {
-    
+    /*
     override internal init(){
         
         super.init()
@@ -3785,4 +3785,5 @@ private let SENSOR_4_DATA:[[UInt8]] =
  [124, 7, 199, 124, 135, 200, 124, 103, 176, 121, 231, 182, 124, 55, 178, 123, 39, 176],
  [122, 167, 183, 123, 151, 154, 121, 55, 190, 124, 231, 189, 123, 87, 194, 125, 215, 247]
 ]
+     */
 }

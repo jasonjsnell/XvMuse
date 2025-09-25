@@ -10,6 +10,7 @@ import Foundation
 
 class MockEEGMeditationData:MockEEGData {
     
+    
     override internal init(){
         
         super.init()

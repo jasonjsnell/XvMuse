@@ -63,7 +63,7 @@ internal class MuseEEG {
     public func update(withFFTResult: FFTResult?) {
         
         //fftResult is nil when the buffers are loading in the beginning and inbetween Epoch window firings
-        
+        print("in eeg object", withFFTResult?.sensor, withFFTResult?.power.count, withFFTResult?.power[8])
         guard let _fftResult = withFFTResult else { return }
         //so when the fft result is valid...
         

@@ -10,6 +10,7 @@ import Foundation
 
 class MockEEGSleepingData:MockEEGData {
     
+    /*
     override internal init(){
         
         super.init()
@@ -10042,5 +10043,5 @@ class MockEEGSleepingData:MockEEGData {
     [123, 135, 171, 123, 87, 185, 123, 87, 181, 123, 23, 166, 122, 119, 171, 122, 199, 179],
     ]
 
-
+     */
 }
