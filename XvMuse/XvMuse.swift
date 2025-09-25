@@ -388,23 +388,23 @@ public class XvMuse:MuseBluetoothObserver {
     //MARK: - Mock Data
     //only engage mock data objects when called directly from external program
     private let _mockEEGData:[MockEEGData] = [
-        MockEEGNoiseData(),
-        MockEEGLooseFitData(),
-        MockEEGStressData(),
-        MockEEGMeditationData(),
-        MockEEGTiredData(),
-        MockEEGFallingAlseepData(),
-        MockEEGSleepingData(),
+//        MockEEGNoiseData(),
+//        MockEEGLooseFitData(),
+//        MockEEGStressData(),
+//        MockEEGMeditationData(),
+//        MockEEGTiredData(),
+//        MockEEGFallingAlseepData(),
+//        MockEEGSleepingData(),
         
     ]
     private let _mockPPGData:[MockPPGData] = [
-        MockPPGNoiseData(),
-        MockPPGLooseFitData(),
-        MockPPGStressData(),
-        MockPPGMeditationData(),
-        MockPPGTiredData(),
-        MockPPGFallingAsleepData(),
-        MockPPGSleepingData(),
+//        MockPPGNoiseData(),
+//        MockPPGLooseFitData(),
+//        MockPPGStressData(),
+//        MockPPGMeditationData(),
+//        MockPPGTiredData(),
+//        MockPPGFallingAsleepData(),
+//        MockPPGSleepingData(),
         
         
     ]
