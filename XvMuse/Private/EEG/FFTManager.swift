@@ -92,16 +92,19 @@ public class FFTManager {
                 
                 //perform Fast Fourier Transform
                 if let fftResult:FFTResult = _fft.transform(epoch: epoch) {
-                    print("result being produced from FFT", fftResult.sensor, fftResult.power.count, fftResult.power[8])
+                    
                     //return the result
                     return fftResult
-                } else {
-                    print("FFT error")
-                }
-            } else {
-                print("epoch error")
-            }
-        }
+                    
+                } //else {
+                    //print("FFT error")
+                //}
+            }// else {
+               // print("epoch error")
+            //}
+        } //else {
+            //print("data stream error")
+        //}
         
         return nil
     }

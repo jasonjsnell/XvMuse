@@ -235,33 +235,23 @@ public class XvMuse:MuseBluetoothObserver {
                 
                 func _makeEEGPacket(i:Int) -> MuseEEGPacket {
                     
-                    let packet:MuseEEGPacket = MuseEEGPacket(
-                        packetIndex: packetIndex,
-                        sensor: i,
-                        timestamp: timestamp,
-                        samples: _parser.getEEGSamples(from: bytes))
-
                     //uncomment to store bytes for mock data recording
                     //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
                     //eegSensorBytes[i].append(bytes)
                     
                     //to see a single packet for testing
                     //if (i == 2) { print(bytes, ",") }
-            
-                    return packet // return assembled packet
+                    
+                    return MuseEEGPacket(
+                        packetIndex: packetIndex,
+                        sensor: i,
+                        timestamp: timestamp,
+                        samples: _parser.getEEGSamples(from: bytes))
                 }
                 
                 // local func to make PPG packet from the above variables
                 
                 func _makePPGPacket() -> MusePPGPacket {
-                    
-                    let packet:MusePPGPacket = MusePPGPacket(
-                        packetIndex: packetIndex,
-                        sensor: 1, // only use sensor 1 (not 0 or 2)
-                        timestamp: timestamp,
-                        samples: _parser.getPPGSamples(from: bytes))
-                    
-                    //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
                     
                     //uncomment to store bytes for mock data recording
                     //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
@@ -269,8 +259,14 @@ public class XvMuse:MuseBluetoothObserver {
                     
                     //print off a single packet for testing
                     //print(bytes, ",")
-                
-                    return packet // return assembled packet
+                    
+                    //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                    
+                    return MusePPGPacket(
+                        packetIndex: packetIndex,
+                        sensor: 1, // only use sensor 1 (not 0 or 2)
+                        timestamp: timestamp,
+                        samples: _parser.getPPGSamples(from: bytes))
                 }
         
                 //check the char ID and parse data based on it
@@ -292,14 +288,13 @@ public class XvMuse:MuseBluetoothObserver {
                 //2 TP09: left ear
                 //3 AF07: left forehead
                 case MuseConstants.CHAR_TP10:
-                    print(" ")
                      _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-                //case MuseConstants.CHAR_AF8:
-                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-                //case MuseConstants.CHAR_TP9:
-                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-                //case MuseConstants.CHAR_AF7:
-                     //_eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                case MuseConstants.CHAR_AF8:
+                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+                case MuseConstants.CHAR_TP9:
+                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+                case MuseConstants.CHAR_AF7:
+                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                      
                      //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
                      delegate?.didReceive(eegPacket: convert(museEEG: _eeg))

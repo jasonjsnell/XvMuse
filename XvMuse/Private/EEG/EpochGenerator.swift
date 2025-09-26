@@ -67,8 +67,13 @@ class EpochGenerator {
             // of EEG data in the rolling buffer.
             // Defensive 'Array(...)' copy ensures the Epoch has its own sample data
             // and won’t be affected if the Buffer keeps appending/removing samples later.
+            
             return Epoch(sensor: sensor, samples: Array(dataStream.samples))
-        }
+            
+        } //else {
+            //print("EpochGenerator: Waiting for next epoch window")
+        //}
+        
         return nil
     }
 }
