@@ -1,5 +1,5 @@
 //
-//  MockEEGLooseFitData.swift
+//  TestEEGLooseFitData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGLooseFitData:MockEEGData {
+class TestEEGLooseFitData:TestEEGData {
     
     override internal init(){
         

@@ -1,5 +1,5 @@
 //
-//  MockData.swift
+//  TestData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 4/26/21.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGStressData:MockEEGData {
+class TestEEGStressData:TestEEGData {
     
     override internal init(){
         

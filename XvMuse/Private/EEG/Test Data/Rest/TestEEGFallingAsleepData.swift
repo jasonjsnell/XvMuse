@@ -1,5 +1,5 @@
 //
-//  MockEEGFallingAsleepData.swift
+//  TestEEGFallingAsleepData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/23/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGFallingAlseepData:MockEEGData {
+class TestEEGFallingAlseepData:TestEEGData {
     
     /*
     override internal init(){

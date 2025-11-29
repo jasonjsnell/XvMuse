@@ -1,12 +1,12 @@
 //
-//  MockEEGGammaBursts.swift
+//  TestEEGGammaBursts.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 6/13/22.
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
-class MockEEGGammaBurstData:MockEEGData {
+class TestEEGGammaBurstData:TestEEGData {
     
     override internal init(){
         

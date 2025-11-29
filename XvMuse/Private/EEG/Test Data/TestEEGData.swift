@@ -1,12 +1,12 @@
 //
-//  MockEEGData.swift
+//  TestEEGData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 4/29/22.
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
-class MockEEGData {
+class TestEEGData {
     
     public static let SET_TIRED:Int = 0
     public static let SET_MEDITATION:Int = 1
@@ -40,12 +40,12 @@ class MockEEGData {
             sensor: sensor,
             timestamp: timestamp,
             samples: _parser.getEEGSamples(
-                from: _getMockBytes(for: sensor)
+                from: _getTestBytes(for: sensor)
             )
         )
     }
     
-    private func _getMockBytes(for sensor:Int) -> [UInt8] {
+    private func _getTestBytes(for sensor:Int) -> [UInt8] {
         
         //increase count
         byteCounters[sensor] += 1

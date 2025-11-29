@@ -1,5 +1,5 @@
 //
-//  MockEEGJawData.swift
+//  TestEEGJawData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGJawData:MockEEGData {
+class TestEEGJawData:TestEEGData {
     /*
     override internal init(){
         

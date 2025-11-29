@@ -1,6 +1,6 @@
 import Foundation
 
-class MockEEGClearMindData:MockEEGData {
+class TestEEGClearMindData:TestEEGData {
     
     /*override internal init(){
         

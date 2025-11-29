@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGEyesClosedData:MockEEGData {
+class TestEEGEyesClosedData:TestEEGData {
     /*
     override internal init(){
         

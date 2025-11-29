@@ -1,5 +1,5 @@
 //
-//  MockEEGSocialMediaData.swift
+//  TestEEGSocialMediaData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGSocialMediaData:MockEEGData {
+class TestEEGSocialMediaData:TestEEGData {
     /*
     override internal init(){
         

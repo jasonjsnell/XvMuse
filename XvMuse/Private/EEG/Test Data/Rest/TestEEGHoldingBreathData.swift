@@ -1,5 +1,5 @@
 //
-//  MockEEGHoldingBreathData.swift
+//  TestEEGHoldingBreathData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockEEGHoldingBreathData:MockEEGData {
+class TestEEGHoldingBreathData:TestEEGData {
     /*
     override internal init(){
         

@@ -1,12 +1,12 @@
 //
-//  MockEEGArousalData.swift
+//  TestEEGArousalData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
 //  Copyright © 2025 Jason Snell. All rights reserved.
 //
 
-class MockEEGArousalData:MockEEGData {
+class TestEEGArousalData:TestEEGData {
     
     /*
     override internal init(){
