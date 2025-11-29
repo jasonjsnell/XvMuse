@@ -1,5 +1,5 @@
 //
-//  MockPPGData.swift
+//  TestPPGData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 4/29/22.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGData {
+class TestPPGData {
     
     //helper classes
     private let _parser:Parser = Parser() //processes incoming data into useable / readable values
@@ -34,10 +34,10 @@ class MockPPGData {
             packetIndex: packetIndex,
             sensor: 1,
             timestamp: timestamp,
-            samples: _parser.getPPGSamples(from: _getMockBytes()))
+            samples: _parser.getPPGSamples(from: _getTestBytes()))
     }
     
-    private func _getMockBytes() -> [UInt8] {
+    private func _getTestBytes() -> [UInt8] {
         
         //increase count
         byteCounter += 1

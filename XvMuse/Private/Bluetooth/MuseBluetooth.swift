@@ -68,19 +68,37 @@ public class MuseBluetooth:XvBluetoothDelegagte {
             observer: self,
             deviceUUID: deviceID,
             serviceUUID: MuseConstants.SERVICE_ID,
-            characteristicsUUIDs: [
-                MuseConstants.CHAR_CONTROL,
-                MuseConstants.CHAR_TP9,
-                MuseConstants.CHAR_AF7,
-                MuseConstants.CHAR_AF8,
-                MuseConstants.CHAR_TP10,
-                //XvMuseConstants.CHAR_RAUX,
-                //XvMuseConstants.CHAR_GYRO,
-                MuseConstants.CHAR_ACCEL,
-                MuseConstants.CHAR_BATTERY,
-                MuseConstants.CHAR_PPG1,
-                MuseConstants.CHAR_PPG2,
-                MuseConstants.CHAR_PPG3
+            characteristicsUUIDs:
+                [
+                    //serial commands
+                    MuseConstants.CHAR_CONTROL,
+                    
+                    //EEG sensors
+                    //MuseConstants.CHAR_LAUX,
+                    MuseConstants.CHAR_TP9,
+                    MuseConstants.CHAR_AF7,
+                    MuseConstants.CHAR_AF8,
+                    MuseConstants.CHAR_TP10,
+                    //MuseConstants.CHAR_RAUX,
+                
+                    //Motion
+                    //MuseConstants.CHAR_GYRO,
+                    MuseConstants.CHAR_ACCEL,
+                    
+                    MuseConstants.CHAR_BATTERY,
+                    //MuseConstants.CHAR_PPG1,
+                    MuseConstants.CHAR_PPG2,
+                    //MuseConstants.CHAR_PPG3,
+                
+                
+                    //MuseConstants.CHAR_DRL_REF, //reference sensor
+                    MuseConstants.CHAR_TEST_MAGNOMETER,
+                    MuseConstants.CHAR_TEST_BAROMETRIC_PRESSURE,
+                    MuseConstants.CHAR_TEST_UV_SENSOR,
+                    MuseConstants.CHAR_THERMISTOR,
+                    MuseConstants.CHAR_TEST13, //Athena
+                    MuseConstants.CHAR_TEST14, //Athena
+                
             ]
         )
     }
@@ -296,6 +314,8 @@ public class MuseBluetooth:XvBluetoothDelegagte {
             presetHex = MuseConstants.P22_HEX
         case MuseConstants.PRESET_23:
             presetHex = MuseConstants.P23_HEX
+        case MuseConstants.PRESET_51:
+            presetHex = MuseConstants.P51_HEX
         default:
             print("MuseBluetooth: Error: Preset ID", preset)
             break

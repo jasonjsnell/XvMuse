@@ -1,5 +1,5 @@
 //
-//  MockPPGReadingNewsData.swift
+//  TestPPGReadingNewsData.swift
 //  XvMuse
 //  Created by Jason Snell on 9/25/25.
 //  Copyright © 2025 Jason Snell. All rights reserved.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-class MockPPGReadingNewsData:MockPPGData {
+class TestPPGReadingNewsData:TestPPGData {
     
     override internal init(){
         

@@ -1,5 +1,5 @@
 //
-//  MockPPGTiredData.swift
+//  TestPPGTiredData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 4/29/22.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGTiredData:MockPPGData {
+class TestPPGTiredData:TestPPGData {
     
     override internal init(){
         

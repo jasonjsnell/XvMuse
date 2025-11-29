@@ -1,5 +1,5 @@
 //
-//  MockPPGCodingData.swift
+//  TestPPGCodingData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGCodingData:MockPPGData {
+class TestPPGCodingData:TestPPGData {
     
     override internal init(){
         

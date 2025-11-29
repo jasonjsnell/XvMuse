@@ -1,5 +1,5 @@
 //
-//  MockPPGRestingFocusData.swift
+//  TestPPGRestingFocusData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGRestingFocusData:MockPPGData {
+class TestPPGRestingFocusData:TestPPGData {
     
     override internal init(){
         

@@ -1,5 +1,5 @@
 //
-//  MockPPGSocialMediaData.swift
+//  TestPPGSocialMediaData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGSocialMediaData:MockPPGData {
+class TestPPGSocialMediaData:TestPPGData {
     
     override internal init(){
         

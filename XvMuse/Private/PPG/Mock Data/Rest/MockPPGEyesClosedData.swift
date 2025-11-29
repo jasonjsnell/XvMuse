@@ -1,5 +1,5 @@
 //
-//  MockPPGEyesClosedData.swift
+//  TestPPGEyesClosedData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGEyesClosedData:MockPPGData {
+class TestPPGEyesClosedData:TestPPGData {
     
     override internal init(){
         

@@ -1,5 +1,5 @@
 //
-//  MockPPGLooseFitData.swift
+//  TestPPGLooseFitData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGLooseFitData:MockPPGData {
+class TestPPGLooseFitData:TestPPGData {
     
     override internal init(){
         

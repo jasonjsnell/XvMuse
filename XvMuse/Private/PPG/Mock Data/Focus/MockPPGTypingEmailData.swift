@@ -1,5 +1,5 @@
 //
-//  MockPPGTypingEmail.swift
+//  TestPPGTypingEmail.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGTypingEmailData:MockPPGData {
+class TestPPGTypingEmailData:TestPPGData {
     
     override internal init(){
         

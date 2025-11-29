@@ -5,7 +5,7 @@
 
 import Foundation
 
-class MockPPGClearMindData:MockPPGData {
+class TestPPGClearMindData:TestPPGData {
     
     override internal init(){
         

@@ -1,5 +1,5 @@
 //
-//  MockPPGForeheadMovementData.swift
+//  TestPPGForeheadMovementData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGForeheadData:MockPPGData {
+class TestPPGForeheadData:TestPPGData {
     
     override internal init(){
         

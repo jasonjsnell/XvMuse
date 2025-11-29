@@ -1,5 +1,5 @@
 //
-//  MockPPGFallingAsleepData.swift
+//  TestPPGFallingAsleepData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/23/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGFallingAsleepData:MockPPGData {
+class TestPPGFallingAsleepData:TestPPGData {
     
     override internal init(){
         

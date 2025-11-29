@@ -1,5 +1,5 @@
 //
-//  MockPPGHoldingBreathData.swift
+//  TestPPGHoldingBreathData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGHoldingBreathData:MockPPGData {
+class TestPPGHoldingBreathData:TestPPGData {
     
     override internal init(){
         

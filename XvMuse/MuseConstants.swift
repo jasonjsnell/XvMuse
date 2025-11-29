@@ -18,20 +18,41 @@ internal class MuseConstants {
     public static let SERVICE_ID:CBUUID   = CBUUID(string: "0xfe8d")
     
     //MARK: CHARACTERISTICS -
-    public static let CHAR_CONTROL:CBUUID = CBUUID(string:"273E0001-4C4D-454D-96BE-F03BAC821358") //write to this to send CMNDs to the Muse
     
+    //MARK: Serial commands
+    public static let CHAR_CONTROL:CBUUID = CBUUID(string:"273E0001-4C4D-454D-96BE-F03BAC821358") //write to this to send CMNDs to the Muse
+
     //https://github.com/alexandrebarachant/muse-lsl/blob/master/muselsl/constants.py
-    public static let CHAR_TP9:CBUUID     = CBUUID(string:"273E0003-4C4D-454D-96BE-F03BAC821358") //left ear
-    public static let CHAR_AF7:CBUUID     = CBUUID(string:"273E0004-4C4D-454D-96BE-F03BAC821358") //left forehead
-    public static let CHAR_AF8:CBUUID     = CBUUID(string:"273E0005-4C4D-454D-96BE-F03BAC821358") //right forehead
-    public static let CHAR_TP10:CBUUID    = CBUUID(string:"273E0006-4C4D-454D-96BE-F03BAC821358") //right ear
-    public static let CHAR_RAUX:CBUUID    = CBUUID(string:"273E0007-4C4D-454D-96BE-F03BAC821358") //plug-in aux sensor
-    public static let CHAR_GYRO:CBUUID    = CBUUID(string:"273E0009-4C4D-454D-96BE-F03BAC821358") //gyroscope
-    public static let CHAR_ACCEL:CBUUID   = CBUUID(string:"273E000A-4C4D-454D-96BE-F03BAC821358") //accelometer
-    public static let CHAR_BATTERY:CBUUID = CBUUID(string:"273E000B-4C4D-454D-96BE-F03BAC821358") //battery (telemetry)
-    public static let CHAR_PPG1:CBUUID    = CBUUID(string:"273E000F-4C4D-454D-96BE-F03BAC821358") //ppg1
-    public static let CHAR_PPG2:CBUUID    = CBUUID(string:"273E0010-4C4D-454D-96BE-F03BAC821358") //ppg2
-    public static let CHAR_PPG3:CBUUID    = CBUUID(string:"273E0011-4C4D-454D-96BE-F03BAC821358") //ppg3
+    //https://mind-monitor.com/forums0/viewtopic.php?p=3534&hilit=273E0001#p3534
+    //MARK: EEG sensors
+    public static let CHAR_LAUX:CBUUID   = CBUUID(string:"273E0002-4C4D-454D-96BE-F03BAC821358") //left aux
+    
+    public static let CHAR_TP9:CBUUID     = CBUUID(string:"273E0003-4C4D-454D-96BE-F03BAC821358") //left ear 
+    public static let CHAR_AF7:CBUUID     = CBUUID(string:"273E0004-4C4D-454D-96BE-F03BAC821358") //left forehead 
+    public static let CHAR_AF8:CBUUID     = CBUUID(string:"273E0005-4C4D-454D-96BE-F03BAC821358") //right forehead 
+    public static let CHAR_TP10:CBUUID    = CBUUID(string:"273E0006-4C4D-454D-96BE-F03BAC821358") //right ear 
+    
+    public static let CHAR_RAUX:CBUUID    = CBUUID(string:"273E0007-4C4D-454D-96BE-F03BAC821358") //right aux sensor 
+    
+    
+    public static let CHAR_DRL_REF:CBUUID   = CBUUID(string:"273E0008-4C4D-454D-96BE-F03BAC821358") //Driven Right Leg (DRL) reference channel (artifact rejection)
+  
+    public static let CHAR_GYRO:CBUUID    = CBUUID(string:"273E0009-4C4D-454D-96BE-F03BAC821358") //gyroscope 
+    public static let CHAR_ACCEL:CBUUID   = CBUUID(string:"273E000A-4C4D-454D-96BE-F03BAC821358") //accelometer 
+    public static let CHAR_BATTERY:CBUUID = CBUUID(string:"273E000B-4C4D-454D-96BE-F03BAC821358") //battery 
+    
+    public static let CHAR_TEST_MAGNOMETER:CBUUID = CBUUID(string:"273E000C-4C4D-454D-96BE-F03BAC821358") //magnometer
+    public static let CHAR_TEST_BAROMETRIC_PRESSURE:CBUUID = CBUUID(string:"273E000D-4C4D-454D-96BE-F03BAC821358") //barometric pressure
+    public static let CHAR_TEST_UV_SENSOR:CBUUID = CBUUID(string:"273E000E-4C4D-454D-96BE-F03BAC821358") //UV sensor
+    
+    
+    public static let CHAR_PPG1:CBUUID    = CBUUID(string:"273E000F-4C4D-454D-96BE-F03BAC821358") //ppg ambient 
+    public static let CHAR_PPG2:CBUUID    = CBUUID(string:"273E0010-4C4D-454D-96BE-F03BAC821358") //ppg IR 
+    public static let CHAR_PPG3:CBUUID    = CBUUID(string:"273E0011-4C4D-454D-96BE-F03BAC821358") //ppg Red 
+    
+    public static let CHAR_THERMISTOR:CBUUID    = CBUUID(string:"273E0012-4C4D-454D-96BE-F03BAC821358") //themistor
+    public static let CHAR_TEST13:CBUUID    = CBUUID(string:"273E0013-4C4D-454D-96BE-F03BAC821358") //???
+    public static let CHAR_TEST14:CBUUID    = CBUUID(string:"273E0014-4C4D-454D-96BE-F03BAC821358") //???
     
     //MARK: COMMANDS -
     //https://www.eso.org/~ndelmott/ascii.html
@@ -113,11 +134,13 @@ internal class MuseConstants {
     public static let P21_HEX:[UInt8] = [0x32, 0x31] //preset 21 (default)
     public static let P22_HEX:[UInt8] = [0x32, 0x32] //preset 22
     public static let P23_HEX:[UInt8] = [0x32, 0x33] //preset 23
+    public static let P51_HEX:[UInt8] = [0x35, 0x31] //preset 51 (ppg on S and Athena?)
     
     public static let PRESET_20:UInt8 = 20
     public static let PRESET_21:UInt8 = 21
     public static let PRESET_22:UInt8 = 22
     public static let PRESET_23:UInt8 = 23
+    public static let PRESET_51:UInt8 = 51
     
     
     public static let BATTERY_PCT_DIVIDEND:UInt16 = 512

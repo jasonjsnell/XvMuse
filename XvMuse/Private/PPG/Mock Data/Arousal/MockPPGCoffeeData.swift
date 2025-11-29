@@ -1,5 +1,5 @@
 //
-//  MockPPGCoffeeData.swift
+//  TestPPGCoffeeData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGCoffeeData:MockPPGData {
+class TestPPGCoffeeData:TestPPGData {
     
     override internal init(){
         

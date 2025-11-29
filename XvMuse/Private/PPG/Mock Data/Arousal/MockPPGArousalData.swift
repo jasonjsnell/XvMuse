@@ -1,5 +1,5 @@
 //
-//  MockPPGArousalData.swift
+//  TestPPGArousalData.swift
 //  XvMuse
 //
 //  Created by Jason Snell on 9/25/25.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-class MockPPGArousalData:MockPPGData {
+class TestPPGArousalData:TestPPGData {
     
     override internal init(){
         
