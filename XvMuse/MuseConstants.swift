@@ -51,8 +51,12 @@ internal class MuseConstants {
     public static let CHAR_PPG3:CBUUID    = CBUUID(string:"273E0011-4C4D-454D-96BE-F03BAC821358") //ppg Red 
     
     public static let CHAR_THERMISTOR:CBUUID    = CBUUID(string:"273E0012-4C4D-454D-96BE-F03BAC821358") //themistor
-    public static let CHAR_TEST13:CBUUID    = CBUUID(string:"273E0013-4C4D-454D-96BE-F03BAC821358") //???
-    public static let CHAR_TEST14:CBUUID    = CBUUID(string:"273E0014-4C4D-454D-96BE-F03BAC821358") //???
+    
+    //MARK: Athena
+    // Athena main data stream (EEG + ACC/GYRO/OPTICS/BATTERY)
+    public static let CHAR_ATHENA_MAIN:CBUUID    = CBUUID(string:"273E0013-4C4D-454D-96BE-F03BAC821358")
+    // Athena secondary/aux data stream
+    public static let CHAR_ATHENA_AUX:CBUUID    = CBUUID(string:"273E0014-4C4D-454D-96BE-F03BAC821358")
     
     //MARK: COMMANDS -
     //https://www.eso.org/~ndelmott/ascii.html
@@ -141,6 +145,7 @@ internal class MuseConstants {
     public static let PRESET_22:UInt8 = 22
     public static let PRESET_23:UInt8 = 23
     public static let PRESET_51:UInt8 = 51
+    //public static let PRESET_1035:UInt8 = 1035
     
     
     public static let BATTERY_PCT_DIVIDEND:UInt16 = 512

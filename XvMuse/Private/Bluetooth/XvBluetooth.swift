@@ -30,7 +30,7 @@
 /*
  
  Usage
- addListener(deviceUUID: device, characteristicsUUIDs: [x, y, z)
+ addListener(deviceUUID: device
  
  */
 
@@ -55,8 +55,7 @@ public class XvBluetooth {
     public func addListener(
         observer:XvBluetoothDelegate,
         deviceUUID:CBUUID?,
-        serviceUUID:CBUUID?,
-        characteristicsUUIDs:[CBUUID]){
+        serviceUUID:CBUUID?){
             
             print("XvBluetooth: addListener for device:", deviceUUID as Any)
             
@@ -73,8 +72,7 @@ public class XvBluetooth {
                 let listener:BluetoothListener = BluetoothListener(
                     observer: observer,
                     deviceUUID: deviceUUID,
-                    serviceUUID: serviceUUID,
-                    characteristicsUUIDs: characteristicsUUIDs
+                    serviceUUID: serviceUUID
                 )
                 listeners.append(listener)
             }

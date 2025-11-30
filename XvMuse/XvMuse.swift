@@ -112,8 +112,9 @@ public class XvMuse:MuseBluetoothObserver {
     public weak var delegate:XvMuseDelegate?
     
     //device version
-    public var majorVersion:String = "Muse"
-    public var minorVersion:String = "1" //1, 2, Athena
+    public var deviceName:XvDeviceName = .muse2
+    private var majorVersion:String = "Muse"
+    private var minorVersion:String = "1" //1, 2, Athena
     
     
     //MARK: - Private
@@ -216,7 +217,12 @@ public class XvMuse:MuseBluetoothObserver {
                 // Fallback if no dash found
                 majorVersion = museName
             }
-            print("XvMuse: Major version =", majorVersion)
+            if (majorVersion == "Muse") {
+                deviceName = .muse1
+            } else if (majorVersion == "MuseS") {
+                deviceName = .museS
+            }
+            print("XvMuse: Major version =", majorVersion, "| Device may be", deviceName)
         }
         
         bluetooth.stop() //stop the search
@@ -230,8 +236,14 @@ public class XvMuse:MuseBluetoothObserver {
     func discoveredPPG() {
         if (majorVersion == "Muse"){
             minorVersion = "2"
+            deviceName = .muse2
         }
-        print("XvMuse: Version:", majorVersion, minorVersion)
+        print("XvMuse: Version:", majorVersion, minorVersion, "| Device", deviceName)
+    }
+    func discoveredAthena() {
+        minorVersion = "Athena"
+        deviceName = .museAthena
+        print("XvMuse: Version:", majorVersion, minorVersion, "| Device", deviceName)
     }
     
     //MARK: Start streaming
@@ -418,7 +430,7 @@ public class XvMuse:MuseBluetoothObserver {
                     }
                    
                 default:
-                    //print("Unused UUID:", bluetoothCharacteristic.uuid)
+                    print("Unused UUID:", bluetoothCharacteristic.uuid)
                     break
                 }
             }
@@ -522,9 +534,12 @@ public class XvMuse:MuseBluetoothObserver {
             //bluetooth.set(preset: MuseConstants.PRESET_20)
             
             //print("Version?", majorVersion, minorVersion)
-            if (majorVersion == "MuseS") {
+            if (deviceName == .museS) {
                 print("XvMuse: Using MuseS preset 51")
                 bluetooth.set(preset: MuseConstants.PRESET_51)
+            } else if (deviceName == .museAthena) {
+                print("XvMuse: Init Athena")
+                bluetooth.athenaInitializeAndStart()
             }
             
             

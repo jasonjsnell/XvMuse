@@ -15,6 +15,7 @@ internal protocol MuseBluetoothObserver:AnyObject {
     
     //characteristics
     func discoveredPPG()
+    func discoveredAthena()
     func parse(bluetoothCharacteristic: CBCharacteristic)
     
     //steps of connecting, disconnecting
@@ -32,7 +33,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
     internal var delegate:MuseBluetoothObserver?
     private var deviceID:CBUUID?
     
-    private let debug:Bool = false
+    private let debug:Bool = true
     
     public init(deviceCBUUID:CBUUID?) {
         
@@ -70,39 +71,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
         bluetooth.addListener(
             observer: self,
             deviceUUID: deviceID,
-            serviceUUID: MuseConstants.SERVICE_ID,
-            characteristicsUUIDs:
-                [
-                    //serial commands
-                    MuseConstants.CHAR_CONTROL,
-                    
-                    //EEG sensors
-                    //MuseConstants.CHAR_LAUX,
-                    MuseConstants.CHAR_TP9,
-                    MuseConstants.CHAR_AF7,
-                    MuseConstants.CHAR_AF8,
-                    MuseConstants.CHAR_TP10,
-                    //MuseConstants.CHAR_RAUX,
-                
-                    //Motion
-                    //MuseConstants.CHAR_GYRO,
-                    MuseConstants.CHAR_ACCEL,
-                    
-                    MuseConstants.CHAR_BATTERY,
-                    //MuseConstants.CHAR_PPG1,
-                    MuseConstants.CHAR_PPG2,
-                    //MuseConstants.CHAR_PPG3,
-                
-                
-                    //MuseConstants.CHAR_DRL_REF, //reference sensor
-                    MuseConstants.CHAR_TEST_MAGNOMETER,
-                    MuseConstants.CHAR_TEST_BAROMETRIC_PRESSURE,
-                    MuseConstants.CHAR_TEST_UV_SENSOR,
-                    MuseConstants.CHAR_THERMISTOR,
-                    MuseConstants.CHAR_TEST13, //Athena
-                    MuseConstants.CHAR_TEST14, //Athena
-                
-            ]
+            serviceUUID: MuseConstants.SERVICE_ID
         )
     }
     
@@ -189,8 +158,12 @@ public class MuseBluetooth:XvBluetoothDelegate {
         print("XvMuse: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
         //check for specific sensors
         if (characteristic.uuid == MuseConstants.CHAR_PPG2){
-            print("MuseBluetooth: Found PPG")
+            print("MuseBluetooth: Found PPG characteristic")
             delegate?.discoveredPPG()
+        }
+        if (characteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN){
+            print("MuseBluetooth: Found Athena characteristic")
+            delegate?.discoveredAthena()
         }
     }
     
@@ -358,7 +331,75 @@ public class MuseBluetooth:XvBluetoothDelegate {
         sendControlCommand(data: data)
     }
     
-    //sub routine
+    // MARK: - Athena control (text protocol)
+
+    public func athenaInitializeAndStart(preset: String = "p1041") {
+        
+        func sendToken(_ token: String) {
+            guard let data = try? makeAthenaCommand(token) else { return }
+            sendControlCommand(data: data)
+        }
+        
+        // Version/status handshake (best-effort)
+        sendToken("v6")
+        sendToken("s")
+        
+        // Halt / reset
+        sendToken("h")
+        
+        // Apply preset
+        sendToken(preset)
+        
+        // Status again (optional)
+        sendToken("s")
+        
+        // Start streaming: dc001 sent twice
+        sendToken("dc001")
+        sendToken("dc001")
+        
+        // Low-latency mode (optional)
+        sendToken("L1")
+        
+        // Final status (optional)
+        sendToken("s")
+    }
+
+    public func athenaStartStreaming() {
+        guard let dc = try? makeAthenaCommand("dc001") else { return }
+        sendControlCommand(data: dc)
+        sendControlCommand(data: dc)
+    }
+
+    public func athenaStopStreaming() {
+        guard let h = try? makeAthenaCommand("h") else { return }
+        sendControlCommand(data: h)
+    }
+
+    public func athenaStatus() {
+        guard let s = try? makeAthenaCommand("s") else { return }
+        sendControlCommand(data: s)
+    }
+
+    private enum MuseCommandError: Error {
+        case invalidToken
+        case tooLong
+    }
+
+    private func makeAthenaCommand(_ token: String) throws -> Data {
+        guard !token.isEmpty, let payload = (token + "\n").data(using: .ascii) else {
+            throw MuseCommandError.invalidToken
+        }
+        guard payload.count <= 255 else {
+            throw MuseCommandError.tooLong
+        }
+        var data = Data()
+        data.append(UInt8(payload.count))
+        data.append(payload)
+        return data
+    }
+
+    
+    //MARK: send control command
     private func sendControlCommand(data:Data) {
         
         if (deviceID != nil) {

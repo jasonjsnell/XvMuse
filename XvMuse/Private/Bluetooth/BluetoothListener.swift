@@ -53,7 +53,6 @@ class BluetoothListener:NSObject {
     }
     private var _deviceUUID:CBUUID?
     private var _serviceUUID:CBUUID?
-    private var _characteristicsUUIDs:[CBUUID]?
     
     //view controller to send updates to
     internal weak var delegate:XvBluetoothDelegate?
@@ -64,7 +63,7 @@ class BluetoothListener:NSObject {
         observer:XvBluetoothDelegate,
         deviceUUID:CBUUID?, // can be nil
         serviceUUID:CBUUID?, // can be nil
-        characteristicsUUIDs: [CBUUID]){
+    ){
         
         super.init()
         
@@ -74,7 +73,6 @@ class BluetoothListener:NSObject {
         //capture IDs
         _deviceUUID = deviceUUID
         _serviceUUID = serviceUUID
-        _characteristicsUUIDs = characteristicsUUIDs
         
         //init bluetooth
         //let workerQueue = DispatchQueue(label: "com.xv.EEGOSX.workerQueue")
@@ -107,12 +105,18 @@ class BluetoothListener:NSObject {
             if (_serviceUUID != nil && _deviceUUID != nil) {
                 
                 //scan for device with service
-                _centralManager!.scanForPeripherals(withServices: [_serviceUUID!], options: nil)
+                _centralManager!.scanForPeripherals(
+                    withServices: [_serviceUUID!],
+                    options: nil
+                )
                 
             } else {
                 
                 //if no service ID, scan for all, and look for device ID
-                _centralManager!.scanForPeripherals(withServices: nil, options: nil) //scans for all bluetooth devices in area
+                _centralManager!.scanForPeripherals(
+                    withServices: nil,
+                    options: nil
+                ) //scans for all bluetooth devices in area
             }
             
         } else {
@@ -219,7 +223,6 @@ extension BluetoothListener: CBCentralManagerDelegate {
             } else {
                 print("BLUETOOTH: Error: Central Manager is nil in didDiscover peripheral()")
             }
-            
         }
     }
     
@@ -269,6 +272,8 @@ extension BluetoothListener: CBPeripheralDelegate {
         //save for later ref
         _services = services
         
+        if (debug){ print("BLUETOOTH:", services.count, "services found") }
+        
         //search for services on peripheral
         for service in services{
             
@@ -278,8 +283,6 @@ extension BluetoothListener: CBPeripheralDelegate {
             
             //search for its characteristics
             _device!.discoverCharacteristics(nil, for: service)
-            //_device!.discoverCharacteristics(_characteristicsUUIDs, for: service)
-            
         }
     }
     
@@ -305,24 +308,21 @@ extension BluetoothListener: CBPeripheralDelegate {
                 //Utils.printType(forCharacteristic: characteristic)
             }
             
-            //for each charactertistic, see if it's UUID matches any of the UUIDs passed in during init
-            for charUUID in _characteristicsUUIDs! {
-                
-                //if there is a match
-                if (characteristic.uuid == charUUID) {
-                    
-                    //set notify if avail
-                    if (characteristic.properties.contains(.notify)){
-                        
-                        if (debug){ print("BLUETOOTH: Add notify for characteristic", characteristic.uuid) }
-                        peripheral.setNotifyValue(true, for: characteristic)
-                    }
-                   
-                    //read if avail
-                    if (characteristic.properties.contains(.read)){
-                        peripheral.readValue(for: characteristic)
-                    }
+            // Subscribe to every characteristic that supports notifications
+            if characteristic.properties.contains(.notify) {
+                if (debug) {
+                    print("BLUETOOTH: Add notify for characteristic", characteristic.uuid)
                 }
+                peripheral.setNotifyValue(true, for: characteristic)
+            }
+            
+            
+            // Optionally read once from any characteristic that supports read
+            if characteristic.properties.contains(.read) {
+                if (debug) {
+                    print("BLUETOOTH: Read initial value for characteristic", characteristic.uuid)
+                }
+                peripheral.readValue(for: characteristic)
             }
         }
     }
