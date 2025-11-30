@@ -375,10 +375,20 @@ public class XvMuse:MuseBluetoothObserver {
                     //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
                     //getting device info or a control status send back JSON dictionaries with several vars
                     //note: this package does not use packetIndex, so pass in the raw charactersitic value
-                    if let commandResponse:[String:Any] =  _parser.parse(controlLine: bluetoothCharacteristic.value) {
+                    if let commandResponse: [String: Any] = _parser.parse(controlLine: bluetoothCharacteristic.value) {
                         
-                        //if a response more than ["rc":0] comes in, broadcast it
-                        delegate?.didReceive(commandResponse: commandResponse)
+                        // Drop the rc field
+                        var filtered = commandResponse
+                        filtered.removeValue(forKey: "rc")
+                        
+                        // If nothing is left (i.e. it was just ["rc": 0]), ignore it
+                        guard !filtered.isEmpty else {
+                            return
+                        }
+                        
+                        // Otherwise, broadcast the response
+                        print("XvMuse: commandResponse:", filtered)
+                        delegate?.didReceive(commandResponse: filtered)
                     }
                    
                 default:

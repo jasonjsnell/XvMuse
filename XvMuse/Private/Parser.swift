@@ -57,56 +57,113 @@ class Parser {
     }
     
     //MARK: - CONTROL MESSAGES -
-    
     //var to concat incoming messages to
     private var controlMsg:String = ""
     
     internal func parse(controlLine:Data?) -> [String:Any]? {
         
+        //convert to data
         if let _controlLine:Data = controlLine {
             
-            //first byte in control line is the number of useable characters
-            //if all bytes are used, random text from other lines is at the end of each line
+            //grab first byte, which is length
             let lengthOfString:Int = Int(_controlLine[0])
             
-            //loop through the bytes, skipping the first (which is the length of the string)
+            //parse through length of string, skipping first byte (which is lenght)
             for i in 1...lengthOfString {
                 
-                //grab the byte
+                //grab bytes in a loop
                 let byte:UInt8 = _controlLine[i]
-                
-                //convert it to a character
                 let charFromByte:Character = Character(UnicodeScalar(byte))
-                
-                //append it to the msg array
                 controlMsg += String(charFromByte)
                 
-                //if the character is the close bracket...
+                //end char is bracket
                 if (charFromByte == "}") {
                     
-                    //send the string to the JSON func
-                    if let json:[String:Any] = JSON.getJSON(fromStr: controlMsg) {
+                    // We've reached the end of a control message
+                    //print("controlMsg", controlMsg)
+                    
+                    let message = controlMsg
+                    var json: [String: Any] = [:]
+                    
+                    let end = message.endIndex
+                    var searchIndex = message.startIndex
+                    
+                    // Scan for every colon in the message
+                    while let colonIndex = message[searchIndex...].firstIndex(of: ":") {
                         
-                        //print("CONTROL: json", json)
-                        
-                        //re-initliaze the message string for the next time a command comes in
-                        controlMsg = ""
-                        
-                        //if the control message was a request for data, the dictionary count will be more than 1 (a length of 1 just means a response code came back, like ["rc": 0]
-                        if (json.count > 1) {
-                        
-                            return json
+                            // find the key (variable name) before the colon
+                            // Find the closing quote of the key (just before the colon)
+                            guard let keyEndQuote = message[..<colonIndex].lastIndex(of: "\"") else {
+                                searchIndex = message.index(after: colonIndex)
+                                continue
+                            }
+                            // Find the opening quote of the key
+                            guard let keyStartQuote = message[..<keyEndQuote].lastIndex(of: "\"") else {
+                                searchIndex = message.index(after: colonIndex)
+                                continue
+                            }
                             
-                        } else {
+                            let rawKey = String(message[message.index(after: keyStartQuote)..<keyEndQuote])
                             
-                            //print from here, but don't return to main class
-                            //if (debug) { print("PARSER: JSON:", json) }
-                            return nil
-                        }
-                        
+                            // find value (variable value) after colon
+                            var valueIndex = message.index(after: colonIndex)
+                            
+                            // Skip whitespace
+                            while valueIndex < end && message[valueIndex].isWhitespace {
+                                valueIndex = message.index(after: valueIndex)
+                            }
+                            if valueIndex >= end {
+                                break
+                            }
+                            
+                            var rawValue: String
+                            
+                            if message[valueIndex] == "\"" {
+                                // Quoted string value: "...."
+                                let valueStart = message.index(after: valueIndex)
+                                guard let valueEndQuote = message[valueStart...].firstIndex(of: "\"") else {
+                                    // malformed string, skip this colon
+                                    searchIndex = message.index(after: colonIndex)
+                                    continue
+                                }
+                                rawValue = String(message[valueStart..<valueEndQuote])
+                                // Advance searchIndex for next colon
+                                searchIndex = message.index(after: valueEndQuote)
+                            } else {
+                                // Non-quoted value (number, etc.) up to ',' or '}'
+                                let valueStart = valueIndex
+                                var valueEnd = valueIndex
+                                while valueEnd < end && message[valueEnd] != "," && message[valueEnd] != "}" {
+                                    valueEnd = message.index(after: valueEnd)
+                                }
+                                rawValue = String(message[valueStart..<valueEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
+                                searchIndex = valueEnd
+                            }
+                            
+                            // ---- CONVERT VALUE TYPE ----
+                            let value: Any
+                            if let intVal = Int(rawValue) {
+                                value = intVal
+                            } else if let doubleVal = Double(rawValue) {
+                                value = doubleVal
+                            } else {
+                                value = rawValue
+                            }
+                            
+                            // ---- STORE  ----
+                            if json[rawKey] == nil {
+                                json[rawKey] = value
+                            }
+                    }
+                    
+                    // Reset for next message
+                    controlMsg = ""
+                    
+                    //print("JSON", json)
+                    
+                    if !json.isEmpty {
+                        return json
                     } else {
-                        
-                        controlMsg = ""
                         return nil
                     }
                 }
