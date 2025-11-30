@@ -38,31 +38,6 @@
 import Foundation
 import CoreBluetooth
 
-//MARK: - View Controller -
-
-public protocol XvBluetoothDelegagte:AnyObject {
-    
-    func update(state:String)
-    
-    //connecting
-    func discovered(targetDevice:CBPeripheral)
-    func discovered(nearbyDevice:CBPeripheral)
-    func discovered(service:CBService)
-    func discovered(characteristic:CBCharacteristic)
-    
-    //receive data
-    func received(valueFromCharacteristic:CBCharacteristic, fromDevice:CBPeripheral)
-    
-    //attempting
-    func isAttemptingConnection()
-    
-    //disconnecting
-    func didLoseConnection() // headband connection fails
-    func didDisconnect() //head receives disconnect command
-    
-}
-
-
 public class XvBluetooth {
     
     //vars
@@ -78,7 +53,7 @@ public class XvBluetooth {
     }
     
     public func addListener(
-        observer:XvBluetoothDelegagte,
+        observer:XvBluetoothDelegate,
         deviceUUID:CBUUID?,
         serviceUUID:CBUUID?,
         characteristicsUUIDs:[CBUUID]){

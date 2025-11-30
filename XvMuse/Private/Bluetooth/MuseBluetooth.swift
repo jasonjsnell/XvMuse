@@ -12,6 +12,9 @@ import ExternalAccessory
 
 //the observer receives the values coming in from bluetooth
 internal protocol MuseBluetoothObserver:AnyObject {
+    
+    //characteristics
+    func discoveredPPG()
     func parse(bluetoothCharacteristic: CBCharacteristic)
     
     //steps of connecting, disconnecting
@@ -23,7 +26,7 @@ internal protocol MuseBluetoothObserver:AnyObject {
     func didFindNearby(muses:[CBPeripheral])
 }
 
-public class MuseBluetooth:XvBluetoothDelegagte {
+public class MuseBluetooth:XvBluetoothDelegate {
     
     private let bluetooth:XvBluetooth
     internal var delegate:MuseBluetoothObserver?
@@ -184,6 +187,11 @@ public class MuseBluetooth:XvBluetoothDelegagte {
     
     public func discovered(characteristic: CBCharacteristic) {
         print("XvMuse: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
+        //check for specific sensors
+        if (characteristic.uuid == MuseConstants.CHAR_PPG2){
+            print("MuseBluetooth: Found PPG")
+            delegate?.discoveredPPG()
+        }
     }
     
     //this is the bridge between the XvBluetooth framework and this class

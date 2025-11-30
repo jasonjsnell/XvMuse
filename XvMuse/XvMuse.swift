@@ -111,7 +111,9 @@ public class XvMuse:MuseBluetoothObserver {
     //the view controller that receives EEG, accel, PPG, etc updates
     public weak var delegate:XvMuseDelegate?
     
-    
+    //device version
+    public var majorVersion:String = "Muse"
+    public var minorVersion:String = "1" //1, 2, Athena
     
     
     //MARK: - Private
@@ -183,6 +185,7 @@ public class XvMuse:MuseBluetoothObserver {
     }
     
     //MARK: - Device API -
+    //MARK: Nearby Muses
     public func lookForNearbyMuses(){
         
         if (debug) { print("XvMuse: lookForNearbyMuses") }
@@ -200,7 +203,21 @@ public class XvMuse:MuseBluetoothObserver {
         onMain { self.delegate?.didFindNearby(muses: muses) }
     }
     
+    //MARK: User selects Muse
     public func userSelectedMuse(museDevice:CBPeripheral){
+        
+        if let museName = museDevice.name {
+            
+            // "Muse-66CD" -> "Muse"
+            let parts = museName.split(separator: "-")
+            if let firstPart = parts.first {
+                majorVersion = String(firstPart)
+            } else {
+                // Fallback if no dash found
+                majorVersion = museName
+            }
+            print("XvMuse: Major version =", majorVersion)
+        }
         
         bluetooth.stop() //stop the search
         bluetooth.load(muse: museDevice) //load user selected muse
@@ -209,6 +226,15 @@ public class XvMuse:MuseBluetoothObserver {
         }
     }
     
+    //MARK: Discovered sensors
+    func discoveredPPG() {
+        if (majorVersion == "Muse"){
+            minorVersion = "2"
+        }
+        print("XvMuse: Version:", majorVersion, minorVersion)
+    }
+    
+    //MARK: Start streaming
     public func startMuse(){
         print("XvMuse: Start streaming Muse data")
         bluetooth.startStreaming()
@@ -489,20 +515,25 @@ public class XvMuse:MuseBluetoothObserver {
         }
         
         //config commands, if desired
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
             
             //uncomment to turn off PPG
             //setting the preset turns off the PPG
-            //self.bluetooth.set(preset: MuseConstants.PRESET_20)
+            //bluetooth.set(preset: MuseConstants.PRESET_20)
             
-            self.bluetooth.set(preset: MuseConstants.PRESET_51)
+            //print("Version?", majorVersion, minorVersion)
+            if (majorVersion == "MuseS") {
+                print("XvMuse: Using MuseS preset 51")
+                bluetooth.set(preset: MuseConstants.PRESET_51)
+            }
+            
             
             //sets host platform to Mac
-            //self.bluetooth.set(hostPlatform: MuseConstants.HOST_PLATFORM_MAC)
+            //bluetooth.set(hostPlatform: MuseConstants.HOST_PLATFORM_MAC)
         }
         
         //get status
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             self.bluetooth.controlStatus()
         }
         

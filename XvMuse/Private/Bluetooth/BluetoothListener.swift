@@ -16,6 +16,28 @@
 
 import CoreBluetooth
 
+public protocol XvBluetoothDelegate:AnyObject {
+    
+    func update(state:String)
+    
+    //connecting
+    func discovered(targetDevice:CBPeripheral)
+    func discovered(nearbyDevice:CBPeripheral)
+    func discovered(service:CBService)
+    func discovered(characteristic:CBCharacteristic)
+    
+    //receive data
+    func received(valueFromCharacteristic:CBCharacteristic, fromDevice:CBPeripheral)
+    
+    //attempting
+    func isAttemptingConnection()
+    
+    //disconnecting
+    func didLoseConnection() // headband connection fails
+    func didDisconnect() //head receives disconnect command
+    
+}
+
 class BluetoothListener:NSObject {
     
     //bluetooth objects
@@ -34,12 +56,12 @@ class BluetoothListener:NSObject {
     private var _characteristicsUUIDs:[CBUUID]?
     
     //view controller to send updates to
-    internal weak var delegate:XvBluetoothDelegagte?
+    internal weak var delegate:XvBluetoothDelegate?
     
     private let debug:Bool = false
     
     init(
-        observer:XvBluetoothDelegagte,
+        observer:XvBluetoothDelegate,
         deviceUUID:CBUUID?, // can be nil
         serviceUUID:CBUUID?, // can be nil
         characteristicsUUIDs: [CBUUID]){
