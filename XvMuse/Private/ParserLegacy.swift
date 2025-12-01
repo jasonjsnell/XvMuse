@@ -8,7 +8,7 @@
 
 import Foundation
 
-class Parser {
+class ParserLegacy {
     
     private let debug:Bool = true
     
