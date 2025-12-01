@@ -11,7 +11,7 @@ import Foundation
 class TestPPGData {
     
     //helper classes
-    private let _parser:Parser = Parser() //processes incoming data into useable / readable values
+    private let _parser:ParserLegacy = ParserLegacy() //processes incoming data into useable / readable values
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
     private var packetIndex:UInt16 = 0

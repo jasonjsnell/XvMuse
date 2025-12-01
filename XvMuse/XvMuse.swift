@@ -84,15 +84,6 @@ internal class MusePacket {
 internal class MuseEEGPacket:MusePacket {}
 internal class MusePPGPacket:MusePacket {}
 
-//MARK: - Accel
-internal struct MuseAccel {
-    internal var packetIndex:UInt16 = 0
-    internal var x:Double = 0 //head forward / back
-    internal var y:Double = 0 //head to shoulder
-    internal var z:Double = 0 //jumping up and down
-    internal var raw:[Int16] = []
-}
-
 //MARK: - Battery
 internal struct MuseBattery {
     internal var packetIndex:UInt16 = 0
@@ -101,7 +92,7 @@ internal struct MuseBattery {
 }
 
 //MARK: - MUSE -
-public class XvMuse:MuseBluetoothObserver {
+public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     
     //MARK: - vars
 
@@ -121,13 +112,14 @@ public class XvMuse:MuseBluetoothObserver {
     //sensor data objects
     private var _eeg:MuseEEG
     private var _testEEG:MuseEEG
-    private var _accel:MuseAccel
     private var _ppg:MusePPG
     private var _testPPG:MusePPG
-    private var _battery:MuseBattery
+    private var _accelRaw:[Int16] = []
+    private var _batteryRaw:[UInt16] = []
 
     //helper classes
-    private let _parser:Parser = Parser() //processes incoming data into useable / readable values
+    private let _parserLegacy:ParserLegacy = ParserLegacy() //processes 1/2/S data
+    private let _parserAthena:ParserAthena = ParserAthena() //processes Athena data
     private var _fft:FFTManager = FFTManager()
     
     //grabs a timestamp when the system launches, to make timestamps easier to read
@@ -175,14 +167,12 @@ public class XvMuse:MuseBluetoothObserver {
         
         _ppg = MusePPG()
         _testPPG = MusePPG()
-        
-        _accel = MuseAccel()
-        
-        _battery = MuseBattery()
-        
+     
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.delegate = self
         bluetooth.start()
+        
+        _parserAthena.delegate = self
     }
     
     //MARK: - Device API -
@@ -257,185 +247,253 @@ public class XvMuse:MuseBluetoothObserver {
     internal func parse(bluetoothCharacteristic: CBCharacteristic) {
         
         processingQ.async { [weak self] in
+            
+            //safety checks
             guard let self = self else { return }
-        
-            if let _data:Data = bluetoothCharacteristic.value { //validate incoming data as not nil
-                
-                var bytes:[UInt8] = [UInt8](_data) //move into an array
-                
-                let packetIndex:UInt16 = _parser.getPacketIndex(fromBytes: bytes) //remove and store package index
-                bytes.removeFirst(2) //2 bytes is 1 UInt16 package index
-
-                //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
-                let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
-                
-                // local func to make EEG packet from the above variables
-                
-                func _makeEEGPacket(i:Int) -> MuseEEGPacket {
-                    
-                    //uncomment to store bytes for test data recording
-                    //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
-                    //eegSensorBytes[i].append(bytes)
-                    
-                    //to see a single packet for testing
-                    //if (i == 2) { print(bytes, ",") }
-                    
-                    return MuseEEGPacket(
-                        packetIndex: packetIndex,
-                        sensor: i,
-                        timestamp: timestamp,
-                        samples: _parser.getEEGSamples(from: bytes))
-                }
-                
-                // local func to make PPG packet from the above variables
-                
-                func _makePPGPacket() -> MusePPGPacket {
-                    
-                    //uncomment to store bytes for test data recording
-                    //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
-                    //ppgSensorBytes.append(bytes)
-                    
-                    //print off a single packet for testing
-                    //print(bytes, ",")
-                    
-                    //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
-                    
-                    return MusePPGPacket(
-                        packetIndex: packetIndex,
-                        sensor: 1, // only use sensor 1 (not 0 or 2)
-                        timestamp: timestamp,
-                        samples: _parser.getPPGSamples(from: bytes))
-                }
-        
-                //check the char ID and parse data based on it
-               
-                switch bluetoothCharacteristic.uuid {
-                    
-                
-                    /*
-                    uint:12,uint:12,uint:12,uint:12,
-                    uint:12,uint:12,uint:12,uint:12,
-                    uint:12,uint:12,uint:12,uint:12"
-                    UInt12 x 12 time samples
-                    eeg order: tp10 af8 tp9 af7
-                    */
-                    
-                    //MARK: EEG
-                    //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the MuseEEG object
-                //packet order
-                //0 TP10: right ear
-                //1 AF08: right forehead
-                //2 TP09: left ear
-                //3 AF07: left forehead
-                case MuseConstants.CHAR_TP10:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-                case MuseConstants.CHAR_AF8:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-                case MuseConstants.CHAR_TP9:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-                case MuseConstants.CHAR_AF7:
-                     _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
-                     
-                     //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                     delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
-                    
-                    //MARK: PPG
-                case MuseConstants.CHAR_PPG2:
-                
-                    //PPG2 is what I usually use for Muse S
-                    //PPG3 works on Muse 2 as well
-                    //PPG1, PPG2, and PPG3 don't work on Muse S
-                    //all PPGs now work on Muse S if preset is set to 51 on init
-                    
-                    /*
-                     //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
-                     //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
-                    uint:24,uint:24,uint:24
-                    uint:24,uint:24,uint:24
-                    UInt24 x 6 samples
-                    */
-                    
-                    //print(bytes) // <-- use to print out test PPG samples
-                    
-                    //heart events examine sensor PPG2
-                    if let heartEvent:MusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
-                        
-                        //broadcast the heart event
-                         delegate?.didReceive(
-                            ppgHeartEvent: convert(musePPGHeartEvent: heartEvent)
-                         )
-                    }
-                    
-                    //send ppg object once per round so application can access the buffer for visualization, etc...
-                    delegate?.didReceive(ppgPacket: convert(musePPG: _ppg))
-                    
-                case MuseConstants.CHAR_ACCEL:
-                    
-                    //MARK: Accel
-                    /*
-                     pattern = "int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16"
-                     Int16 9 xyz samples (x,y,z,x,y,z,x,y,z)
-                    */
-                    
-                    _accel.packetIndex = packetIndex
-                    _accel.raw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
-                    
-                    //parse xyz values
-                    _accel.x = _parser.getXYZ(values: _accel.raw, start: 0)
-                    _accel.y = _parser.getXYZ(values: _accel.raw, start: 1)
-                    _accel.z = _parser.getXYZ(values: _accel.raw, start: 2)
-                    
-                    delegate?.didReceive(accelPacket: convert(museAccel: _accel))
-                    
-                case MuseConstants.CHAR_BATTERY:
-                    
-                    //MARK: Battery
-                    /*
-                     pattern = "uint:16,uint:16,uint:16,uint:16"
-                     UInt16 battery / 512
-                     UInt16 fuel gauge * 2.2
-                     UInt16 adc volt
-                     UInt16 temperature
-                     //the rest is padding
-                    */
-                    
-                    _battery.packetIndex = packetIndex
-                    _battery.raw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
-                    
-                    //parse the percentage
-                    _battery.percentage = Int16(_battery.raw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
-                    
-                    delegate?.didReceive(batteryPacket: convert(museBattery: _battery))
-
-                case MuseConstants.CHAR_CONTROL:
-                    
-                    //MARK: Control Commands
-                    //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
-                    //getting device info or a control status send back JSON dictionaries with several vars
-                    //note: this package does not use packetIndex, so pass in the raw charactersitic value
-                    if let commandResponse: [String: Any] = _parser.parse(controlLine: bluetoothCharacteristic.value) {
-                        
-                        // Drop the rc field
-                        var filtered = commandResponse
-                        filtered.removeValue(forKey: "rc")
-                        
-                        // If nothing is left (i.e. it was just ["rc": 0]), ignore it
-                        guard !filtered.isEmpty else {
-                            return
-                        }
-                        
-                        // Otherwise, broadcast the response
-                        print("XvMuse: commandResponse:", filtered)
-                        delegate?.didReceive(commandResponse: filtered)
-                    }
-                   
-                default:
-                    print("Unused UUID:", bluetoothCharacteristic.uuid)
-                    break
-                }
+            guard let _data:Data = bluetoothCharacteristic.value else { return }
+            
+            //MARK: route Athena data to parser
+            // Special-case Athena main stream BEFORE legacy parsing
+            if bluetoothCharacteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN {
+                let bytes = [UInt8](_data)
+                let systemTimestamp = Date().timeIntervalSince1970 - self._systemLaunchTime
+                self._parserAthena.handleAthenaMain(bytes: bytes, systemTimestamp: systemTimestamp)
+                return
             }
+        
+            //MARK: Legacy processing (Muse 1/2/S)
+            var bytes:[UInt8] = [UInt8](_data) //move into an array
+            
+            let packetIndex:UInt16 = _parserLegacy.getPacketIndex(fromBytes: bytes) //remove and store package index
+            bytes.removeFirst(2) //2 bytes is 1 UInt16 package index
+
+            //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
+            let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
+            
+            // local func to make EEG packet from the above variables
+            
+            func _makeEEGPacket(i:Int) -> MuseEEGPacket {
+                
+                //uncomment to store bytes for test data recording
+                //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
+                //eegSensorBytes[i].append(bytes)
+                
+                //to see a single packet for testing
+                //if (i == 2) { print(bytes, ",") }
+                
+                return MuseEEGPacket(
+                    packetIndex: packetIndex,
+                    sensor: i,
+                    timestamp: timestamp,
+                    samples: _parserLegacy.getEEGSamples(from: bytes))
+            }
+            
+            // local func to make PPG packet from the above variables
+            
+            func _makePPGPacket() -> MusePPGPacket {
+                
+                //uncomment to store bytes for test data recording
+                //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
+                //ppgSensorBytes.append(bytes)
+                
+                //print off a single packet for testing
+                //print(bytes, ",")
+                
+                //delegate?.didReceive(ppgPacket: packet) //send to observer in case someone wants to do their own PPG processing
+                
+                return MusePPGPacket(
+                    packetIndex: packetIndex,
+                    sensor: 1, // only use sensor 1 (not 0 or 2)
+                    timestamp: timestamp,
+                    samples: _parserLegacy.getPPGSamples(from: bytes))
+            }
+    
+            //check the char ID and parse data based on it
+           
+            switch bluetoothCharacteristic.uuid {
+                
+            
+                /*
+                uint:12,uint:12,uint:12,uint:12,
+                uint:12,uint:12,uint:12,uint:12,
+                uint:12,uint:12,uint:12,uint:12"
+                UInt12 x 12 time samples
+                eeg order: tp10 af8 tp9 af7
+                */
+                
+                //MARK: EEG
+                //parse the incoming data through the parser, which includes FFT. Returned value is an FFTResult, which updates the MuseEEG object
+            //packet order
+            //0 TP10: right ear
+            //1 AF08: right forehead
+            //2 TP09: left ear
+            //3 AF07: left forehead
+            case MuseConstants.CHAR_TP10:
+                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
+            case MuseConstants.CHAR_AF8:
+                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+            case MuseConstants.CHAR_TP9:
+                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+            case MuseConstants.CHAR_AF7:
+                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                 
+                 //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
+                 delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
+                
+                //MARK: PPG
+            case MuseConstants.CHAR_PPG2:
+            
+                //PPG2 is what I usually use for Muse S
+                //PPG3 works on Muse 2 as well
+                //PPG1, PPG2, and PPG3 don't work on Muse S
+                //all PPGs now work on Muse S if preset is set to 51 on init
+                
+                /*
+                 //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
+                 //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
+                uint:24,uint:24,uint:24
+                uint:24,uint:24,uint:24
+                UInt24 x 6 samples
+                */
+                
+                //print(bytes) // <-- use to print out test PPG samples
+                
+                //heart events examine sensor PPG2
+                if let heartEvent:MusePPGHeartEvent = _ppg.getHeartEvent(from: _makePPGPacket()) {
+                    
+                    //broadcast the heart event
+                     delegate?.didReceive(
+                        ppgHeartEvent: convert(musePPGHeartEvent: heartEvent)
+                     )
+                }
+                
+                //send ppg object once per round so application can access the buffer for visualization, etc...
+                delegate?.didReceive(ppgPacket: convert(musePPG: _ppg))
+                
+            case MuseConstants.CHAR_ACCEL:
+                
+                //MARK: Accel
+                /*
+                 pattern = "int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16,int:16"
+                 Int16 9 xyz samples (x,y,z,x,y,z,x,y,z)
+                */
+                
+                _accelRaw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
+                
+                delegate?.didReceive(
+                    accelPacket: XvAccelPacket(
+                        x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
+                        y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
+                        z: _parserLegacy.getXYZ(values: _accelRaw, start: 2)
+                    )
+                )
+                
+            case MuseConstants.CHAR_BATTERY:
+                
+                //MARK: Battery
+                /*
+                 pattern = "uint:16,uint:16,uint:16,uint:16"
+                 UInt16 battery / 512
+                 UInt16 fuel gauge * 2.2
+                 UInt16 adc volt
+                 UInt16 temperature
+                 //the rest is padding
+                */
+                
+                _batteryRaw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
+                
+                //parse the percentage and send
+                delegate?.didReceive(batteryPacket:
+                    XvBatteryPacket(
+                        percentage: Int16(_batteryRaw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
+                    )
+                )
+
+            case MuseConstants.CHAR_CONTROL:
+                
+                //MARK: Control Commands
+                //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
+                //getting device info or a control status send back JSON dictionaries with several vars
+                //note: this package does not use packetIndex, so pass in the raw charactersitic value
+                if let commandResponse: [String: Any] = _parserLegacy.parse(controlLine: bluetoothCharacteristic.value) {
+                    
+                    // Drop the rc field
+                    var filtered = commandResponse
+                    filtered.removeValue(forKey: "rc")
+                    
+                    // If nothing is left (i.e. it was just ["rc": 0]), ignore it
+                    guard !filtered.isEmpty else {
+                        return
+                    }
+                    
+                    // Otherwise, broadcast the response
+                    print("XvMuse: commandResponse:", filtered)
+                    delegate?.didReceive(commandResponse: filtered)
+                }
+                
+            default:
+                print("Unused UUID:", bluetoothCharacteristic.uuid)
+                break
+            }
+            
         }
     }
+    
+    //MARK: - Athena
+    //packets received from Athena and passed up to the parent app
+    public func didReceiveAthena(accelPacket: XvAccelPacket) {
+        delegate?.didReceive(accelPacket: accelPacket)
+    }
+    public func didReceiveAthena(batteryPacket: XvBatteryPacket) {
+        delegate?.didReceive(batteryPacket: batteryPacket)
+    }
+    public func didReceiveAthenaEEGSampleBuffers(
+        tp9: [Float],
+        af7: [Float],
+        af8: [Float],
+        tp10: [Float]
+    ) {
+        // Convert to Double to match legacy FFT pipeline
+        let tp9D  = tp9.map { Double($0) }
+        let af7D  = af7.map { Double($0) }
+        let af8D  = af8.map { Double($0) }
+        let tp10D = tp10.map { Double($0) }
+        
+        // Simple safety guard: all buffers should be same size
+        guard tp9D.count == af7D.count,
+              tp9D.count == af8D.count,
+              tp9D.count == tp10D.count,
+              tp9D.count > 0 else {
+            print("XvMuse: Error: Athena EEG buffers not the same size or empty")
+            return
+        }
+        
+        // One timestamp for this window, same pattern as legacy (system-relative)
+        let timestamp = Date().timeIntervalSince1970 - _systemLaunchTime
+        
+        // If you want a rolling packet index, you can track a UInt16 counter here.
+        // For now, 0 is fine if your FFTManager doesn't depend on it.
+        let packetIndex: UInt16 = 0
+        
+        func makePacket(samples: [Double], sensor: Int) -> MuseEEGPacket {
+            return MuseEEGPacket(
+                packetIndex: packetIndex,
+                sensor: sensor,        // 0: TP9, 1: AF7, 2: AF8, 3: TP10 (legacy convention)
+                timestamp: timestamp,
+                samples: samples
+            )
+        }
+        
+        // Run FFT for each channel, updating your shared MuseEEG model
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp9D,  sensor: 0)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af7D,  sensor: 1)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af8D,  sensor: 2)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 3)))
+        
+        // Send a single combined EEG packet out, just like in the legacy path
+        delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
+    }
+    
     
     //MARK: - Test Data
     //only engage test data objects when called directly from external program
@@ -649,17 +707,5 @@ public class XvMuse:MuseBluetoothObserver {
             bpm: musePPGHeartEvent.bpm,
             hrv: musePPGHeartEvent.hrv
         )
-    }
-    
-    private func convert(museAccel:MuseAccel) -> XvAccelPacket {
-        return XvAccelPacket(
-            x: museAccel.x,
-            y: museAccel.y,
-            z: museAccel.z
-        )
-    }
-    
-    private func convert(museBattery:MuseBattery) -> XvBatteryPacket {
-        return XvBatteryPacket(percentage: museBattery.percentage)
     }
 }
