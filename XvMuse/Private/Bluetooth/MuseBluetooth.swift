@@ -33,6 +33,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
     internal var delegate:MuseBluetoothObserver?
     private var deviceID:CBUUID?
     
+   
     private let debug:Bool = true
     
     public init(deviceCBUUID:CBUUID?) {
@@ -332,36 +333,53 @@ public class MuseBluetooth:XvBluetoothDelegate {
     }
     
     // MARK: - Athena control (text protocol)
+    
+    // Serial queue for scheduling Athena text commands with delays
+    private let athenaCommandQueue = DispatchQueue(label: "MuseBluetooth.AthenaCommands")
 
     public func athenaInitializeAndStart(preset: String = "p1041") {
         
-        func sendToken(_ token: String) {
-            guard let data = try? makeAthenaCommand(token) else { return }
-            sendControlCommand(data: data)
+        func enqueueToken(_ token: String, delay: TimeInterval) {
+            athenaCommandQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self = self,
+                      let data = try? self.makeAthenaCommand(token) else { return }
+                self.sendControlCommand(data: data)
+            }
         }
         
+        var delay: TimeInterval = 0.0
+        
         // Version/status handshake (best-effort)
-        sendToken("v6")
-        sendToken("s")
+        enqueueToken("v6", delay: delay)
+        delay += 0.2
+        enqueueToken("s", delay: delay)
+        delay += 0.2
         
         // Halt / reset
-        sendToken("h")
+        enqueueToken("h", delay: delay)
+        delay += 0.2
         
         // Apply preset
-        sendToken(preset)
+        enqueueToken(preset, delay: delay)
+        delay += 0.2
         
         // Status again (optional)
-        sendToken("s")
+        enqueueToken("s", delay: delay)
+        delay += 0.2
         
         // Start streaming: dc001 sent twice
-        sendToken("dc001")
-        sendToken("dc001")
+        enqueueToken("dc001", delay: delay)
+        delay += 0.05
+        enqueueToken("dc001", delay: delay)
+        delay += 0.1
         
         // Low-latency mode (optional)
-        sendToken("L1")
+        enqueueToken("L1", delay: delay)
+        delay += 0.3
         
         // Final status (optional)
-        sendToken("s")
+        enqueueToken("s", delay: delay)
+        // Python code waits another 0.2s here, but we don't need to enqueue anything else.
     }
 
     public func athenaStartStreaming() {

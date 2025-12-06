@@ -403,13 +403,19 @@ class ParserAthena {
             
         case .battery:
             if let pct: Float = decodeAthenaBattery(dataBytes: dataBytes) {
+                print("athena battery", pct)
                 delegate?.didReceiveAthena(
                     batteryPacket: XvBatteryPacket(percentage: Int16(pct))
                 )
             }
             
-        case .optics, .unknown:
-            break
+        case .optics:
+            print("rx optics")
+            
+        case .unknown:
+            print("ParserAthena: Error: Unknown sensor type", sensorType)
         }
+        
+        
     }
 }

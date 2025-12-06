@@ -43,6 +43,8 @@ public protocol XvMuseDelegate:AnyObject {
     func museLostConnection()
     func didFindNearby(muses: [CBPeripheral])
     
+    func didReceiveAthena(opticsPacket:[Double])
+    
 }
 
 //MARK: - PACKETS -
@@ -91,9 +93,14 @@ internal struct MuseBattery {
     internal var raw:[UInt16] = []
 }
 
+
 //MARK: - MUSE -
 public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     
+    
+    public func didReceiveAthena(opticsPacket:[Double]){
+        delegate?.didReceiveAthena(opticsPacket: opticsPacket)
+    }
     //MARK: - vars
 
     /* Receives commands from the view controller (like keyDown), translates and sends them to the Muse, and receives data back via parse(bluetoothCharacteristic func */
