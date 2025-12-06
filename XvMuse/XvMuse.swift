@@ -97,7 +97,6 @@ internal struct MuseBattery {
 //MARK: - MUSE -
 public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     
-    
     public func didReceiveAthena(opticsPacket:[Double]){
         delegate?.didReceiveAthena(opticsPacket: opticsPacket)
     }

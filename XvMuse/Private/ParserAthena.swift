@@ -59,6 +59,7 @@ public protocol ParserAthenaDelegate:AnyObject {
         af8: [Float],
         tp10: [Float]
     )
+    func didReceiveAthena(opticsPacket:[Double])
 }
 
 class ParserAthena {
@@ -113,7 +114,7 @@ class ParserAthena {
         static let eegScale: Double = 1450.0 / 16383.0
         static let accScale: Float  = 0.0000610352
         static let gyroScale: Float = -0.0074768
-        static let opticsScale: Float = 1.0 / 32768.0
+        static let opticsScale: Double = 1.0 / 32768.0
     }
     
     func handleAthenaMain(bytes: [UInt8], systemTimestamp: Double) {
@@ -295,6 +296,53 @@ class ParserAthena {
         
         return rows
     }
+    
+    private func decodeAthenaOptics(dataBytes: [UInt8], nChannels: Int) -> [[Double]]? {
+        // Match Python behavior:
+        // Optics4:  3 samples × 4 channels = 30 bytes
+        // Optics8:  2 samples × 8 channels = 40 bytes
+        // Optics16: 1 sample  × 16 channels = 40 bytes
+        
+        let nSamples: Int
+        let bytesNeeded: Int
+        
+        switch nChannels {
+        case 4:
+            nSamples = 3
+            bytesNeeded = 30
+        case 8:
+            nSamples = 2
+            bytesNeeded = 40
+        case 16:
+            nSamples = 1
+            bytesNeeded = 40
+        default:
+            return nil
+        }
+        
+        guard dataBytes.count >= bytesNeeded else { return nil }
+        
+        // Convert bytes to bit array (LSB first), same as Python _bytes_to_bits
+        let bits = athenaBytesToBits(dataBytes, maxBytes: bytesNeeded)
+        
+        // Allocate samples × channels
+        var rows: [[Double]] = Array(
+            repeating: Array(repeating: 0.0, count: nChannels),
+            count: nSamples
+        )
+        
+        // Parse 20-bit packed values
+        for sampleIdx in 0..<nSamples {
+            for channelIdx in 0..<nChannels {
+                let bitStart = (sampleIdx * nChannels + channelIdx) * 20
+                let intValue = athenaExtractPackedInt(bits: bits, bitStart: bitStart, bitWidth: 20)
+                let scaled = Double(intValue) * Athena.opticsScale // 1.0 / 32768.0
+                rows[sampleIdx][channelIdx] = scaled
+            }
+        }
+        
+        return rows
+    }
 
     private func decodeAthenaAccGyro(dataBytes: [UInt8]) -> [[Float]]? {
         // 36 bytes → 3 samples × 6 channels (int16)
@@ -410,10 +458,52 @@ class ParserAthena {
             }
             
         case .optics:
-            print("rx optics")
+            // Decode packed optics data (20-bit values)
+            guard let cfg = Athena.sensors[tagByte] else { return }
+            guard let rows = decodeAthenaOptics(dataBytes: dataBytes, nChannels: cfg.nChannels) else {
+                print("ParserAthena: optics decode failed for tag \(tagByte)")
+                return
+            }
+            
+            // RI_NIR index depends on channel configuration.
+            // From Mind Monitor mapping (1-based indices):
+            //  - 4-ch:  LI_NIR(1), RI_NIR(2), LI_IR(3), RI_IR(4)      → RI_NIR = 2 → index 1
+            //  - 8-ch:  LO_NIR(1), RO_NIR(2), LO_IR(3), RO_IR(4),
+            //           LI_NIR(5), RI_NIR(6), LI_IR(7), RI_IR(8)      → RI_NIR = 6 → index 5
+            //  - 16-ch: same NIR indexing as 8-ch, with extra RED/AMB → RI_NIR = 6 → index 5
+            
+            let riNIRIndex: Int
+            switch cfg.nChannels {
+            case 4:
+                riNIRIndex = 1
+            case 8, 16:
+                riNIRIndex = 5
+            default:
+                print("ParserAthena: unsupported optics channel count \(cfg.nChannels)")
+                return
+            }
+            
+            // Print out RI_NIR and full samples to the console for now
+            for (sampleIdx, sample) in rows.enumerated() {
+                guard riNIRIndex < sample.count else {
+                    print("ParserAthena: optics sample[\(sampleIdx)] too short (\(sample.count)) for RI_NIR index \(riNIRIndex)")
+                    continue
+                }
+                
+//                print(
+//                    """
+//                    Athena OPTICS:
+//                      pktTimeSec: \(pktTimeSec)
+//                      nChannels: \(cfg.nChannels)
+//                      full sample: \(sample)
+//                    """
+//                )
+                delegate?.didReceiveAthena(opticsPacket: sample)
+            }
             
         case .unknown:
-            print("ParserAthena: Error: Unknown sensor type", sensorType)
+            break
+            //print("ParserAthena: Error: Unknown sensor type", sensorType)
         }
         
         

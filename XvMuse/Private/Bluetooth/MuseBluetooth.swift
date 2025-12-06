@@ -337,7 +337,18 @@ public class MuseBluetooth:XvBluetoothDelegate {
     // Serial queue for scheduling Athena text commands with delays
     private let athenaCommandQueue = DispatchQueue(label: "MuseBluetooth.AthenaCommands")
 
-    public func athenaInitializeAndStart(preset: String = "p1041") {
+    /*
+     Presets                            EEG     Optics    Red LED
+     p20, p21, p50, p51, p60, p61       EEG4     —          off
+     p1034, p1043                       EEG8    Optics8    bright
+     p1044                              EEG8    Optics8     dim
+     p1035                              EEG4    Optics4     dim
+     p1041, p1042                       EEG8    Optics16   bright
+     p1045                              EEG8    Optics4     dim
+     p1046                              EEG8    Optics4      —
+     */
+    
+    public func athenaInitializeAndStart(preset: String = "p1035") {
         
         func enqueueToken(_ token: String, delay: TimeInterval) {
             athenaCommandQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
