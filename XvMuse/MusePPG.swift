@@ -7,106 +7,169 @@
 //
 
 import Foundation
+import XvSensors
 
-
-internal class MusePPGHeartEvent {
+//created when a heartbeat is detected
+internal struct MusePPGHeartEvent {
     
-    public init(amplitude:Double = 0.0, bpm:Double = 0.0, hrv:Double = 0.0) {
-        self.amplitude = amplitude
+    public init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0) {
         self.bpm = bpm
-        self.hrv = hrv
+        self.pulseStrength = pulseStrength
+        self.sdnn = sdnn
     }
-    public var amplitude:Double
     public var bpm:Double
-    public var hrv:Double
+    public var pulseStrength:Double
+    public var sdnn:Double
+}
+
+//continuous data stream of bloodflow and respiratory data
+internal struct MusePPGStreams {
+    internal var bloodFlow: [Double]
+    internal var resp: [Double]
+
+    init(bloodFlow: [Double], resp: [Double]) {
+        self.bloodFlow = bloodFlow
+        self.resp = resp
+    }
+}
+
+//packet with both heart beats and stream data combined
+internal struct MusePPGResult {
+    var heartEvent:MusePPGHeartEvent?
+    var streams:MusePPGStreams?
+    init(heartEvent: MusePPGHeartEvent? = nil, streams: MusePPGStreams? = nil) {
+        self.heartEvent = heartEvent
+        self.streams = streams
+    }
 }
 
 internal class MusePPG {
     
-    //MARK: Init
+    init() {}
     
-    init(){
-        sensors = [MusePPGSensor(id:0), MusePPGSensor(id:1), MusePPGSensor(id:2)]
-        _ppgAnalyzer = PPGAnalyzer()
-        buffer = []
+    internal func set(deviceName:XvDeviceName) {
+        sensor.set(deviceName: deviceName)
     }
     
-    public var buffer:[Double]
-    internal var sensors:[MusePPGSensor]
-
-    private let _ppgAnalyzer:PPGAnalyzer
-    private var prevAvg:Double = 0.0
-    private var upwardsMomentum:Int = 0
-    private var downwardsMomentum:Int = 0
-    private var beatOn:Bool = false
+    internal var sensor: MusePPGSensor = MusePPGSensor(id: 0)
+    private let _ppgAnalyzer: PPGAnalyzer = PPGAnalyzer()
     
-    //MARK: Packet processing
-    //basic update each time the PPG sensors send in new data
+    // Peak detection state
+    private var lastSample: Double = 0.0
+    private var lastTimestamp: Double = 0.0
     
-    internal func getHeartEvent(from ppgPacket:MusePPGPacket) -> MusePPGHeartEvent? {
+    private var lastBeatTime: Double = 0.0
+    private let minBeatInterval: Double = 0.30 // seconds (~200 bpm max)
+    
+    private var candidatePeakValue: Double = 0.0
+    private var candidatePeakTime: Double = 0.0
+    private var wasRising: Bool = false
+    
+    private var candidateTroughValue: Double = 0.0
+    private var candidateTroughTime: Double = 0.0
+    private var lastTroughValue: Double = 0.0
+    private var lastTroughTime: Double = 0.0
+    
+    // dynamic threshold
+    private var rollingMean: Double = 0.0
+    private var rollingVar: Double = 0.0
+    private var rollingCount: Int = 0
+    private let alpha: Double = 0.01 // EWMA factor
+    
+    internal func process(ppgPacket: MusePPGPacket) -> MusePPGResult? {
         
-        //generate buffer and return
-        if let buffer:[Double] = sensors[1].getBuffer(from: ppgPacket) {
-            
-            //save buffer for direct access via the XvMusePPG object
-            self.buffer = buffer
-            
-            //grab the last few values in the buffer
-            let recentValues:[Double] = Array(buffer[(buffer.count-5)...])
-            
-            //average these last few values to smooth out deep spikes or dips
-            let avg:Double = recentValues.reduce(0, +) / Double(recentValues.count)
-            
-            //if the curr average is more than the prev render's average...
-            if (avg > prevAvg) {
-                
-                upwardsMomentum += 1 //increase the upwards momentum
-                downwardsMomentum = 0 //remove the downwards momentum
-                
-                //if upwards momentum is strong enough...
-                if (upwardsMomentum > 2) {
-                    
-                    //and the beat isn't currently on
-                    if (!beatOn) {
-                        
-                        //beat is on
-                        beatOn = true
-                        
-                        //update the previous value with the current
-                        prevAvg = avg
-                        
-                        //grab the current bpm and hrv with the curr timestamp
-                        let ppgAnalysisPacket:PPGAnalysisPacket = _ppgAnalyzer.update(with: ppgPacket.timestamp)
-                        
-                        //and return a heart event with peak and bpm data
-                        return MusePPGHeartEvent(
-                            amplitude: recentValues.max()!, //return the highest value from the recent values in buffer
-                            bpm: ppgAnalysisPacket.bpm,
-                            hrv: ppgAnalysisPacket.hrv
-                        )
-                    }
-                }
-                //print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                
-            } else if (avg < prevAvg) {
-                
-                //else if the average is less..
-                
-                upwardsMomentum = 0 //remove the upwards momentum
-                downwardsMomentum += 1 //increase the downwards momentum
-                
-                //if downwards momentum is strong enough (the value of 1 instead of 2 (like above in upwards) performed with better results in testing)
-                if (downwardsMomentum > 1) {
-                    if (beatOn) { beatOn = false } //if the beat is on, turn it off
-                }
-                //print("<<")
-            }
-            
-            //update the previous value with the current
-            prevAvg = avg
+        //are the streams valid? if not, no streams or heart events are returned
+        guard let streams = sensor.getStreams(from: ppgPacket) else {
+            return nil
         }
         
-        //no heartbeat event this round
-        return nil
+        // current sample (normalized blood-flow sample)
+        guard let x = streams.bloodFlow.last else { return nil }
+        let t = ppgPacket.timestamp
+        
+        // update rolling stats for threshold
+        updateRollingStats(x)
+        let noiseStd = sqrt(max(rollingVar, 1e-9))
+        let dynamicThreshold = rollingMean + 0.5 * noiseStd  // tune this factor
+        
+        // derivative sign
+        let rising = (x > lastSample)
+        
+        // update candidate peak when rising
+        if rising {
+            if !wasRising {
+                
+                // start of a rising phase
+                candidatePeakValue = x
+                candidatePeakTime = t
+                
+                // start of a rising phase: we just came from a trough
+                // lock in the last trough
+                lastTroughValue = candidateTroughValue
+                lastTroughTime = candidateTroughTime
+                
+            } else if x > candidatePeakValue {
+                // still rising, new higher candidate
+                candidatePeakValue = x
+                candidatePeakTime = t
+            }
+        }
+        
+        // update trough candidate when falling ---
+        if !rising {
+            if wasRising {
+                // start of a falling phase: we just came from a peak
+                candidateTroughValue = x
+                candidateTroughTime = t
+            } else if x < candidateTroughValue {
+                candidateTroughValue = x
+                candidateTroughTime = t
+            }
+        }
+        
+        var heartEvent: MusePPGHeartEvent? = nil
+        
+        // if we were rising and now falling -> local max candidate
+        if wasRising && !rising {
+            let timeSinceLastBeat = t - lastBeatTime
+            if timeSinceLastBeat >= minBeatInterval &&
+               candidatePeakValue > dynamicThreshold {
+                
+                lastBeatTime = candidatePeakTime
+                
+                let ppgAnalysis = _ppgAnalyzer.update(
+                    at: candidatePeakTime,
+                    peak: candidatePeakValue,
+                    trough: lastTroughValue
+                )
+                
+                heartEvent = MusePPGHeartEvent(
+                    bpm: ppgAnalysis.bpm,
+                    pulseStrength: ppgAnalysis.pulseAmp,
+                    sdnn: ppgAnalysis.sdnnMs
+                )
+            }
+        }
+        
+        wasRising = rising
+        lastSample = x
+        lastTimestamp = t
+        
+        return MusePPGResult(heartEvent: heartEvent, streams: streams)
+    }
+    
+    //sub
+    
+    private func updateRollingStats(_ x: Double) {
+        // exponential moving mean/variance
+        if rollingCount == 0 {
+            rollingMean = x
+            rollingVar = 0.0
+            rollingCount = 1
+        } else {
+            let diff = x - rollingMean
+            rollingMean += alpha * diff
+            rollingVar = (1.0 - alpha) * (rollingVar + alpha * diff * diff)
+        }
     }
 }

@@ -339,13 +339,11 @@ public class MuseBluetooth:XvBluetoothDelegate {
 
     /*
      Presets                            EEG     Optics    Red LED
-     p20, p21, p50, p51, p60, p61       EEG4     —          off
-     p1034, p1043                       EEG8    Optics8    bright
-     p1044                              EEG8    Optics8     dim
-     p1035                              EEG4    Optics4     dim
-     p1041, p1042                       EEG8    Optics16   bright
-     p1045                              EEG8    Optics4     dim
-     p1046                              EEG8    Optics4      —
+     p20, p21, p50, p51, p60, p61        4        —         off
+     p1035                               4        4         dim
+     p1045, p1046                        8        4         dim
+     p1044, p1043, p1034,                8        8        bright
+     p1041, p1042                        8        16       bright
      */
     
     public func athenaInitializeAndStart(preset: String = "p1035") {

@@ -25,41 +25,43 @@
         ├─ First Subpacket: Raw sensor data (no TAG, no header)
         └─ Additional Subpackets: [TAG (1 byte)][Header (4 bytes)][Data (variable)]
              ├─ TAG: Sensor type identifier (e.g., 0x47=ACCGYRO, 0x12=EEG8)
-             ├─ subpkt_index: Per-sensor-type sequence counter (0-255, wraps)
+             ├─ subpacket_index: Per-sensor-type sequence counter (0-255, wraps)
              ├─ Unknown bytes: 3 metadata bytes (purpose unknown)
              └─ Sensor data: Variable length depending on sensor type
 
  Timestamp Calculation & Device Timing:
  ---------------------------------------
- Device timestamps (pkt_time) are derived from a 256 kHz hardware clock with 3.906 µs resolution.
- Multiple packets often share identical pkt_time values (~11-30% are duplicates).
+ Device timestamps (packet_time) are derived from a 256 kHz hardware clock with 3.906 µs resolution.
+ Multiple packets often share identical packet_time values (~11-30% are duplicates).
 
  Timestamp generation per message:
-   1. Sort packets by (pkt_time, pkt_index, subpkt_index)
-      - pkt_index: Packet sequence counter (0-255), ensures correct ordering of duplicates
+   1. Sort packets by (packet_time, packet_index, subpacket_index)
+      - packet_index: Packet sequence counter (0-255), ensures correct ordering of duplicates
       - Analysis: 100% sequential in duplicate groups (1871/1871 tested)
-   2. Use first packet's pkt_time as anchor
+   2. Use first packet's packet_time as anchor
    3. Generate uniform timestamps: anchor + (sample_index / sampling_rate)
 
  Hardware Timing Artifacts:
-   - ~4% of pkt_time values have timing inversions (timestamps go backwards)
-   - pkt_index remains sequential (100% accurate for packet order)
+   - ~4% of packet_time values have timing inversions (timestamps go backwards)
+   - packet_index remains sequential (100% accurate for packet order)
    - Inversions likely due to async sensor buffering and clock jitter
    - Final monotonicity ensured by stream.py buffering/sorting before LSL output
  */
 
 import XvSensors
 
-public protocol ParserAthenaDelegate:AnyObject {
+protocol ParserAthenaDelegate:AnyObject {
     func didReceiveAthena(accelPacket:XvAccelPacket)
     func didReceiveAthena(batteryPacket:XvBatteryPacket)
-    func didReceiveAthenaEEGSampleBuffers(
+    func didReceiveAthenaEEGBuffers(
+        packetIndex:UInt8,
+        timestamp:TimeInterval,
         tp9: [Float],
         af7: [Float],
         af8: [Float],
         tp10: [Float]
     )
-    func didReceiveAthena(opticsPacket:[Double])
+    func didReceiveAthena(ppgPacket:MusePPGPacket)
 }
 
 class ParserAthena {
@@ -98,7 +100,7 @@ class ParserAthena {
         static let subpacketHeaderSize = 5
         static let deviceClockHz: Double = 256_000.0
         
-        // TAG / pkt_id config (mirrors Python SENSORS dict)
+        // TAG / packet_id config (mirrors Python SENSORS dict)
         static let sensors: [UInt8: AthenaSensorConfig] = [
             0x11: .init(type: .eeg,     nChannels: 4,  nSamples: 4, rate: 256.0, dataLen: 28),
             0x12: .init(type: .eeg,     nChannels: 8,  nSamples: 2, rate: 256.0, dataLen: 28),
@@ -117,7 +119,7 @@ class ParserAthena {
         static let opticsScale: Double = 1.0 / 32768.0
     }
     
-    func handleAthenaMain(bytes: [UInt8], systemTimestamp: Double) {
+    func parse(bytes: [UInt8], timestamp: Double) {
         var offset = 0
         let count = bytes.count
         
@@ -125,84 +127,84 @@ class ParserAthena {
             // Need at least a header
             guard offset + Athena.packetHeaderSize <= count else { break }
             
-            let pktLen = Int(bytes[offset]) // first byte = declared packet length
+            let packetLen = Int(bytes[offset]) // first byte = declared packet length
             
-            guard pktLen > 0, offset + pktLen <= count else { break }
+            guard packetLen > 0, offset + packetLen <= count else { break }
             
-            let pktBytes = Array(bytes[offset ..< offset + pktLen])
+            let packetBytes = Array(bytes[offset ..< offset + packetLen])
             
             // Parse header
-            let pktIndex: UInt8 = pktBytes[1]
-            let pktTimeRaw = UInt32(pktBytes[2])
-                | (UInt32(pktBytes[3]) << 8)
-                | (UInt32(pktBytes[4]) << 16)
-                | (UInt32(pktBytes[5]) << 24)
-            let pktTimeSec = Double(pktTimeRaw) / Athena.deviceClockHz
+            let packetIndex: UInt8 = packetBytes[1]
+            let packetTimeRaw = UInt32(packetBytes[2])
+                | (UInt32(packetBytes[3]) << 8)
+                | (UInt32(packetBytes[4]) << 16)
+                | (UInt32(packetBytes[5]) << 24)
+            let packetTimeSec = Double(packetTimeRaw) / Athena.deviceClockHz
             
             // Unknown1: bytes[6...8]
-            // pkt_id: sensor type for the first subpacket
-            let pktId: UInt8 = pktBytes[9]
-            let pktConfig = Athena.sensors[pktId]
-            let pktType = pktConfig?.type
+            // packet_id: sensor type for the first subpacket
+            let packetId: UInt8 = packetBytes[9]
+            let packetConfig = Athena.sensors[packetId]
+            let packetType = packetConfig?.type
             // Unknown2: bytes[10...12]
-            let byte13: UInt8 = pktBytes[13]
+            let byte13: UInt8 = packetBytes[13]
             
-            let pktValid = (pktType != nil
+            let packetValid = (packetType != nil
                             && byte13 == 0
-                            && pktLen >= Athena.packetHeaderSize)
+                            && packetLen >= Athena.packetHeaderSize)
             
             let dataSection: [UInt8]
-            if pktBytes.count > Athena.packetHeaderSize {
-                dataSection = Array(pktBytes[Athena.packetHeaderSize ..< pktBytes.count])
+            if packetBytes.count > Athena.packetHeaderSize {
+                dataSection = Array(packetBytes[Athena.packetHeaderSize ..< packetBytes.count])
             } else {
                 dataSection = []
             }
             
             // Now parse subpackets within this packet
             parseAthenaDataSubpackets(
-                pktValid: pktValid,
-                pktType: pktType,
-                pktId: pktId,
-                pktConfig: pktConfig,
-                pktIndex: pktIndex,
-                pktTimeRaw: pktTimeRaw,
-                pktTimeSec: pktTimeSec,
+                packetValid: packetValid,
+                packetType: packetType,
+                packetId: packetId,
+                packetConfig: packetConfig,
+                packetIndex: packetIndex,
+                packetTimeRaw: packetTimeRaw,
+                packetTimeSec: packetTimeSec,
                 data: dataSection,
-                systemTimestamp: systemTimestamp
+                timestamp: timestamp
             )
             
-            offset += pktLen
+            offset += packetLen
         }
     }
     
     private func parseAthenaDataSubpackets(
-        pktValid: Bool,
-        pktType: AthenaSensorType?,
-        pktId: UInt8,
-        pktConfig: AthenaSensorConfig?,
-        pktIndex: UInt8,
-        pktTimeRaw: UInt32,
-        pktTimeSec: Double,
+        packetValid: Bool,
+        packetType: AthenaSensorType?,
+        packetId: UInt8,
+        packetConfig: AthenaSensorConfig?,
+        packetIndex: UInt8,
+        packetTimeRaw: UInt32,
+        packetTimeSec: Double,
         data: [UInt8],
-        systemTimestamp: Double
+        timestamp: Double
     ) {
         var offset = 0
         let count = data.count
        
-        // 1. First subpacket: raw data only, type = pktType, length from pktConfig.dataLen
-        if pktValid, let type = pktType, let cfg = pktConfig {
+        // 1. First subpacket: raw data only, type = packetType, length from packetConfig.dataLen
+        if packetValid, let type = packetType, let cfg = packetConfig {
             let len = cfg.dataLen
             if len > 0, offset + len <= count {
                 let firstDataBytes = Array(data[offset ..< offset + len])
                 handleAthenaSubpacket(
                     sensorType: type,
-                    tagByte: pktId,
-                    subpktIndex: nil,
+                    tagByte: packetId,
+                    subpacketIndex: nil,
                     dataBytes: firstDataBytes,
-                    pktIndex: pktIndex,
-                    pktTimeRaw: pktTimeRaw,
-                    pktTimeSec: pktTimeSec,
-                    systemTimestamp: systemTimestamp
+                    packetIndex: packetIndex,
+                    packetTimeRaw: packetTimeRaw,
+                    packetTimeSec: packetTimeSec,
+                    timestamp: timestamp
                 )
                 offset += len
             }
@@ -223,7 +225,7 @@ class ParserAthena {
             // Make sure we have header + data
             guard offset + Athena.subpacketHeaderSize + dataLen <= count else { break }
             
-            let subpktIndex = data[offset + 1]
+            let subpacketIndex = data[offset + 1]
             // bytes [offset+2 ..< offset+5] are "unknown" metadata
             
             let start = offset + Athena.subpacketHeaderSize
@@ -233,12 +235,12 @@ class ParserAthena {
             handleAthenaSubpacket(
                 sensorType: cfg.type,
                 tagByte: tagByte,
-                subpktIndex: subpktIndex,
+                subpacketIndex: subpacketIndex,
                 dataBytes: dataBytes,
-                pktIndex: pktIndex,
-                pktTimeRaw: pktTimeRaw,
-                pktTimeSec: pktTimeSec,
-                systemTimestamp: systemTimestamp
+                packetIndex: packetIndex,
+                packetTimeRaw: packetTimeRaw,
+                packetTimeSec: packetTimeSec,
+                timestamp: timestamp
             )
             
             offset = end
@@ -296,6 +298,48 @@ class ParserAthena {
         
         return rows
     }
+    
+    //p1035
+    //4 sensors
+    //Optics4: 3 samples × 4 channels = 30 bytes – Channels:
+    //LI_NIR, RI_NIR, LI_IR, RI_IR (inner sensors only).”
+    
+    //p1034, p1043, p1044, p1045, p1046
+    //8 sensors
+    //“Optics8: 2 samples × 8 channels = 40 bytes Channels:
+    //LO_NIR, RO_NIR, LO_IR, RO_IR, LI_NIR, RI_NIR, LI_IR, RI_IR
+    /*
+     0: LO_NIR ~10
+     1: RO_NIR ~10
+     2: LO_IR ~1
+     3: RO_IR ~1
+     4: LI_NIR ~10
+     5: RI_NIR ~10
+     6: LI_IR
+     7: RI_IR
+     */
+    
+    //16 sensors
+    //p1041 p1042
+    /*
+     0.    LO_NIR
+     1.    RO_NIR
+     2.    LO_IR
+     3.    RO_IR
+     4.    LI_NIR
+     5.    RI_NIR
+     6.    LI_IR
+     7.    RI_IR
+     8.    LO_RED
+     9.    RO_RED
+     10.    LO_AMB
+     11.    RO_AMB
+     12.    LI_RED
+     13.    RI_RED
+     14.    LI_AMB
+     15.    RI_AMB
+     */
+    
     
     private func decodeAthenaOptics(dataBytes: [UInt8], nChannels: Int) -> [[Double]]? {
         // Match Python behavior:
@@ -387,12 +431,12 @@ class ParserAthena {
     private func handleAthenaSubpacket(
         sensorType: AthenaSensorType,
         tagByte: UInt8,
-        subpktIndex: UInt8?,
+        subpacketIndex: UInt8?,
         dataBytes: [UInt8],
-        pktIndex: UInt8,
-        pktTimeRaw: UInt32,
-        pktTimeSec: Double,
-        systemTimestamp: Double
+        packetIndex: UInt8,
+        packetTimeRaw: UInt32,
+        packetTimeSec: Double,
+        timestamp: Double
     ) {
         switch sensorType {
             
@@ -429,7 +473,9 @@ class ParserAthena {
                 af8Buffer.removeFirst(eegWindowSize)
                 tp10Buffer.removeFirst(eegWindowSize)
                 
-                delegate?.didReceiveAthenaEEGSampleBuffers(
+                delegate?.didReceiveAthenaEEGBuffers(
+                    packetIndex: packetIndex,
+                    timestamp: timestamp,
                     tp9: tp9Window,
                     af7: af7Window,
                     af8: af8Window,
@@ -450,14 +496,15 @@ class ParserAthena {
             }
             
         case .battery:
+            //grab pct and send to main
             if let pct: Float = decodeAthenaBattery(dataBytes: dataBytes) {
-                print("athena battery", pct)
                 delegate?.didReceiveAthena(
                     batteryPacket: XvBatteryPacket(percentage: Int16(pct))
                 )
             }
             
         case .optics:
+            
             // Decode packed optics data (20-bit values)
             guard let cfg = Athena.sensors[tagByte] else { return }
             guard let rows = decodeAthenaOptics(dataBytes: dataBytes, nChannels: cfg.nChannels) else {
@@ -465,40 +512,37 @@ class ParserAthena {
                 return
             }
             
-            // RI_NIR index depends on channel configuration.
-            // From Mind Monitor mapping (1-based indices):
-            //  - 4-ch:  LI_NIR(1), RI_NIR(2), LI_IR(3), RI_IR(4)      → RI_NIR = 2 → index 1
-            //  - 8-ch:  LO_NIR(1), RO_NIR(2), LO_IR(3), RO_IR(4),
-            //           LI_NIR(5), RI_NIR(6), LI_IR(7), RI_IR(8)      → RI_NIR = 6 → index 5
-            //  - 16-ch: same NIR indexing as 8-ch, with extra RED/AMB → RI_NIR = 6 → index 5
-            
-            let riNIRIndex: Int
-            switch cfg.nChannels {
-            case 4:
-                riNIRIndex = 1
-            case 8, 16:
-                riNIRIndex = 5
-            default:
-                print("ParserAthena: unsupported optics channel count \(cfg.nChannels)")
-                return
-            }
-            
-            // Print out RI_NIR and full samples to the console for now
-            for (sampleIdx, sample) in rows.enumerated() {
-                guard riNIRIndex < sample.count else {
-                    print("ParserAthena: optics sample[\(sampleIdx)] too short (\(sample.count)) for RI_NIR index \(riNIRIndex)")
-                    continue
-                }
+            //loop through samples in rows
+            for (_, sample) in rows.enumerated() {
                 
+                
+              //debuggingin console
+                //let roundedSample = sample.map { Double(round($0 * 100) / 100) }
 //                print(
 //                    """
 //                    Athena OPTICS:
-//                      pktTimeSec: \(pktTimeSec)
+//                      packetTimeSec: \(packetTimeSec)
 //                      nChannels: \(cfg.nChannels)
-//                      full sample: \(sample)
+//                      full sample: \(roundedSample)
 //                    """
 //                )
-                delegate?.didReceiveAthena(opticsPacket: sample)
+                
+                if cfg.nChannels == 4 {
+                    // sample is [ch0, ch1, ch2, ch3] each is a PPG
+                    //Left Inner A, Right Inner A, Left Inner B, Right Inner B
+                    let avgPPGSample:Double = (sample[0] + sample[1] + sample[2] + sample[3]) / 4.0
+
+                    let ppgPacket:MusePPGPacket = MusePPGPacket(
+                        packetIndex: UInt16(packetIndex),
+                        sensor: 0,
+                        timestamp: timestamp,
+                        samples: [avgPPGSample]
+                    )
+                    
+                    delegate?.didReceiveAthena(ppgPacket: ppgPacket)
+                }
+                
+                
             }
             
         case .unknown:

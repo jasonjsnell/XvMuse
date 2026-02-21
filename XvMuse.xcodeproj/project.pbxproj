@@ -32,6 +32,7 @@
 		BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */; };
 		BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */; };
 		BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */; };
+		BB4E77952F4775D4001E2BF8 /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */; };
 		BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB553BA5253A56F7009E1278 /* SignalProcessor.swift */; };
 		BB57F88D2496B01C003DB78A /* XvMuse.h in Headers */ = {isa = PBXBuildFile; fileRef = BB57F88B2496B01C003DB78A /* XvMuse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8952496B05F003DB78A /* XvMuse.swift */; };
@@ -105,6 +106,7 @@
 		BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPG.swift; sourceTree = "<group>"; };
 		BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPGSensor.swift; sourceTree = "<group>"; };
 		BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGStressData.swift; sourceTree = "<group>"; };
+		BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
 		BB553BA5253A56F7009E1278 /* SignalProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalProcessor.swift; sourceTree = "<group>"; };
 		BB57F8882496B01B003DB78A /* XvMuse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XvMuse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB57F88B2496B01C003DB78A /* XvMuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XvMuse.h; sourceTree = "<group>"; };
@@ -319,6 +321,7 @@
 				BB7741DF24CA1CF3004B8AE5 /* Number.swift */,
 				BB7741E124CA1F27004B8AE5 /* JSON.swift */,
 				BB553BA5253A56F7009E1278 /* SignalProcessor.swift */,
+				BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -454,7 +457,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2610;
+				LastUpgradeCheck = 2620;
 				ORGANIZATIONNAME = "Jason Snell";
 				TargetAttributes = {
 					BB57F8872496B01B003DB78A = {
@@ -556,6 +559,7 @@
 				BBEFB5062E8540BD005AEC3B /* TestEEGEyesClosedData.swift in Sources */,
 				BBEFB4E32E834077005AEC3B /* TestEEGSleepingData.swift in Sources */,
 				BB4228762E8546B1001E6DB9 /* MockPPGLooseFitData.swift in Sources */,
+				BB4E77952F4775D4001E2BF8 /* RingBuffer.swift in Sources */,
 				BBCDE4FC281C9DF5001B67E7 /* TestEEGTiredData.swift in Sources */,
 				BBEFB50E2E85417C005AEC3B /* MockPPGArousalData.swift in Sources */,
 				BB42286C2E8545FC001E6DB9 /* MockPPGTypingEmailData.swift in Sources */,
