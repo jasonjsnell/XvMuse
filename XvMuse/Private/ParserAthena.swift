@@ -51,7 +51,7 @@
 import XvSensors
 
 protocol ParserAthenaDelegate:AnyObject {
-    func didReceiveAthena(accelPacket:XvAccelPacket)
+    func didReceiveAthena(accelPacket:MuseAccelPacket)
     func didReceiveAthena(batteryPacket:XvBatteryPacket)
     func didReceiveAthenaEEGBuffers(
         packetIndex:UInt8,
@@ -74,10 +74,10 @@ class ParserAthena {
     private let eegWindowSize = 12
     
     // Per-channel EEG buffers
-    private var tp9Buffer:  [Float] = []
-    private var af7Buffer:  [Float] = []
-    private var af8Buffer:  [Float] = []
-    private var tp10Buffer: [Float] = []
+    private var tp9Buffer  = RingBuffer<Float>(capacity: 64)
+    private var af7Buffer  = RingBuffer<Float>(capacity: 64)
+    private var af8Buffer  = RingBuffer<Float>(capacity: 64)
+    private var tp10Buffer = RingBuffer<Float>(capacity: 64)
     
     private enum AthenaSensorType {
         case eeg
@@ -458,20 +458,15 @@ class ParserAthena {
             }
             
             // When we have enough samples, emit a window per channel
-            while tp9Buffer.count >= eegWindowSize &&
-                  af7Buffer.count >= eegWindowSize &&
-                  af8Buffer.count >= eegWindowSize &&
-                  tp10Buffer.count >= eegWindowSize {
+            if tp9Buffer.count >= eegWindowSize &&
+               af7Buffer.count >= eegWindowSize &&
+               af8Buffer.count >= eegWindowSize &&
+               tp10Buffer.count >= eegWindowSize {
                 
-                let tp9Window  = Array(tp9Buffer.prefix(eegWindowSize))
-                let af7Window  = Array(af7Buffer.prefix(eegWindowSize))
-                let af8Window  = Array(af8Buffer.prefix(eegWindowSize))
-                let tp10Window = Array(tp10Buffer.prefix(eegWindowSize))
-                
-                tp9Buffer.removeFirst(eegWindowSize)
-                af7Buffer.removeFirst(eegWindowSize)
-                af8Buffer.removeFirst(eegWindowSize)
-                tp10Buffer.removeFirst(eegWindowSize)
+                let tp9Window  = tp9Buffer.last(eegWindowSize)
+                let af7Window  = af7Buffer.last(eegWindowSize)
+                let af8Window  = af8Buffer.last(eegWindowSize)
+                let tp10Window = tp10Buffer.last(eegWindowSize)
                 
                 delegate?.didReceiveAthenaEEGBuffers(
                     packetIndex: packetIndex,
@@ -487,10 +482,10 @@ class ParserAthena {
             guard let rows = decodeAthenaAccGyro(dataBytes: dataBytes) else { return }
             if let last = rows.last {
                 delegate?.didReceiveAthena(
-                    accelPacket: XvAccelPacket(
+                    accelPacket: MuseAccelPacket(
                         x: Double(last[0]),
                         y: Double(last[1]),
-                        z: Double(last[2])
+                        z: Double(last[2]),
                     )
                 )
             }

@@ -68,7 +68,7 @@ class Buffer {
         _timestampsMax = Int(floor( Double(_samplesMax / 12) ))
         
         //put sensor ID into the data stream (only needs to be set once during initialization)
-        _dataStream = DataStream(sensor: sensor)
+        _dataStream = DataStream(sensor: sensor, samplesCapacity: _samplesMax, timestampsCapacity: _timestampsMax)
         
     }
     
@@ -77,25 +77,13 @@ class Buffer {
         
         //MARK: Samples
         //append content the packet's samples into the sample stream
-        _dataStream.samples.append(contentsOf: packet.samples)
-        
-        //if this pushes the stream's sample array over the max
-        if (_dataStream.samples.count > _samplesMax) {
-            
-            //remove the excess from the beginning of the array
-            _dataStream.samples.removeFirst(_dataStream.samples.count-_samplesMax)
+        for s in packet.samples {
+            _dataStream.samples.append(s)
         }
         
         //MARK: Timestamps
         //add the time stamp of the first sensor in the packet to the data stream's timestamp array
         _dataStream.timestamps.append(packet.timestamp)
-        
-        //if the number of timestamps exceeds the max
-        if (_dataStream.timestamps.count > _timestampsMax) {
-            
-            //remove the excess from the beginning of the array
-            _dataStream.timestamps.removeFirst(_dataStream.timestamps.count-_timestampsMax)
-        }
         
         //MARK: Delivery
         //if the stream is filled with _samplesMax packets (ex: 256 samples), then make it available

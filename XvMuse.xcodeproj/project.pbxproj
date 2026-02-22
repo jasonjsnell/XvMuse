@@ -33,7 +33,7 @@
 		BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */; };
 		BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */; };
 		BB4E77952F4775D4001E2BF8 /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */; };
-		BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB553BA5253A56F7009E1278 /* SignalProcessor.swift */; };
+		BB4E779F2F4A3F2A001E2BF8 /* MuseAccel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E779E2F4A3F25001E2BF8 /* MuseAccel.swift */; };
 		BB57F88D2496B01C003DB78A /* XvMuse.h in Headers */ = {isa = PBXBuildFile; fileRef = BB57F88B2496B01C003DB78A /* XvMuse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB57F8962496B05F003DB78A /* XvMuse.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8952496B05F003DB78A /* XvMuse.swift */; };
 		BB57F8A12496B268003DB78A /* MuseConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB57F8A02496B268003DB78A /* MuseConstants.swift */; };
@@ -107,7 +107,7 @@
 		BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPGSensor.swift; sourceTree = "<group>"; };
 		BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGStressData.swift; sourceTree = "<group>"; };
 		BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
-		BB553BA5253A56F7009E1278 /* SignalProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalProcessor.swift; sourceTree = "<group>"; };
+		BB4E779E2F4A3F25001E2BF8 /* MuseAccel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseAccel.swift; sourceTree = "<group>"; };
 		BB57F8882496B01B003DB78A /* XvMuse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = XvMuse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB57F88B2496B01C003DB78A /* XvMuse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XvMuse.h; sourceTree = "<group>"; };
 		BB57F88C2496B01C003DB78A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -166,7 +166,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		BB14EE5428AE875300B2A14D /* Mock Data */ = {
+		BB14EE5428AE875300B2A14D /* Test Data */ = {
 			isa = PBXGroup;
 			children = (
 				BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */,
@@ -176,7 +176,7 @@
 				BBEFB50A2E85414A005AEC3B /* Arousal */,
 				BBEFB4FE2E853FC7005AEC3B /* Rest */,
 			);
-			path = "Mock Data";
+			path = "Test Data";
 			sourceTree = "<group>";
 		};
 		BB14EEB028B1A08900B2A14D /* Frameworks */ = {
@@ -284,6 +284,7 @@
 				BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */,
 				BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */,
 				BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */,
+				BB4E779E2F4A3F25001E2BF8 /* MuseAccel.swift */,
 				BB57F8942496B04B003DB78A /* Private */,
 			);
 			path = XvMuse;
@@ -320,7 +321,6 @@
 				BB7741DD24CA1BCF004B8AE5 /* Bytes.swift */,
 				BB7741DF24CA1CF3004B8AE5 /* Number.swift */,
 				BB7741E124CA1F27004B8AE5 /* JSON.swift */,
-				BB553BA5253A56F7009E1278 /* SignalProcessor.swift */,
 				BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */,
 			);
 			path = Utils;
@@ -355,7 +355,7 @@
 			isa = PBXGroup;
 			children = (
 				BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */,
-				BB14EE5428AE875300B2A14D /* Mock Data */,
+				BB14EE5428AE875300B2A14D /* Test Data */,
 			);
 			path = PPG;
 			sourceTree = "<group>";
@@ -507,6 +507,7 @@
 				BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */,
 				BBEFB5002E853FD5005AEC3B /* MockPPGClearMindData.swift in Sources */,
 				BBEFB50C2E85416C005AEC3B /* TestEEGArousalData.swift in Sources */,
+				BB4E779F2F4A3F2A001E2BF8 /* MuseAccel.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
 				BB4228822E854825001E6DB9 /* TestEEGJawData.swift in Sources */,
@@ -537,7 +538,6 @@
 				BB65FEED283EC93400C4F4D8 /* TestEEGMeditationData.swift in Sources */,
 				BB4228842E854831001E6DB9 /* MockPPGJawData.swift in Sources */,
 				BBCDE502281CAC31001B67E7 /* TestEEGData.swift in Sources */,
-				BB553BA6253A56F7009E1278 /* SignalProcessor.swift in Sources */,
 				BB42287B2E85472A001E6DB9 /* MockPPGBlinksData.swift in Sources */,
 				BB4228652E854557001E6DB9 /* TestEEGRestingFocusData.swift in Sources */,
 				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,

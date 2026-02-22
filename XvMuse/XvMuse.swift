@@ -114,6 +114,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     private var _testEEG:MuseEEG
     private var _ppg:MusePPG
     private var _testPPG:MusePPG
+    private var _accel:MuseAccel
     private var _accelRaw:[Int16] = []
     private var _batteryRaw:[UInt16] = []
 
@@ -167,6 +168,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         
         _ppg = MusePPG()
         _testPPG = MusePPG()
+        
+        _accel = MuseAccel()
      
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.delegate = self
@@ -191,7 +194,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     
     public func didFindNearby(muses: [CBPeripheral]) {
         //print("XvMuse: didFindNearby", muses)
-        onMain { self.delegate?.didFindNearby(muses: muses) }
+        delegate?.didFindNearby(muses: muses)
     }
     
     //MARK: User selects Muse
@@ -220,7 +223,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         
         bluetooth.stop() //stop the search
         bluetooth.load(muse: museDevice) //load user selected muse
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        processingQ.asyncAfter(deadline: .now() + 1) {
             self.bluetooth.connect()
         }
     }
@@ -264,7 +267,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
             // Special-case Athena main stream BEFORE legacy parsing
             if bluetoothCharacteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN {
                 let bytes = [UInt8](_data)
-                self._parserAthena.parse(bytes: bytes, timestamp: timestamp)
+                _parserAthena.parse(bytes: bytes, timestamp: timestamp)
                 //results are returned by delegate callbacks below
                 return
             }
@@ -367,18 +370,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                 //print(bytes) // <-- use to print out test PPG samples
                 
                 //heart events examine sensor PPG2
-                if let ppgResult:MusePPGResult = _ppg.process(ppgPacket: _makePPGPacket()) {
+                if let ppgResult:MusePPGResult = _ppg.update(withPPGPacket: _makePPGPacket()) {
                     
                     //if streams are valid...
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
                         //send blood flow and resp streams to parent
-                        onMain { self.delegate?.didReceive(ppgStreams: self.convert( musePPGStreams: ppgStreams))}
+                        delegate?.didReceive(ppgStreams: convert(musePPGStreams: ppgStreams))
                     }
                     
                     //if heart event is valid...
                     if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                         //send up to parent
-                        onMain { self.delegate?.didReceive(ppgHeartEvent: self.convert(musePPGHeartEvent: ppgHeartEvent)) }
+                        delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
                     }
                 }
                 
@@ -392,13 +395,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                 
                 _accelRaw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
                 
-                delegate?.didReceive(
-                    accelPacket: XvAccelPacket(
-                        x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
-                        y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
-                        z: _parserLegacy.getXYZ(values: _accelRaw, start: 2)
+                let _accelPacket:XvAccelPacket = convert(
+                    museAccelPacket: _accel.update(
+                        withAccelPacket: MuseAccelPacket(
+                            x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
+                            y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
+                            z: _parserLegacy.getXYZ(values: _accelRaw, start: 2)
+                        )
                     )
                 )
+                delegate?.didReceive(accelPacket: _accelPacket)
+                
                 
             case MuseConstants.CHAR_BATTERY:
                 
@@ -492,7 +499,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 3)))
         
         // Send a single combined EEG packet out, just like in the legacy path
-        onMain { self.delegate?.didReceive(eegPacket: self.convert(museEEG: self._eeg)) }
+        delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
     }
     
     //Athena parser creates and sends a Muse PPG packet
@@ -500,32 +507,34 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     func didReceiveAthena(ppgPacket: MusePPGPacket) {
 
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
-        if let ppgResult:MusePPGResult = _ppg.process(ppgPacket: ppgPacket) {
+        if let ppgResult:MusePPGResult = _ppg.update(withPPGPacket: ppgPacket) {
             
             //if streams are valid...
             if let ppgStreams:MusePPGStreams = ppgResult.streams {
                 //send blood flow and resp streams to parent
-                onMain { self.delegate?.didReceive(ppgStreams: self.convert( musePPGStreams: ppgStreams))}
+                delegate?.didReceive(ppgStreams: convert( musePPGStreams: ppgStreams))
             }
             
             //if heart event is valid...
             if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                 //send up to parent
                 print("XvMuse: Athena heart event: BPM;", ppgHeartEvent.bpm, "Str:", ppgHeartEvent.pulseStrength, "HRV SDNN", ppgHeartEvent.sdnn )
-                onMain { self.delegate?.didReceive(ppgHeartEvent: self.convert(musePPGHeartEvent: ppgHeartEvent)) }
+                delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
             }
         }
     }
     
-    func didReceiveAthena(accelPacket: XvAccelPacket) {
-        delegate?.didReceive(accelPacket: accelPacket)
+    func didReceiveAthena(accelPacket: MuseAccelPacket) {
+       //receive muse accel, convert to xvaccel, and send to parent
+        delegate?.didReceive(
+            accelPacket: convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
+        )
     }
+    
     func didReceiveAthena(batteryPacket: XvBatteryPacket) {
         delegate?.didReceive(batteryPacket: batteryPacket)
     }
-    
-    
-    
+
     
     //MARK: - Test Data
     //only engage test data objects when called directly from external program
@@ -587,18 +596,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         //process middle sensor
         let testPPGPacket:MusePPGPacket = _testPPGData[dataID].getPacket()
         
-        if let testPPGResult:MusePPGResult = _testPPG.process(ppgPacket: testPPGPacket) {
+        if let testPPGResult:MusePPGResult = _testPPG.update(withPPGPacket: testPPGPacket) {
             
             //if streams are valid...
             if let testPPGStreams:MusePPGStreams = testPPGResult.streams {
                 //send blood flow and resp streams to parent
-                onMain { self.delegate?.didReceive(ppgStreams: self.convert( musePPGStreams: testPPGStreams))}
+                delegate?.didReceive(ppgStreams: convert(musePPGStreams: testPPGStreams))
             }
             
             //if heart event is valid...
             if let testPPGHeartEvent:MusePPGHeartEvent = testPPGResult.heartEvent {
                 //send up to parent
-                onMain { self.delegate?.didReceive(ppgHeartEvent: self.convert(musePPGHeartEvent: testPPGHeartEvent)) }
+                delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: testPPGHeartEvent))
             }
         }
     }
@@ -607,11 +616,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     public var connected:Bool = false
     
     func isAttemptingConnection() {
-        onMain { self.delegate?.museIsAttemptingConnection() }
+        delegate?.museIsAttemptingConnection()
     }
     
     public func isConnecting() {
-        onMain { self.delegate?.museIsConnecting() }
+        delegate?.museIsConnecting()
     }
     
     public func didConnect() {
@@ -622,12 +631,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
         
         //version handshake, set to v2
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        processingQ.asyncAfter(deadline: .now() + 0.5) {
             self.bluetooth.versionHandshake()
         }
         
         //config commands, if desired
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
+        processingQ.asyncAfter(deadline: .now() + 0.9) { [self] in
             
             //uncomment to turn off PPG
             //setting the preset turns off the PPG
@@ -648,34 +657,28 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         }
         
         //get status
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        processingQ.asyncAfter(deadline: .now() + 1.2) {
             self.bluetooth.controlStatus()
         }
         
         //notify delegate
-        onMain { self.delegate?.museDidConnect() }
+        delegate?.museDidConnect()
     }
     
     public func didDisconnect() {
         connected = false
-        onMain { self.delegate?.museDidDisconnect() }
+        delegate?.museDidDisconnect()
     }
     
     public func didLoseConnection() {
         connected = false
-        onMain { self.delegate?.museLostConnection() }
+        delegate?.museLostConnection()
     }
     
     
     //MARK: - Thread -
     // Single lane for all DSP + parsing (keeps _fft/history thread-safe)
     private let processingQ = DispatchQueue(label: "com.primaryassembly.xvmuse.processing", qos: .userInitiated)
-
-    // Tiny helper so every delegate call hits main safely
-    @inline(__always)
-    private func onMain(_ block: @escaping () -> Void) {
-        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
-    }
     
     //MARK: - MOCK DATA -
     //if the muse disconnects, this pipes in test EEG data until the muse can reconnect
@@ -694,12 +697,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     
     @objc func generateTestEEGData() {
         //grabs pre-recorded EEG data from muse framework
-        onMain { self.delegate?.didReceive(eegPacket: self.getTestEEG(id: self.testDataSet)) }
+        delegate?.didReceive(eegPacket: getTestEEG(id: testDataSet))
     }
     @objc func generateTestPPGData() {
         //processes pre-recorded PPG data from muse framework
         //note: delegate callbacks happen inside the processTestPPG func
-        onMain { self.processTestPPG(id: self.testDataSet) }
+        processTestPPG(id: testDataSet)
         
     }
     
@@ -749,6 +752,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         return XvPPGHeartEvent(
             bpm: musePPGHeartEvent.bpm,
             sdnn: musePPGHeartEvent.sdnn
+        )
+    }
+    
+    private func convert(museAccelPacket:MuseAccelPacket) -> XvAccelPacket {
+        return XvAccelPacket(
+            x: museAccelPacket.x,
+            y: museAccelPacket.y,
+            z: museAccelPacket.z,
+            movement: museAccelPacket.movement
         )
     }
 }

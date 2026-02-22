@@ -33,15 +33,15 @@ internal class MusePPGSensor {
         case .museAthena:
             //2026 02 21 tests on Muse Athena - calibrated and responsive to breath
             lpAlpha = 0.02
-            baselineSamples = RingBuffer(capacity: 64)
-            baselineFirstSamples = RingBuffer(capacity: 64)
-            baselineAveragedFirstSamples = RingBuffer(capacity: 16)
+            baselineSamples = RingBuffer<Double>(capacity: 64)
+            baselineFirstSamples = RingBuffer<Double>(capacity: 64)
+            baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
         default:
             //2026 02 21 tests on Muse 2 and S - calibrated and responsive to breath
             lpAlpha = 0.03
-            baselineSamples = RingBuffer(capacity: 24)
-            baselineFirstSamples = RingBuffer(capacity: 24)
-            baselineAveragedFirstSamples = RingBuffer(capacity: 16)
+            baselineSamples = RingBuffer<Double>(capacity: 24)
+            baselineFirstSamples = RingBuffer<Double>(capacity: 24)
+            baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
         }
         
     }
@@ -51,13 +51,13 @@ internal class MusePPGSensor {
     //this is where packets from the device, via bluetooth, come in for processing
     //these raw, time-based samples are what create the heartbeat pattern
     
-    // Buffers (avoid O(n) removeFirst shifting)
-    private var bloodFlowSamples = RingBuffer(capacity: 128)
+    // blood flow buffer
+    private var bloodFlowSamples = RingBuffer<Double>(capacity: 128)
     
     //smoothing buffers for resp
-    private var baselineSamples = RingBuffer(capacity: 16)
-    private var baselineFirstSamples = RingBuffer(capacity: 16)
-    private var baselineAveragedFirstSamples = RingBuffer(capacity: 16)
+    private var baselineSamples = RingBuffer<Double>(capacity: 16)
+    private var baselineFirstSamples = RingBuffer<Double>(capacity: 16)
+    private var baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
 
     // low-passed baseline "flow" value
     private var lpBaseline: Double = 0.0

@@ -17,14 +17,11 @@ struct PPGAnalysisPacket {
 class PPGAnalyzer {
     
     private var prevTimestamp: Double = 0
-    private var bpms: [Double] = []
-    private var nnIntervals: [Double] = [] // seconds
+    private var bpms = RingBuffer<Double>(capacity: 100)
+    private var nnIntervals = RingBuffer<Double>(capacity: 60) // seconds
     private let BPM_HISTORY_LENGTH_MAX = 100
     private let HRV_HISTORY_LENGTH_MAX = 60 // 600
-    
-    private var pulseAmplitudes: [Double] = []
-    private var latestPulseAmp:Double = 0
-    
+
     // --- pulse amplitude & respiration ---
     private struct AmpSample {
         let t: Double
@@ -42,7 +39,7 @@ class PPGAnalyzer {
         if beatLength > 0.4 && beatLength < 1.8 { // ~40–180 bpm
             // Optional: reject outliers relative to recent median
             if nnIntervals.count >= 5 {
-                let recent = nnIntervals.suffix(20) // last 20 beats
+                let recent = Array(nnIntervals.toArray().suffix(20)) // last 20 beats
                 let sorted = recent.sorted()
                 let median = sorted[sorted.count / 2]
                 let relDiff = abs(beatLength - median) / median
@@ -52,17 +49,12 @@ class PPGAnalyzer {
             } else {
                 nnIntervals.append(beatLength)
             }
-
-            
-            if nnIntervals.count > HRV_HISTORY_LENGTH_MAX {
-                nnIntervals.removeFirst()
-            }
         }
         
         // --- SDNN (ms) ---
         var sdnnMs: Double = 0.0
         if nnIntervals.count > 1 {
-            let sdSec = Number.getStandardDeviation(ofArray: nnIntervals)
+            let sdSec = Number.getStandardDeviation(ofArray: nnIntervals.toArray())
             sdnnMs = sdSec * 1000.0
             if sdnnMs.isInfinite || sdnnMs.isNaN { sdnnMs = 0.0 }
         }
@@ -70,10 +62,11 @@ class PPGAnalyzer {
         // --- RMSSD (ms) ---
         var rmssdMs: Double = 0.0
         if nnIntervals.count > 2 {
+            let arr = nnIntervals.toArray()
             var diffsSqSum = 0.0
             var diffCount = 0
-            for i in 1..<nnIntervals.count {
-                let diff = nnIntervals[i] - nnIntervals[i - 1]
+            for i in 1..<arr.count {
+                let diff = arr[i] - arr[i - 1]
                 diffsSqSum += diff * diff
                 diffCount += 1
             }
@@ -96,19 +89,13 @@ class PPGAnalyzer {
         let pulseAmp = peak - trough
         ampSeries.append(AmpSample(t: timestamp, amp: pulseAmp))
         // drop samples older than AMP_HISTORY_SEC
-        while let first = ampSeries.first,
-              timestamp - first.t > AMP_HISTORY_SEC {
-            ampSeries.removeFirst()
-        }
-        
+        ampSeries = ampSeries.filter { timestamp - $0.t <= AMP_HISTORY_SEC }
         
         // --- BPM (smoothed) ---
         let currBpm = 60.0 / beatLength
         bpms.append(currBpm)
-        if bpms.count > BPM_HISTORY_LENGTH_MAX {
-            bpms.removeFirst()
-        }
-        let averageBpm = bpms.reduce(0, +) / Double(bpms.count)
+        let arrBpm = bpms.toArray()
+        let averageBpm = arrBpm.reduce(0, +) / Double(arrBpm.count)
         
         prevTimestamp = timestamp
         

@@ -33,9 +33,19 @@ and sends it here to create a streaming buffer, slice out epoch windows, and ret
 /* A circular, updating stream of samples (each sensor has it's own sample array). It includes a corresponding timestamp array, which has fewer slots, since there is one timestamp per every 12 samples. This stream is produced by the Buffer object */
 
 public struct DataStream {
+    
+    public init(sensor: Int, samplesCapacity: Int, timestampsCapacity: Int) {
+        self.sensor = sensor
+        self.samples = RingBuffer<Double>(capacity: samplesCapacity)
+        self.timestamps = RingBuffer<Double>(capacity: timestampsCapacity)
+    }
+    
+    public var samplesArray: [Double] { samples.toArray() }
+    public var timestampsArray: [Double] { timestamps.toArray() }
+    
     public var sensor:Int // same as data packet
-    public var samples:[Double] = [] // streaming samples of EEG sensor data
-    public var timestamps:[Double] = [] //series of recent timestamps
+    public var samples:RingBuffer<Double> // streaming samples of EEG sensor data
+    public var timestamps:RingBuffer<Double> //series of recent timestamps
 }
 
 /* This is a snapshot of data from the data stream, containing values in a specific window of time. This object is released from the Epoch Manager every X milliseconds and has a bin length equal to the Buffer */
@@ -83,7 +93,6 @@ public class FFTManager {
         
         // once the buffer is full (it needs a few seconds of data before it can provide a stream)...
         if let dataStream:DataStream = _buffers[eegPacket.sensor].add(packet: eegPacket) {
-            
             
             //send the data stream to the epoch manager
             

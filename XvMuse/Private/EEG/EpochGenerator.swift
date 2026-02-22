@@ -49,7 +49,7 @@ class EpochGenerator {
         // Get the most recent timestamp from the incoming EEG data stream.
         // .last is used because new data packets append their timestamp here,
         // so this reflects the current "end" of the rolling buffer (i.e., most recent EEG arrival time).
-        guard let latestTime:Double = dataStream.timestamps.last else {
+        guard let latestTime:Double = dataStream.timestampsArray.last else {
             print("EpochGenerator: Error: Incoming timestamp array is blank.")
             return nil
         }
@@ -68,7 +68,7 @@ class EpochGenerator {
             // Defensive 'Array(...)' copy ensures the Epoch has its own sample data
             // and won’t be affected if the Buffer keeps appending/removing samples later.
             
-            return Epoch(sensor: sensor, samples: Array(dataStream.samples))
+            return Epoch(sensor: sensor, samples: dataStream.samplesArray)
             
         } //else {
             //print("EpochGenerator: Waiting for next epoch window")

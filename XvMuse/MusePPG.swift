@@ -12,14 +12,14 @@ import XvSensors
 //created when a heartbeat is detected
 internal struct MusePPGHeartEvent {
     
-    public init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0) {
+    init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0) {
         self.bpm = bpm
         self.pulseStrength = pulseStrength
         self.sdnn = sdnn
     }
-    public var bpm:Double
-    public var pulseStrength:Double
-    public var sdnn:Double
+    var bpm:Double
+    var pulseStrength:Double
+    var sdnn:Double
 }
 
 //continuous data stream of bloodflow and respiratory data
@@ -76,16 +76,16 @@ internal class MusePPG {
     private var rollingCount: Int = 0
     private let alpha: Double = 0.01 // EWMA factor
     
-    internal func process(ppgPacket: MusePPGPacket) -> MusePPGResult? {
+    internal func update(withPPGPacket: MusePPGPacket) -> MusePPGResult? {
         
         //are the streams valid? if not, no streams or heart events are returned
-        guard let streams = sensor.getStreams(from: ppgPacket) else {
+        guard let streams = sensor.getStreams(from: withPPGPacket) else {
             return nil
         }
         
         // current sample (normalized blood-flow sample)
         guard let x = streams.bloodFlow.last else { return nil }
-        let t = ppgPacket.timestamp
+        let t = withPPGPacket.timestamp
         
         // update rolling stats for threshold
         updateRollingStats(x)
