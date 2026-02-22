@@ -18,8 +18,13 @@ class TestEEGData {
     private var _fft:FFTManager = FFTManager()
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
-    internal init(){
+    private var name:String
+    internal init(name:String){
+        self.name = name
         sensorsData = []
+    }
+    internal func getName() -> String {
+        return self.name
     }
     
     private var packetIndex:UInt16 = 0

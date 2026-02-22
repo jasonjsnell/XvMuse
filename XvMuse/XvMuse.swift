@@ -539,19 +539,19 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     //MARK: - Test Data
     //only engage test data objects when called directly from external program
     private let _testEEGData:[TestEEGData] = [
-        TestEEGNoiseData(),
+        TestEEGNoiseData(name: "Noise"),
 //        TestEEGLooseFitData(),
-        TestEEGStressData(),
-        TestEEGMeditationData(),
+   //     TestEEGStressData(name: "Stress"),
+ //       TestEEGMeditationData(),
 //        TestEEGTiredData(),
 //        TestEEGFallingAlseepData(),
 //        TestEEGSleepingData(),
         
     ]
     private let _testPPGData:[TestPPGData] = [
-        TestPPGNoiseData(),
+   //     TestPPGNoiseData(),
 //        TestPPGLooseFitData(),
-        TestPPGStressData(),
+ //       TestPPGStressData(),
         TestPPGMeditationData(),
 //        TestPPGTiredData(),
 //        TestPPGFallingAsleepData(),
@@ -559,6 +559,16 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         
         
     ]
+    
+    public func getTestEEGName(id:Int) -> String {
+        //keep in bounds
+        var dataID:Int = id-1
+        if (dataID >= _testEEGData.count) {
+            print("XvMuse: getTestEEG(id): Error: ID", dataID, "out of bounds of", _testEEGData.count, "- Using array max")
+            dataID = _testEEGData.count-1
+        }
+        return _testEEGData[dataID].getName()
+    }
     public func getTestEEG(id:Int) -> XvEEGPacket {
         
         //keep in bounds

@@ -8,9 +8,9 @@
 
 class TestEEGGammaBurstData:TestEEGData {
     
-    override internal init(){
+    override internal init(name:String){
         
-        super.init()
+        super.init(name:name)
         
         sensorsData = [
             SENSOR_1_DATA,
