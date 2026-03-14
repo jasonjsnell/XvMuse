@@ -2,9 +2,9 @@ import Foundation
 
 class TestEEGClearMindData:TestEEGData {
     
-    /*override internal init(){
-        
-        super.init()
+    override internal init(name:String){
+     
+     super.init(name:name)
         
         sensorsData = [
             SENSOR_1_DATA,
@@ -4831,5 +4831,5 @@ class TestEEGClearMindData:TestEEGData {
      [123, 103, 205, 124, 215, 192, 123, 247, 185, 124, 247, 222, 123, 215, 162, 123, 199, 234],
      [127, 151, 234, 126, 119, 245, 127, 248, 4, 128, 56, 2, 128, 88, 6, 128, 103, 239],
      [125, 23, 193, 124, 183, 227, 125, 199, 188, 123, 55, 202, 126, 87, 218, 123, 119, 164]]
-     */
+     
 }

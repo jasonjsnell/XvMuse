@@ -6,6 +6,7 @@
 //  Copyright © 2022 Jason Snell. All rights reserved.
 //
 
+/*
 class TestEEGGammaBurstData:TestEEGData {
     
     override internal init(name:String){
@@ -5114,3 +5115,4 @@ class TestEEGGammaBurstData:TestEEGData {
     ]
 }
 
+*/

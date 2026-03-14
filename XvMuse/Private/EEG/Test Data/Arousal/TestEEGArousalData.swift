@@ -6,12 +6,13 @@
 //  Copyright © 2025 Jason Snell. All rights reserved.
 //
 
+/*
 class TestEEGArousalData:TestEEGData {
     
-    /*
-    override internal init(){
+    
+    override internal init(name:String){
         
-        super.init()
+        super.init(name:name)
         
         sensorsData = [
             SENSOR_1_DATA,
@@ -21639,5 +21640,9 @@ private let SENSOR_4_DATA:[[UInt8]] = [
  [127, 104, 2, 127, 135, 238, 126, 167, 227, 125, 135, 214, 125, 119, 215, 124, 247, 208],
  [125, 23, 199, 124, 39, 204, 125, 71, 207, 124, 119, 198, 124, 167, 198, 123, 199, 198]
 ]
-     */
+     
 }
+
+
+
+*/

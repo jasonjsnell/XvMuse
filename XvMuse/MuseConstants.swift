@@ -196,8 +196,7 @@ internal class MuseConstants {
     */
     
     //MARK: FFT
-    //sampling rate Hz listed here:
-    //https://sites.google.com/a/interaxon.ca/muse-developer-site/museio/presets
+    //Muse 2, S, and Athena are all 256Hz 
     public static let SAMPLING_RATE:Double = 256.0 //256.0 Muse 2
     public static let FREQUENCY_SLICE_MAX:Int = 128 //half the sampling rate
     public static let EEG_FFT_BINS:Int = 256

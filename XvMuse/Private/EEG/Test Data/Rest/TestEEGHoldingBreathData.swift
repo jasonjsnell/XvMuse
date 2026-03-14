@@ -6,13 +6,14 @@
 //  Copyright © 2025 Jason Snell. All rights reserved.
 //
 
+
 import Foundation
 
 class TestEEGHoldingBreathData:TestEEGData {
-    /*
-    override internal init(){
-        
-        super.init()
+    
+     override internal init(name:String){
+         
+         super.init(name:name)
         
         sensorsData = [
             SENSOR_1_DATA,
@@ -1675,5 +1676,5 @@ class TestEEGHoldingBreathData:TestEEGData {
      [123, 119, 196, 124, 215, 207, 123, 247, 178, 123, 215, 200, 124, 23, 196, 124, 39, 190],
      [124, 167, 207, 124, 55, 192, 124, 7, 183, 123, 39, 183, 123, 71, 177, 123, 55, 184],
      [123, 55, 147, 122, 87, 217, 126, 215, 242, 127, 120, 10, 129, 216, 42, 130, 168, 28]]
-    */
+    
 }

@@ -198,7 +198,6 @@
 		BB42285D2E8544C3001E6DB9 /* Focus */ = {
 			isa = PBXGroup;
 			children = (
-				BB4228642E85454F001E6DB9 /* TestEEGRestingFocusData.swift */,
 				BB42286D2E85463D001E6DB9 /* TestEEGSocialMediaData.swift */,
 				BB4228622E85450B001E6DB9 /* TestEEGReadingNewsData.swift */,
 				BB4228692E8545E4001E6DB9 /* TestEEGTypingEmailData.swift */,
@@ -378,6 +377,7 @@
 			children = (
 				BBEFB5012E85407E005AEC3B /* TestEEGHoldingBreathData.swift */,
 				BBEFB4FC2E853F75005AEC3B /* TestEEGClearMindData.swift */,
+				BB4228642E85454F001E6DB9 /* TestEEGRestingFocusData.swift */,
 				BBEFB5052E8540B7005AEC3B /* TestEEGEyesClosedData.swift */,
 				BB65FEEC283EC93400C4F4D8 /* TestEEGMeditationData.swift */,
 				BBCDE4FB281C9DF5001B67E7 /* TestEEGTiredData.swift */,

@@ -539,19 +539,53 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     //MARK: - Test Data
     //only engage test data objects when called directly from external program
     private let _testEEGData:[TestEEGData] = [
+        
+        //ACTIVE SETS
+        
+        //NOISE
         TestEEGNoiseData(name: "Noise"),
-//        TestEEGLooseFitData(),
-   //     TestEEGStressData(name: "Stress"),
- //       TestEEGMeditationData(),
-//        TestEEGTiredData(),
-//        TestEEGFallingAlseepData(),
-//        TestEEGSleepingData(),
+//        TestEEGLooseFitData(name:"Loose"),
+        TestEEGStressData(name: "Stress"),
+//        TestEEGJawData(name: "Jaw"),
+//        TestEEGForeheadData(name: "Forehead"),
+//        TestEEGBlinksData(name: "Blinks"),
+//        
+        TestEEGRestingFocusData(name: "Resting Focus"),
+        TestEEGCodingData(name:"Coding"),
+//
+//        TestEEGGammaBurstData(name: "Gamma Bursts")
+        
+//        TestEEGHoldingBreathData(name: "Holding Breath"), //active
+        TestEEGClearMindData(name:"Clear Mind"), //active
+//        TestEEGEyesClosedData(name: "Eyes Closed"), //not active
+        TestEEGMeditationData(name: "Meditation"), //active
+        TestEEGTiredData(name: "Tired"), //active
+        TestEEGFallingAlseepData(name: "Falling Asleep"),
+//        TestEEGSleepingData(name: "Sleeping"),
+        
+        // WARNING - large, deactivated sets
+        //these files are too large for file indexing
+        //commented these out inside of each file unless needed, one at a time
+//        TestEEGReadingNewsData(name: "Reading News"),
+//        TestEEGSocialMediaData(name:"Social Media"),
+        //TestEEGTypingEmailData(name: "Typing Emails"),
+        
+        //TestEEGArousalData(name: "Arousal"),
+        //TestEEGCoffeeData(name: "Coffee"),
         
     ]
     private let _testPPGData:[TestPPGData] = [
    //     TestPPGNoiseData(),
 //        TestPPGLooseFitData(),
  //       TestPPGStressData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
+        TestPPGMeditationData(),
         TestPPGMeditationData(),
 //        TestPPGTiredData(),
 //        TestPPGFallingAsleepData(),

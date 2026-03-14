@@ -6,6 +6,7 @@
 //  Copyright © 2025 Jason Snell. All rights reserved.
 //
 
+
 import Foundation
 
 class TestEEGLooseFitData:TestEEGData {
@@ -4393,3 +4394,4 @@ class TestEEGLooseFitData:TestEEGData {
      [0, 2, 178, 24, 32, 0, 2, 192, 0, 29, 225, 114, 0, 0, 72, 0, 4, 175]
     ]
 }
+

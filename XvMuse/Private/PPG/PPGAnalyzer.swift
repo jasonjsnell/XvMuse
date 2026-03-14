@@ -33,7 +33,7 @@ class PPGAnalyzer {
     internal func update(at timestamp: Double, peak: Double, trough: Double) -> PPGAnalysisPacket {
         
         let beatLength = timestamp - prevTimestamp // seconds
-        print("beat length", beatLength)
+        //print("beat length", beatLength)
         
         // Accept only plausible NN intervals based on absolute bounds
         if beatLength > 0.4 && beatLength < 1.8 { // ~40–180 bpm

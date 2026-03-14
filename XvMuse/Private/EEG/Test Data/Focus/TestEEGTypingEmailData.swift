@@ -6,14 +6,15 @@
 //  Copyright © 2025 Jason Snell. All rights reserved.
 //
 
+/*
 import Foundation
 
 class TestEEGTypingEmailData:TestEEGData {
     
-    /*
-    override internal init(){
+    
+    override internal init(name:String){
         
-        super.init()
+        super.init(name: name)
         
         sensorsData = [
             SENSOR_1_DATA,
@@ -13741,5 +13742,9 @@ private let SENSOR_4_DATA:[[UInt8]] =
  [124, 215, 214, 125, 215, 209, 124, 87, 196, 123, 183, 193, 124, 183, 202, 124, 135, 213],
  [126, 183, 233, 125, 55, 191, 123, 199, 199, 125, 183, 205, 123, 167, 190, 124, 231, 221],
  [123, 231, 198, 128, 88, 26, 129, 120, 29, 130, 72, 37, 131, 72, 67, 131, 8, 16]]
-     */
+     
 }
+
+
+
+*/

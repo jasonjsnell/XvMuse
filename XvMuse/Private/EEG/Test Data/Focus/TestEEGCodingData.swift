@@ -10,10 +10,10 @@ import Foundation
 
 class TestEEGCodingData:TestEEGData {
     
-    /*
-    override internal init(){
-        
-        super.init()
+    
+     override internal init(name:String){
+         
+         super.init(name: name)
         
         sensorsData = [
             SENSOR_1_DATA,
@@ -17335,6 +17335,7 @@ private let SENSOR_4_DATA:[[UInt8]] = [
  [125, 103, 211, 125, 103, 204, 124, 215, 200, 123, 215, 188, 123, 55, 179, 123, 247, 199],
  [125, 71, 212, 122, 231, 175, 124, 87, 189, 121, 247, 141, 122, 151, 204, 125, 151, 196]
 ]
-     */
+     
 }
+
 
