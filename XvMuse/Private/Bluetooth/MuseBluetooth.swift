@@ -158,7 +158,9 @@ public class MuseBluetooth:XvBluetoothDelegate {
     public func discovered(characteristic: CBCharacteristic) {
         print("XvMuse: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
         //check for specific sensors
-        if (characteristic.uuid == MuseConstants.CHAR_PPG2){
+        if characteristic.uuid == MuseConstants.CHAR_PPG1 ||
+            characteristic.uuid == MuseConstants.CHAR_PPG2 ||
+            characteristic.uuid == MuseConstants.CHAR_PPG3 {
             print("MuseBluetooth: Found PPG characteristic")
             delegate?.discoveredPPG()
         }

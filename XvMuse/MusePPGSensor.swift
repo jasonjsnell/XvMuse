@@ -21,6 +21,8 @@ internal class MusePPGSensor {
 
     private var id: Int
     private var deviceName:XvDeviceName = .unknown
+    private let legacyPPGChannelCount = 3
+    private let legacyRespChannelIndex = 1 // PPG2
     
     
     
@@ -29,6 +31,19 @@ internal class MusePPGSensor {
     }
     internal func set(deviceName:XvDeviceName) {
         self.deviceName = deviceName
+        bloodFlowNormalizer.reset()
+        respNormalizer.reset()
+        legacyRespNormalizer.reset()
+        bloodFlowSamples = RingBuffer<Double>(capacity: 128)
+        lpBaseline = 0.0
+        lpBaseline2 = 0.0
+        lpInitialized = false
+        legacyRespBaseline = 0.0
+        legacyRespInitialized = false
+        respOutputEMA = 0.0
+        respOutputInitialized = false
+        legacyChannelNormalizers = []
+        legacyChannelLatestValues = []
         switch deviceName {
         case .museAthena:
             //2026 02 21 tests on Muse Athena - calibrated and responsive to breath
@@ -59,17 +74,27 @@ internal class MusePPGSensor {
     private var baselineFirstSamples = RingBuffer<Double>(capacity: 16)
     private var baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
 
-    // low-passed baseline "flow" value
+    // low-passed baseline "flow" value — two cascaded passes to better reject heartbeat
     private var lpBaseline: Double = 0.0
+    private var lpBaseline2: Double = 0.0
     private var lpInitialized = false
+    private var legacyRespBaseline: Double = 0.0
+    private var legacyRespInitialized = false
+    private var respOutputEMA: Double = 0.0
+    private var respOutputInitialized = false
     
     // higher is more responsive, but more likely to pick up heart beat movements
     // lower is less resposnive, but less likely to pick up heart beat movements
     private var lpAlpha: Double = 0.005
+    private var _respPrintCounter: Int = 0
+    private let respOutputAlpha: Double = 0.12
     
     // normalizes the streams so Muse 2/S and Athena work with their different ranges
     private var bloodFlowNormalizer:StreamNormalizer = StreamNormalizer()
     private let respNormalizer:StreamNormalizer = StreamNormalizer()
+    private let legacyRespNormalizer: StreamNormalizer = StreamNormalizer()
+    private var legacyChannelNormalizers: [StreamNormalizer] = []
+    private var legacyChannelLatestValues: [Double?] = []
 
     internal func getStreams(from packet: MusePPGPacket) -> MusePPGStreams? {
         
@@ -78,58 +103,113 @@ internal class MusePPGSensor {
         
         // append incoming samples and update baseline per sample
         for sample in packet.samples {
-            
-            // blood flow history
-            //normalize the sample so it works with various devices
-            let normalizedSample: Double = bloodFlowNormalizer.update(with: sample, smoothingOn: true)
+            let sampleSet = normalizedSamples(for: sample, fromSensor: packet.sensor)
+            let normalizedSample = sampleSet.bloodFlow
             
             bloodFlowSamples.append(normalizedSample)
 
-            // update low-pass baseline
-            if !lpInitialized {
-                lpBaseline = normalizedSample
-                lpInitialized = true
-            } else {
-                lpBaseline += lpAlpha * (normalizedSample - lpBaseline)
+            if let respSourceSample = sampleSet.respSource {
+                appendRespSourceSample(respSourceSample)
             }
-            
-            //store it in baseline samples
-            //print("")
-            //print("sample", sample, normalizedSample)
-            //print("lpBaseline", lpBaseline)
-            baselineSamples.append(lpBaseline)
         }
         
         
-        //convert baseline samples to an array
-        let baselineSamplesArray = baselineSamples.toArray()
-        
-        //get the min and first
-        if let baselineMin:Double = baselineSamplesArray.min(),
-           let baselineFirst:Double = baselineSamplesArray.first {
-                
-            //save the scaled version of the sample
-            baselineFirstSamples.append(baselineFirst - baselineMin)
-            
-            //get median value of baselineAverageSamples array
-            let baselineFirstArray = baselineFirstSamples.toArray()
-            let baselinAveragedFirstSample:Double = baselineFirstArray.reduce(0.0, +) / Double(baselineFirstArray.count)
-            
-            //normalize without smooothing
-            let normalizedInvertedBaselineAveragedFirstSample = 1.0 - respNormalizer.update(with: baselinAveragedFirstSample, smoothingOn: true)
-            //print("baselinAveragedFirstSample", baselinAveragedFirstSample, normalizedBaselineAveragedFirstSample)
-     
-            baselineAveragedFirstSamples.append(normalizedInvertedBaselineAveragedFirstSample)
+        if deviceName == .museAthena, lpInitialized {
+            // lpBaseline is already a clean, slow-moving signal that tracks breathing directly.
+            // Normalize it and smooth for output.
+            let normResp = respNormalizer.update(with: lpBaseline2, smoothingOn: true)
+            let smoothResp = smoothRespOutput(normResp)
+            baselineAveragedFirstSamples.append(smoothResp)
+
+        } else {
+            // Legacy path: derive resp from relative position of oldest sample vs window min
+            let baselineSamplesArray = baselineSamples.toArray()
+            if let baselineMin = baselineSamplesArray.min(),
+               let baselineFirst = baselineSamplesArray.first {
+
+                baselineFirstSamples.append(baselineFirst - baselineMin)
+
+                let baselineFirstArray = baselineFirstSamples.toArray()
+                let baselinAveragedFirstSample = baselineFirstArray.reduce(0.0, +) / Double(baselineFirstArray.count)
+
+                let normalizedRespSample = respNormalizer.update(with: baselinAveragedFirstSample, smoothingOn: true)
+                let smoothedRespSample = smoothRespOutput(normalizedRespSample)
+                baselineAveragedFirstSamples.append(smoothedRespSample)
+            }
         }
         
         let bloodFlow = bloodFlowSamples.toArray()
         let resp = baselineAveragedFirstSamples.toArray()
 
-        //print("resp", resp[0])
-        //block if the resp stream isn't populated yet
-        if (resp[0] == 0.0) { return nil }
+        //block until the resp stream has at least one populated value
+        guard let firstResp = resp.first, firstResp != 0.0 else { return nil }
         
         return MusePPGStreams(bloodFlow: bloodFlow, resp: resp)
+    }
+
+    private func normalizedSamples(for sample: Double, fromSensor sensor: Int) -> (bloodFlow: Double, respSource: Double?) {
+        guard deviceName != .museAthena else {
+            let value = bloodFlowNormalizer.update(with: sample, smoothingOn: true)
+            return (value, value)
+        }
+
+        ensureLegacyChannelStorage()
+        let channelIndex = min(max(sensor, 0), legacyPPGChannelCount - 1)
+        let channelValue = legacyChannelNormalizers[channelIndex].update(with: sample, smoothingOn: true)
+        legacyChannelLatestValues[channelIndex] = channelValue
+
+        let activeValues = legacyChannelLatestValues.compactMap { $0 }
+        let combined = activeValues.isEmpty
+            ? channelValue
+            : activeValues.reduce(0.0, +) / Double(activeValues.count)
+        let respSource = channelIndex == legacyRespChannelIndex
+            ? legacyRespNormalizer.update(with: sample, smoothingOn: true)
+            : nil
+        return (combined, respSource)
+    }
+
+    private func appendRespSourceSample(_ sample: Double) {
+        let baseline: Double
+        if deviceName == .museAthena {
+            if !lpInitialized {
+                lpBaseline = sample
+                lpBaseline2 = sample
+                lpInitialized = true
+            } else {
+                lpBaseline += lpAlpha * (sample - lpBaseline)
+                lpBaseline2 += lpAlpha * (lpBaseline - lpBaseline2)
+            }
+            baseline = lpBaseline
+        } else {
+            if !legacyRespInitialized {
+                legacyRespBaseline = sample
+                legacyRespInitialized = true
+            } else {
+                legacyRespBaseline += lpAlpha * (sample - legacyRespBaseline)
+            }
+            baseline = legacyRespBaseline
+        }
+
+        baselineSamples.append(baseline)
+    }
+
+    private func smoothRespOutput(_ sample: Double) -> Double {
+        if !respOutputInitialized {
+            respOutputEMA = sample
+            respOutputInitialized = true
+        } else {
+            respOutputEMA += respOutputAlpha * (sample - respOutputEMA)
+        }
+        return respOutputEMA
+    }
+
+    private func ensureLegacyChannelStorage() {
+        if legacyChannelNormalizers.count != legacyPPGChannelCount {
+            legacyChannelNormalizers = (0..<legacyPPGChannelCount).map { _ in StreamNormalizer() }
+        }
+        if legacyChannelLatestValues.count != legacyPPGChannelCount {
+            legacyChannelLatestValues = Array(repeating: nil, count: legacyPPGChannelCount)
+        }
     }
 
     //muse PPG is at 256 Hz

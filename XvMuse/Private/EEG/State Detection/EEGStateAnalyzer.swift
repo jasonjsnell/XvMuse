@@ -7,7 +7,7 @@ import Foundation
 
 protocol EEGStateAnalyzerDelegate: AnyObject {
     func didReceiveBaselineProgress(_ progress: Double)
-    func didReceiveStateScores(meditation: Double, focus: Double, dreamy: Double)
+    func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
 }
 
 final class EEGStateAnalyzer {
@@ -395,7 +395,7 @@ final class EEGStateAnalyzer {
             zBeta: avgBeta2,
             smoothing: 0.35
         )
-        delegate?.didReceiveStateScores(meditation: scores.meditation, focus: scores.focus, dreamy: scores.dreamy)
+        delegate?.didReceiveBrainwaveState(meditation: scores.meditation, focus: scores.focus, dreamy: scores.dreamy)
 
         let states: [(String, Double)] = [
             ("Meditative Absorption", scores.meditation),
@@ -457,7 +457,7 @@ final class EEGStateAnalyzer {
             zBeta: zBeta,
             smoothing: 0.18
         )
-        delegate?.didReceiveStateScores(meditation: scores.meditation, focus: scores.focus, dreamy: scores.dreamy)
+        delegate?.didReceiveBrainwaveState(meditation: scores.meditation, focus: scores.focus, dreamy: scores.dreamy)
 
         lastLiveScoringUpdate = now
     }

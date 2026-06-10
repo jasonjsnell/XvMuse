@@ -12,27 +12,33 @@
 import Foundation
 import CoreBluetooth
 import XvSensors
+import XvEEG
 
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseDelegate:AnyObject {
     
+    //post FFT PSD
+    func didReceive(linearSpectrum:[Double])
+    
+    //ML and state detection
+    func didReceiveML(noise: Double, tension: Double, clean: Double)
+    func didReceive(eegBaselineProgress progress: Double)
+    func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+    
     //brainwaves
-    //Absolute band power density (clinical): average PSD (µV²/Hz) per band.
-//    func didReceiveAbsolute(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
-//
-//    // Balanced bands for sonification: relative (across bands) + tilt compensation, in dB.
-//    func didReceiveBalanced(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
+    func didReceiveBrainwave(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
+    func didReceiveBrainwaveHistory(deltaHistory: [Double], thetaHistory: [Double], alphaHistory: [Double], betaHistory: [Double], gammaHistory: [Double])
     
-    //packets
-    func didReceive(eegPacket:XvEEGPacket)
+    //alpha synchrony (left right hemisphere
+    func didReceive(faa:Double)
     
+    //heart
     func didReceive(ppgStreams:XvPPGStreams)
     func didReceive(ppgHeartEvent:XvPPGHeartEvent)
     
+    //motion, battery, command
     func didReceive(accelPacket:XvAccelPacket)
-    
     func didReceive(batteryPacket:XvBatteryPacket)
-    
     func didReceive(commandResponse:[String:Any])
     
     //bluetooth connection updates
@@ -92,12 +98,15 @@ internal struct MuseBattery {
 }
 
 //MARK: - MUSE -
-public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
+public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDelegate, EEGStateAnalyzerDelegate {
 
     //MARK: - vars
 
     /* Receives commands from the view controller (like keyDown), translates and sends them to the Muse, and receives data back via parse(bluetoothCharacteristic func */
     public var bluetooth:MuseBluetooth
+    
+    //this class does generic EEG processing
+    public let eeg:XvmEEG
     
     //the view controller that receives EEG, accel, PPG, etc updates
     public weak var delegate:XvMuseDelegate?
@@ -117,6 +126,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     private var _accel:MuseAccel
     private var _accelRaw:[Int16] = []
     private var _batteryRaw:[UInt16] = []
+    private let _mlManager: EEGMLManager
+    private let _stateAnalyzer: EEGStateAnalyzer
+    private var latestNoisePct: Double = 0.0
 
     //helper classes
     private let _parserLegacy:ParserLegacy = ParserLegacy() //processes 1/2/S data
@@ -163,6 +175,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
             deviceCBUUID = CBUUID(string: deviceUUID!)
         }
         
+        eeg = XvmEEG(config: XvSupportedDevices.museConfig)
+        
         _eeg = MuseEEG()
         _testEEG = MuseEEG()
         
@@ -170,12 +184,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         _testPPG = MusePPG()
         
         _accel = MuseAccel()
+        _mlManager = EEGMLManager()
+        _stateAnalyzer = EEGStateAnalyzer()
+        
      
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.delegate = self
         bluetooth.start()
         
         _parserAthena.delegate = self
+        _mlManager.delegate = self
+        _stateAnalyzer.delegate = self
     }
     
     //MARK: - Device API -
@@ -251,6 +270,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     }
     
     
+    
     //MARK: - DATA PROCESSING -
     internal func parse(bluetoothCharacteristic: CBCharacteristic) {
         
@@ -300,7 +320,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
             
             // local func to make PPG packet from the above variables
             
-            func _makePPGPacket() -> MusePPGPacket {
+            func _makePPGPacket(sensor: Int) -> MusePPGPacket {
                 
                 //uncomment to store bytes for test data recording
                 //and wire a key P command to fire off printEEGPPGSensorBytes() at the end
@@ -311,7 +331,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                 
                 return MusePPGPacket(
                     packetIndex: packetIndex,
-                    sensor: 1, // only use sensor 1 (not 0 or 2)
+                    sensor: sensor,
                     timestamp: timestamp,
                     samples: _parserLegacy.getPPGSamples(from: bytes))
             }
@@ -346,10 +366,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                  _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  
                  //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
+                 processAndPublishEEGData(from: convert(museEEG: _eeg))
                 
                 //MARK: PPG
-            case MuseConstants.CHAR_PPG2:
+            case MuseConstants.CHAR_PPG1, MuseConstants.CHAR_PPG2, MuseConstants.CHAR_PPG3:
             
                 //PPG1 values ~ 87,000
                 //PPG2 values ~ 280,000
@@ -369,8 +389,22 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                 
                 //print(bytes) // <-- use to print out test PPG samples
                 
-                //heart events examine sensor PPG2
-                if let ppgResult:MusePPGResult = _ppg.update(withPPGPacket: _makePPGPacket()) {
+                let ppgSensorIndex: Int
+                switch bluetoothCharacteristic.uuid {
+                case MuseConstants.CHAR_PPG1:
+                    ppgSensorIndex = 0
+                case MuseConstants.CHAR_PPG2:
+                    ppgSensorIndex = 1
+                case MuseConstants.CHAR_PPG3:
+                    ppgSensorIndex = 2
+                default:
+                    ppgSensorIndex = 1
+                }
+
+                if let ppgResult:MusePPGResult = _ppg.update(
+                    withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
+                    allowsHeartMetrics: latestNoisePct <= 40.0
+                ) {
                     
                     //if streams are valid...
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
@@ -381,6 +415,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
                     //if heart event is valid...
                     if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                         //send up to parent
+                        //print("XvMuse: didReceive heart event", ppgHeartEvent.bpm, ppgHeartEvent.sdnn, ppgHeartEvent.pulseStrength)
                         delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
                     }
                 }
@@ -458,6 +493,54 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         }
     }
     
+    private func processAndPublishEEGData(from eegPacket: XvEEGPacket) {
+        eeg.process(eegPacket: eegPacket)
+        
+        delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
+        _mlManager.process(linearSpectrum: eeg.linearSpectrum)
+        _stateAnalyzer.processBrainwave(
+            delta: eeg.delta.decibel,
+            theta: eeg.theta.decibel,
+            alpha: eeg.alpha.decibel,
+            beta: eeg.beta.decibel,
+            gamma: eeg.gamma.decibel
+        )
+        delegate?.didReceiveBrainwave(
+            delta: eeg.delta.decibel,
+            theta: eeg.theta.decibel,
+            alpha: eeg.alpha.decibel,
+            beta: eeg.beta.decibel,
+            gamma: eeg.gamma.decibel
+        )
+        
+        if let faa = eeg.faa {
+            _stateAnalyzer.processFAA(faa)
+            delegate?.didReceive(faa: faa)
+        }
+        
+        delegate?.didReceiveBrainwaveHistory(
+            deltaHistory: eeg.delta.history.decibels,
+            thetaHistory: eeg.theta.history.decibels,
+            alphaHistory: eeg.alpha.history.decibels,
+            betaHistory: eeg.beta.history.decibels,
+            gammaHistory: eeg.gamma.history.decibels
+        )
+    }
+
+    func didReceiveML(noise: Double, tension: Double, clean: Double) {
+        latestNoisePct = noise
+        _stateAnalyzer.updateSignalQuality(clean: clean, tension: tension)
+        delegate?.didReceiveML(noise: noise, tension: tension, clean: clean)
+    }
+
+    func didReceiveBaselineProgress(_ progress: Double) {
+        delegate?.didReceive(eegBaselineProgress: progress)
+    }
+
+    func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double) {
+        delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
+    }
+    
     //MARK: - Athena
     //packets received from Athena and passed up to the parent app
     func didReceiveAthenaEEGBuffers(
@@ -499,7 +582,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 3)))
         
         // Send a single combined EEG packet out, just like in the legacy path
-        delegate?.didReceive(eegPacket: convert(museEEG: _eeg))
+        processAndPublishEEGData(from: convert(museEEG: _eeg))
     }
     
     //Athena parser creates and sends a Muse PPG packet
@@ -507,7 +590,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     func didReceiveAthena(ppgPacket: MusePPGPacket) {
 
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
-        if let ppgResult:MusePPGResult = _ppg.update(withPPGPacket: ppgPacket) {
+        if let ppgResult:MusePPGResult = _ppg.update(
+            withPPGPacket: ppgPacket,
+            allowsHeartMetrics: latestNoisePct <= 40.0
+        ) {
             
             //if streams are valid...
             if let ppgStreams:MusePPGStreams = ppgResult.streams {
@@ -518,7 +604,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
             //if heart event is valid...
             if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                 //send up to parent
-                print("XvMuse: Athena heart event: BPM;", ppgHeartEvent.bpm, "Str:", ppgHeartEvent.pulseStrength, "HRV SDNN", ppgHeartEvent.sdnn )
+                //print("XvMuse: Athena heart event: BPM;", ppgHeartEvent.bpm, "Str:", ppgHeartEvent.pulseStrength, "HRV SDNN", ppgHeartEvent.sdnn )
                 delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
             }
         }
@@ -640,7 +726,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         //process middle sensor
         let testPPGPacket:MusePPGPacket = _testPPGData[dataID].getPacket()
         
-        if let testPPGResult:MusePPGResult = _testPPG.update(withPPGPacket: testPPGPacket) {
+        if let testPPGResult:MusePPGResult = _testPPG.update(
+            withPPGPacket: testPPGPacket,
+            allowsHeartMetrics: latestNoisePct <= 40.0
+        ) {
             
             //if streams are valid...
             if let testPPGStreams:MusePPGStreams = testPPGResult.streams {
@@ -729,7 +818,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     fileprivate var eegTestDataLoop:Timer = Timer()
     fileprivate var ppgTestDataLoop:Timer = Timer() //PPG has its own timer interval
     fileprivate var testDataSet:Int = 0
-    internal func startTestData(set:Int){
+    public func startTestData(set:Int){
         print("MuseHelper: startTestData: Set", set)
         testDataSet = set
         eegTestDataLoop.invalidate()
@@ -739,9 +828,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         
     }
     
-    @objc func generateTestEEGData() {
+    @objc public func generateTestEEGData() {
         //grabs pre-recorded EEG data from muse framework
-        delegate?.didReceive(eegPacket: getTestEEG(id: testDataSet))
+        processAndPublishEEGData(from: getTestEEG(id: testDataSet))
     }
     @objc func generateTestPPGData() {
         //processes pre-recorded PPG data from muse framework
@@ -750,7 +839,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
         
     }
     
-    internal func stopTestData(){
+    public func stopTestData(){
         eegTestDataLoop.invalidate()
         ppgTestDataLoop.invalidate()
     }
@@ -795,7 +884,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate {
     private func convert(musePPGHeartEvent:MusePPGHeartEvent) -> XvPPGHeartEvent {
         return XvPPGHeartEvent(
             bpm: musePPGHeartEvent.bpm,
-            sdnn: musePPGHeartEvent.sdnn
+            sdnn: musePPGHeartEvent.sdnn,
+            beatStrength: musePPGHeartEvent.pulseStrength
         )
     }
     

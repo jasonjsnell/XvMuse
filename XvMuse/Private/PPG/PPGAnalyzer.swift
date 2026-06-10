@@ -19,17 +19,15 @@ class PPGAnalyzer {
     private var prevTimestamp: Double = 0
     private var bpms = RingBuffer<Double>(capacity: 100)
     private var nnIntervals = RingBuffer<Double>(capacity: 60) // seconds
-    private let BPM_HISTORY_LENGTH_MAX = 100
-    private let HRV_HISTORY_LENGTH_MAX = 60 // 600
+    private let minIntervalsForHRV = 12
+    private let initialHRVClampIntervals = 20
+    private let initialSdnnClampMs: Double = 110.0
+    private let initialRmssdClampMs: Double = 100.0
+    private let hrvRiseSmoothing: Double = 0.12
+    private let hrvFallSmoothing: Double = 0.28
+    private var publishedSdnnMs: Double = 0.0
+    private var publishedRmssdMs: Double = 0.0
 
-    // --- pulse amplitude & respiration ---
-    private struct AmpSample {
-        let t: Double
-        let amp: Double
-    }
-    private var ampSeries: [AmpSample] = []
-    private let AMP_HISTORY_SEC: Double = 60.0 // window for respiration
-    
     internal func update(at timestamp: Double, peak: Double, trough: Double) -> PPGAnalysisPacket {
         
         let beatLength = timestamp - prevTimestamp // seconds
@@ -53,7 +51,7 @@ class PPGAnalyzer {
         
         // --- SDNN (ms) ---
         var sdnnMs: Double = 0.0
-        if nnIntervals.count > 1 {
+        if nnIntervals.count >= minIntervalsForHRV {
             let sdSec = Number.getStandardDeviation(ofArray: nnIntervals.toArray())
             sdnnMs = sdSec * 1000.0
             if sdnnMs.isInfinite || sdnnMs.isNaN { sdnnMs = 0.0 }
@@ -61,7 +59,7 @@ class PPGAnalyzer {
         
         // --- RMSSD (ms) ---
         var rmssdMs: Double = 0.0
-        if nnIntervals.count > 2 {
+        if nnIntervals.count >= minIntervalsForHRV {
             let arr = nnIntervals.toArray()
             var diffsSqSum = 0.0
             var diffCount = 0
@@ -77,6 +75,21 @@ class PPGAnalyzer {
             }
         }
         if rmssdMs.isInfinite || rmssdMs.isNaN { rmssdMs = 0.0 }
+
+        sdnnMs = stabilizeHRV(
+            raw: sdnnMs,
+            published: publishedSdnnMs,
+            sampleCount: nnIntervals.count,
+            initialClamp: initialSdnnClampMs
+        )
+        rmssdMs = stabilizeHRV(
+            raw: rmssdMs,
+            published: publishedRmssdMs,
+            sampleCount: nnIntervals.count,
+            initialClamp: initialRmssdClampMs
+        )
+        publishedSdnnMs = sdnnMs
+        publishedRmssdMs = rmssdMs
         
         
         // --- 0–100 HRV index from RMSSD ---
@@ -87,9 +100,6 @@ class PPGAnalyzer {
         
         // --- pulse amplitude (beat to beat) ---
         let pulseAmp = peak - trough
-        ampSeries.append(AmpSample(t: timestamp, amp: pulseAmp))
-        // drop samples older than AMP_HISTORY_SEC
-        ampSeries = ampSeries.filter { timestamp - $0.t <= AMP_HISTORY_SEC }
         
         // --- BPM (smoothed) ---
         let currBpm = 60.0 / beatLength
@@ -106,5 +116,23 @@ class PPGAnalyzer {
             hrvIndex: hrvIndex,
             pulseAmp: pulseAmp
         )
+    }
+
+    private func stabilizeHRV(raw: Double, published: Double, sampleCount: Int, initialClamp: Double) -> Double {
+        guard sampleCount >= minIntervalsForHRV, raw > 0 else { return 0.0 }
+
+        var candidate = raw
+
+        if sampleCount < initialHRVClampIntervals {
+            candidate = min(candidate, initialClamp)
+        }
+
+        guard published > 0 else { return candidate }
+
+        let maxAllowedRise = published + max(12.0, published * 0.25)
+        candidate = min(candidate, maxAllowedRise)
+
+        let smoothing = candidate > published ? hrvRiseSmoothing : hrvFallSmoothing
+        return (published * (1.0 - smoothing)) + (candidate * smoothing)
     }
 }

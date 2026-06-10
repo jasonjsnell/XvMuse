@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		BB0962FC24B287F600D516D5 /* MuseEEGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */; };
 		BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */; };
-		BB3166692E7D5D8E00FDA29D /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB3166672E7D5D8900FDA29D /* XvSensors.framework */; platformFilter = ios; };
 		BB419823253E1150003A7375 /* PeakDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB419822253E1150003A7375 /* PeakDetector.swift */; };
 		BB42285C2E8544BB001E6DB9 /* TestEEGCodingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42285B2E8544B5001E6DB9 /* TestEEGCodingData.swift */; };
 		BB42285F2E8544D0001E6DB9 /* MockPPGCodingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB42285E2E8544CB001E6DB9 /* MockPPGCodingData.swift */; };
@@ -31,6 +30,18 @@
 		BB4228842E854831001E6DB9 /* MockPPGJawData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4228832E85482C001E6DB9 /* MockPPGJawData.swift */; };
 		BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */; };
 		BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */; };
+		BB48D8DD2F707F0F003622A7 /* XvEEG.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB48D8DC2F707F0F003622A7 /* XvEEG.framework */; };
+		BB48D8E12F707F14003622A7 /* XvSensors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB48D8E02F707F14003622A7 /* XvSensors.framework */; };
+		BB48D8EC2F714BAE003622A7 /* NoiseTensionClassifier.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8EB2F713354003622A7 /* NoiseTensionClassifier.mlmodel */; };
+		BB48D8F42F718E1C003622A7 /* Buffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8EE2F718E1B003622A7 /* Buffer.swift */; };
+		BB48D8F52F718E1C003622A7 /* EpochGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8EF2F718E1B003622A7 /* EpochGenerator.swift */; };
+		BB48D8F62F718E1C003622A7 /* FFT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8F02F718E1B003622A7 /* FFT.swift */; };
+		BB48D8F72F718E1C003622A7 /* FFTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8F12F718E1B003622A7 /* FFTManager.swift */; };
+		BB48D8F82F718E1C003622A7 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8F22F718E1B003622A7 /* FrequencyManager.swift */; };
+		BB48D8FF2F718EAA003622A7 /* EEGStateAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8FA2F718EAA003622A7 /* EEGStateAnalyzer.swift */; };
+		BB48D9002F718EAA003622A7 /* EEGStateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8FB2F718EAA003622A7 /* EEGStateModels.swift */; };
+		BB48D9012F718EAA003622A7 /* EEGStateScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8FC2F718EAA003622A7 /* EEGStateScorer.swift */; };
+		BB48D9022F718EAA003622A7 /* MLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB48D8FD2F718EAA003622A7 /* MLManager.swift */; };
 		BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */; };
 		BB4E77952F4775D4001E2BF8 /* RingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */; };
 		BB4E779F2F4A3F2A001E2BF8 /* MuseAccel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E779E2F4A3F25001E2BF8 /* MuseAccel.swift */; };
@@ -48,12 +59,7 @@
 		BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741E624CA202B004B8AE5 /* BluetoothConstants.swift */; };
 		BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741E824CA2066004B8AE5 /* BluetoothListener.swift */; };
 		BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7741EA24CA2087004B8AE5 /* BluetoothUtils.swift */; };
-		BB8B856D24B0E81700376FD4 /* FFTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B856C24B0E81700376FD4 /* FFTManager.swift */; };
-		BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857224B0EDF000376FD4 /* Buffer.swift */; };
-		BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857424B0F98200376FD4 /* EpochGenerator.swift */; };
-		BB8B857724B100E400376FD4 /* FFT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857624B100E400376FD4 /* FFT.swift */; };
 		BB8B857924B118E200376FD4 /* MuseEEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857824B118E200376FD4 /* MuseEEG.swift */; };
-		BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */; };
 		BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */; };
 		BB9FEF4626371290004F48B6 /* TestEEGStressData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9FEF4526371290004F48B6 /* TestEEGStressData.swift */; };
 		BBA6C01A24CDF29700966159 /* DCT.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA6C01924CDF29700966159 /* DCT.swift */; };
@@ -83,7 +89,6 @@
 /* Begin PBXFileReference section */
 		BB0962FB24B287F600D516D5 /* MuseEEGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseEEGSensor.swift; sourceTree = "<group>"; };
 		BB1E24B724AE921A00DEBD9E /* MuseBluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseBluetooth.swift; sourceTree = "<group>"; };
-		BB3166672E7D5D8900FDA29D /* XvSensors.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = XvSensors.framework; sourceTree = "<group>"; };
 		BB419822253E1150003A7375 /* PeakDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDetector.swift; sourceTree = "<group>"; };
 		BB42285B2E8544B5001E6DB9 /* TestEEGCodingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGCodingData.swift; sourceTree = "<group>"; };
 		BB42285E2E8544CB001E6DB9 /* MockPPGCodingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGCodingData.swift; sourceTree = "<group>"; };
@@ -105,6 +110,18 @@
 		BB4228832E85482C001E6DB9 /* MockPPGJawData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGJawData.swift; sourceTree = "<group>"; };
 		BB43B3FA24CCFA5600E6D3D3 /* MusePPG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPG.swift; sourceTree = "<group>"; };
 		BB43B3FC24CCFA8E00E6D3D3 /* MusePPGSensor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePPGSensor.swift; sourceTree = "<group>"; };
+		BB48D8DC2F707F0F003622A7 /* XvEEG.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = XvEEG.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB48D8E02F707F14003622A7 /* XvSensors.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = XvSensors.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB48D8EB2F713354003622A7 /* NoiseTensionClassifier.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = NoiseTensionClassifier.mlmodel; sourceTree = "<group>"; };
+		BB48D8EE2F718E1B003622A7 /* Buffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buffer.swift; sourceTree = "<group>"; };
+		BB48D8EF2F718E1B003622A7 /* EpochGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpochGenerator.swift; sourceTree = "<group>"; };
+		BB48D8F02F718E1B003622A7 /* FFT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFT.swift; sourceTree = "<group>"; };
+		BB48D8F12F718E1B003622A7 /* FFTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTManager.swift; sourceTree = "<group>"; };
+		BB48D8F22F718E1B003622A7 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
+		BB48D8FA2F718EAA003622A7 /* EEGStateAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EEGStateAnalyzer.swift; sourceTree = "<group>"; };
+		BB48D8FB2F718EAA003622A7 /* EEGStateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EEGStateModels.swift; sourceTree = "<group>"; };
+		BB48D8FC2F718EAA003622A7 /* EEGStateScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EEGStateScorer.swift; sourceTree = "<group>"; };
+		BB48D8FD2F718EAA003622A7 /* MLManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLManager.swift; sourceTree = "<group>"; };
 		BB4DB0E22783A48C009E6BFF /* MockPPGStressData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGStressData.swift; sourceTree = "<group>"; };
 		BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBuffer.swift; sourceTree = "<group>"; };
 		BB4E779E2F4A3F25001E2BF8 /* MuseAccel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseAccel.swift; sourceTree = "<group>"; };
@@ -124,12 +141,7 @@
 		BB7741E624CA202B004B8AE5 /* BluetoothConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothConstants.swift; sourceTree = "<group>"; };
 		BB7741E824CA2066004B8AE5 /* BluetoothListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothListener.swift; sourceTree = "<group>"; };
 		BB7741EA24CA2087004B8AE5 /* BluetoothUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothUtils.swift; sourceTree = "<group>"; };
-		BB8B856C24B0E81700376FD4 /* FFTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFTManager.swift; sourceTree = "<group>"; };
-		BB8B857224B0EDF000376FD4 /* Buffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buffer.swift; sourceTree = "<group>"; };
-		BB8B857424B0F98200376FD4 /* EpochGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpochGenerator.swift; sourceTree = "<group>"; };
-		BB8B857624B100E400376FD4 /* FFT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFT.swift; sourceTree = "<group>"; };
 		BB8B857824B118E200376FD4 /* MuseEEG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseEEG.swift; sourceTree = "<group>"; };
-		BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyManager.swift; sourceTree = "<group>"; };
 		BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPGAnalyzer.swift; sourceTree = "<group>"; };
 		BB9FEF4526371290004F48B6 /* TestEEGStressData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGStressData.swift; sourceTree = "<group>"; };
 		BBA6C01924CDF29700966159 /* DCT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DCT.swift; sourceTree = "<group>"; };
@@ -160,7 +172,8 @@
 		BB57F8852496B01B003DB78A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				BB3166692E7D5D8E00FDA29D /* XvSensors.framework in Frameworks */,
+				BB48D8E12F707F14003622A7 /* XvSensors.framework in Frameworks */,
+				BB48D8DD2F707F0F003622A7 /* XvEEG.framework in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -182,6 +195,8 @@
 		BB14EEB028B1A08900B2A14D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BB48D8E02F707F14003622A7 /* XvSensors.framework */,
+				BB48D8DC2F707F0F003622A7 /* XvEEG.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -256,12 +271,35 @@
 			path = Tension;
 			sourceTree = "<group>";
 		};
+		BB48D8F32F718E1B003622A7 /* FFT Processing */ = {
+			isa = PBXGroup;
+			children = (
+				BB48D8EE2F718E1B003622A7 /* Buffer.swift */,
+				BB48D8EF2F718E1B003622A7 /* EpochGenerator.swift */,
+				BB48D8F02F718E1B003622A7 /* FFT.swift */,
+				BB48D8F12F718E1B003622A7 /* FFTManager.swift */,
+				BB48D8F22F718E1B003622A7 /* FrequencyManager.swift */,
+			);
+			path = "FFT Processing";
+			sourceTree = "<group>";
+		};
+		BB48D8FE2F718EAA003622A7 /* State Detection */ = {
+			isa = PBXGroup;
+			children = (
+				BB48D8FA2F718EAA003622A7 /* EEGStateAnalyzer.swift */,
+				BB48D8FB2F718EAA003622A7 /* EEGStateModels.swift */,
+				BB48D8FC2F718EAA003622A7 /* EEGStateScorer.swift */,
+				BB48D8FD2F718EAA003622A7 /* MLManager.swift */,
+			);
+			path = "State Detection";
+			sourceTree = "<group>";
+		};
 		BB57F87E2496B01B003DB78A = {
 			isa = PBXGroup;
 			children = (
-				BB3166672E7D5D8900FDA29D /* XvSensors.framework */,
 				BB57F88A2496B01C003DB78A /* XvMuse */,
 				BB14EEB028B1A08900B2A14D /* Frameworks */,
+				BB48D8EB2F713354003622A7 /* NoiseTensionClassifier.mlmodel */,
 			);
 			sourceTree = "<group>";
 		};
@@ -340,11 +378,8 @@
 		BB8B857124B0E81E00376FD4 /* EEG */ = {
 			isa = PBXGroup;
 			children = (
-				BB8B856C24B0E81700376FD4 /* FFTManager.swift */,
-				BB8B857224B0EDF000376FD4 /* Buffer.swift */,
-				BB8B857424B0F98200376FD4 /* EpochGenerator.swift */,
-				BB8B857624B100E400376FD4 /* FFT.swift */,
-				BB8B857A24B12CFF00376FD4 /* FrequencyManager.swift */,
+				BB48D8FE2F718EAA003622A7 /* State Detection */,
+				BB48D8F32F718E1B003622A7 /* FFT Processing */,
 				BBD7415F2857787F00857B78 /* Test Data */,
 			);
 			path = EEG;
@@ -457,7 +492,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 2630;
 				ORGANIZATIONNAME = "Jason Snell";
 				TargetAttributes = {
 					BB57F8872496B01B003DB78A = {
@@ -500,7 +535,6 @@
 				BB4228612E854501001E6DB9 /* MockPPGReadingNewsData.swift in Sources */,
 				BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */,
 				BBD265222EDD986100D0AA47 /* ParserAthena.swift in Sources */,
-				BB8B857324B0EDF000376FD4 /* Buffer.swift in Sources */,
 				BB42285C2E8544BB001E6DB9 /* TestEEGCodingData.swift in Sources */,
 				BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */,
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
@@ -511,10 +545,7 @@
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
 				BB4228822E854825001E6DB9 /* TestEEGJawData.swift in Sources */,
-				BB8B857B24B12CFF00376FD4 /* FrequencyManager.swift in Sources */,
-				BB8B857724B100E400376FD4 /* FFT.swift in Sources */,
 				BB4DB0E32783A48C009E6BFF /* MockPPGStressData.swift in Sources */,
-				BB8B856D24B0E81700376FD4 /* FFTManager.swift in Sources */,
 				BB65FEE7283E7FEE00C4F4D8 /* MockPPGNoiseData.swift in Sources */,
 				BB7741E024CA1CF3004B8AE5 /* Number.swift in Sources */,
 				BB7741E724CA202B004B8AE5 /* BluetoothConstants.swift in Sources */,
@@ -534,12 +565,16 @@
 				BB43B3FD24CCFA8E00E6D3D3 /* MusePPGSensor.swift in Sources */,
 				BB65FEEB283EC8EC00C4F4D8 /* MockPPGMeditationData.swift in Sources */,
 				BBD741612857789500857B78 /* TestEEGGammaBurstsData.swift in Sources */,
-				BB8B857524B0F98200376FD4 /* EpochGenerator.swift in Sources */,
+				BB48D8FF2F718EAA003622A7 /* EEGStateAnalyzer.swift in Sources */,
+				BB48D9002F718EAA003622A7 /* EEGStateModels.swift in Sources */,
+				BB48D9012F718EAA003622A7 /* EEGStateScorer.swift in Sources */,
+				BB48D9022F718EAA003622A7 /* MLManager.swift in Sources */,
 				BB65FEED283EC93400C4F4D8 /* TestEEGMeditationData.swift in Sources */,
 				BB4228842E854831001E6DB9 /* MockPPGJawData.swift in Sources */,
 				BBCDE502281CAC31001B67E7 /* TestEEGData.swift in Sources */,
 				BB42287B2E85472A001E6DB9 /* MockPPGBlinksData.swift in Sources */,
 				BB4228652E854557001E6DB9 /* TestEEGRestingFocusData.swift in Sources */,
+				BB48D8EC2F714BAE003622A7 /* NoiseTensionClassifier.mlmodel in Sources */,
 				BB99B22A24CF0AA4007346A4 /* PPGAnalyzer.swift in Sources */,
 				BB4228802E8547E2001E6DB9 /* MockPPGForeheadData.swift in Sources */,
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
@@ -558,6 +593,11 @@
 				BB1E24B824AE921A00DEBD9E /* MuseBluetooth.swift in Sources */,
 				BBEFB5062E8540BD005AEC3B /* TestEEGEyesClosedData.swift in Sources */,
 				BBEFB4E32E834077005AEC3B /* TestEEGSleepingData.swift in Sources */,
+				BB48D8F42F718E1C003622A7 /* Buffer.swift in Sources */,
+				BB48D8F52F718E1C003622A7 /* EpochGenerator.swift in Sources */,
+				BB48D8F62F718E1C003622A7 /* FFT.swift in Sources */,
+				BB48D8F72F718E1C003622A7 /* FFTManager.swift in Sources */,
+				BB48D8F82F718E1C003622A7 /* FrequencyManager.swift in Sources */,
 				BB4228762E8546B1001E6DB9 /* MockPPGLooseFitData.swift in Sources */,
 				BB4E77952F4775D4001E2BF8 /* RingBuffer.swift in Sources */,
 				BBCDE4FC281C9DF5001B67E7 /* TestEEGTiredData.swift in Sources */,

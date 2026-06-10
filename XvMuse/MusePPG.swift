@@ -59,7 +59,8 @@ internal class MusePPG {
     private var lastTimestamp: Double = 0.0
     
     private var lastBeatTime: Double = 0.0
-    private let minBeatInterval: Double = 0.30 // seconds (~200 bpm max)
+    private let minBeatInterval: Double = 0.38 // seconds (~158 bpm max)
+    private var lastAcceptedBeatInterval: Double = 0.0
     
     private var candidatePeakValue: Double = 0.0
     private var candidatePeakTime: Double = 0.0
@@ -75,8 +76,14 @@ internal class MusePPG {
     private var rollingVar: Double = 0.0
     private var rollingCount: Int = 0
     private let alpha: Double = 0.01 // EWMA factor
+
+    // extra smoothing for beat detection to reduce jaggedness / double hits
+    private var detectionSample: Double = 0.0
+    private var detectionInitialized = false
+    // Lower alpha = more smoothing before peak detection.
+    private let detectionAlpha: Double = 0.09
     
-    internal func update(withPPGPacket: MusePPGPacket) -> MusePPGResult? {
+    internal func update(withPPGPacket: MusePPGPacket, allowsHeartMetrics: Bool = true) -> MusePPGResult? {
         
         //are the streams valid? if not, no streams or heart events are returned
         guard let streams = sensor.getStreams(from: withPPGPacket) else {
@@ -84,8 +91,29 @@ internal class MusePPG {
         }
         
         // current sample (normalized blood-flow sample)
-        guard let x = streams.bloodFlow.last else { return nil }
+        guard let rawX = streams.bloodFlow.last else { return nil }
         let t = withPPGPacket.timestamp
+
+        let x: Double
+        if detectionInitialized {
+            detectionSample += detectionAlpha * (rawX - detectionSample)
+            x = detectionSample
+        } else {
+            detectionSample = rawX
+            detectionInitialized = true
+            x = rawX
+        }
+        
+        if !allowsHeartMetrics {
+            wasRising = false
+            lastSample = x
+            lastTimestamp = t
+            candidatePeakValue = x
+            candidatePeakTime = t
+            candidateTroughValue = x
+            candidateTroughTime = t
+            return MusePPGResult(heartEvent: nil, streams: streams)
+        }
         
         // update rolling stats for threshold
         updateRollingStats(x)
@@ -132,9 +160,21 @@ internal class MusePPG {
         // if we were rising and now falling -> local max candidate
         if wasRising && !rising {
             let timeSinceLastBeat = t - lastBeatTime
-            if timeSinceLastBeat >= minBeatInterval &&
-               candidatePeakValue > dynamicThreshold {
+            let adaptiveMinimumInterval: Double
+            if lastAcceptedBeatInterval > 0 {
+                adaptiveMinimumInterval = max(minBeatInterval, min(lastAcceptedBeatInterval * 0.6, 0.75))
+            } else {
+                adaptiveMinimumInterval = minBeatInterval
+            }
+
+            let peakProminence = candidatePeakValue - lastTroughValue
+            let minProminence = max(0.015, noiseStd * 0.75)
+
+            if timeSinceLastBeat >= adaptiveMinimumInterval &&
+               candidatePeakValue > dynamicThreshold &&
+               peakProminence >= minProminence {
                 
+                lastAcceptedBeatInterval = timeSinceLastBeat
                 lastBeatTime = candidatePeakTime
                 
                 let ppgAnalysis = _ppgAnalyzer.update(
