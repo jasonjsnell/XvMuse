@@ -39,24 +39,19 @@ internal class MusePPGSensor {
         lpBaseline2 = 0.0
         lpInitialized = false
         legacyRespBaseline = 0.0
+        legacyRespBaseline2 = 0.0
         legacyRespInitialized = false
         respOutputEMA = 0.0
         respOutputInitialized = false
         legacyChannelNormalizers = []
         legacyChannelLatestValues = []
+        baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
         switch deviceName {
         case .museAthena:
-            //2026 02 21 tests on Muse Athena - calibrated and responsive to breath
             lpAlpha = 0.02
-            baselineSamples = RingBuffer<Double>(capacity: 64)
-            baselineFirstSamples = RingBuffer<Double>(capacity: 64)
-            baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
         default:
-            //2026 02 21 tests on Muse 2 and S - calibrated and responsive to breath
-            lpAlpha = 0.03
-            baselineSamples = RingBuffer<Double>(capacity: 24)
-            baselineFirstSamples = RingBuffer<Double>(capacity: 24)
-            baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
+            // 0.015 gives ~0.61 Hz cutoff at 256 Hz — LP lag ~0.51s total across two stages
+            lpAlpha = 0.015 //0.015
         }
         
     }
@@ -69,9 +64,7 @@ internal class MusePPGSensor {
     // blood flow buffer
     private var bloodFlowSamples = RingBuffer<Double>(capacity: 128)
     
-    //smoothing buffers for resp
-    private var baselineSamples = RingBuffer<Double>(capacity: 16)
-    private var baselineFirstSamples = RingBuffer<Double>(capacity: 16)
+    // resp output history
     private var baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
 
     // low-passed baseline "flow" value — two cascaded passes to better reject heartbeat
@@ -79,6 +72,7 @@ internal class MusePPGSensor {
     private var lpBaseline2: Double = 0.0
     private var lpInitialized = false
     private var legacyRespBaseline: Double = 0.0
+    private var legacyRespBaseline2: Double = 0.0
     private var legacyRespInitialized = false
     private var respOutputEMA: Double = 0.0
     private var respOutputInitialized = false
@@ -115,26 +109,25 @@ internal class MusePPGSensor {
         
         
         if deviceName == .museAthena, lpInitialized {
-            // lpBaseline is already a clean, slow-moving signal that tracks breathing directly.
-            // Normalize it and smooth for output.
             let normResp = respNormalizer.update(with: lpBaseline2, smoothingOn: true)
             let smoothResp = smoothRespOutput(normResp)
             baselineAveragedFirstSamples.append(smoothResp)
 
-        } else {
-            // Legacy path: derive resp from relative position of oldest sample vs window min
-            let baselineSamplesArray = baselineSamples.toArray()
-            if let baselineMin = baselineSamplesArray.min(),
-               let baselineFirst = baselineSamplesArray.first {
+            _respPrintCounter += 1
+            if _respPrintCounter % 32 == 0 {
+                print(String(format: "RESP Athena | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
+                      lpBaseline, lpBaseline2, normResp, smoothResp))
+            }
 
-                baselineFirstSamples.append(baselineFirst - baselineMin)
+        } else if legacyRespInitialized {
+            let normResp = respNormalizer.update(with: legacyRespBaseline2, smoothingOn: true)
+            let smoothResp = smoothRespOutput(normResp)
+            baselineAveragedFirstSamples.append(smoothResp)
 
-                let baselineFirstArray = baselineFirstSamples.toArray()
-                let baselinAveragedFirstSample = baselineFirstArray.reduce(0.0, +) / Double(baselineFirstArray.count)
-
-                let normalizedRespSample = respNormalizer.update(with: baselinAveragedFirstSample, smoothingOn: true)
-                let smoothedRespSample = smoothRespOutput(normalizedRespSample)
-                baselineAveragedFirstSamples.append(smoothedRespSample)
+            _respPrintCounter += 1
+            if _respPrintCounter % 64 == 0 {
+                print(String(format: "RESP Muse2 | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
+                      legacyRespBaseline, legacyRespBaseline2, normResp, smoothResp))
             }
         }
         
@@ -169,7 +162,6 @@ internal class MusePPGSensor {
     }
 
     private func appendRespSourceSample(_ sample: Double) {
-        let baseline: Double
         if deviceName == .museAthena {
             if !lpInitialized {
                 lpBaseline = sample
@@ -179,18 +171,16 @@ internal class MusePPGSensor {
                 lpBaseline += lpAlpha * (sample - lpBaseline)
                 lpBaseline2 += lpAlpha * (lpBaseline - lpBaseline2)
             }
-            baseline = lpBaseline
         } else {
             if !legacyRespInitialized {
                 legacyRespBaseline = sample
+                legacyRespBaseline2 = sample
                 legacyRespInitialized = true
             } else {
                 legacyRespBaseline += lpAlpha * (sample - legacyRespBaseline)
+                legacyRespBaseline2 += lpAlpha * (legacyRespBaseline - legacyRespBaseline2)
             }
-            baseline = legacyRespBaseline
         }
-
-        baselineSamples.append(baseline)
     }
 
     private func smoothRespOutput(_ sample: Double) -> Double {
