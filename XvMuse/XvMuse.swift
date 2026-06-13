@@ -129,6 +129,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private let _mlManager: EEGMLManager
     private let _stateAnalyzer: EEGStateAnalyzer
     private var latestNoisePct: Double = 0.0
+    private var latestTensionPct: Double = 0.0
+
+    // Muse 2 PPG tolerates higher tension before gating heart metrics; other devices stay at 85.
+    private var heartTensionThreshold: Double {
+        deviceName == .muse2 ? 99.0 : 85.0
+    }
 
     //helper classes
     private let _parserLegacy:ParserLegacy = ParserLegacy() //processes 1/2/S data
@@ -403,7 +409,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 if let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
-                    allowsHeartMetrics: latestNoisePct <= 40.0
+                    allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
                 ) {
                     
                     //if streams are valid...
@@ -529,6 +535,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
     func didReceiveML(noise: Double, tension: Double, clean: Double) {
         latestNoisePct = noise
+        latestTensionPct = tension
         _stateAnalyzer.updateSignalQuality(clean: clean, tension: tension)
         delegate?.didReceiveML(noise: noise, tension: tension, clean: clean)
     }
@@ -592,7 +599,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
-            allowsHeartMetrics: latestNoisePct <= 40.0
+            allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
         ) {
             
             //if streams are valid...
@@ -728,7 +735,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
         if let testPPGResult:MusePPGResult = _testPPG.update(
             withPPGPacket: testPPGPacket,
-            allowsHeartMetrics: latestNoisePct <= 40.0
+            allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
         ) {
             
             //if streams are valid...
