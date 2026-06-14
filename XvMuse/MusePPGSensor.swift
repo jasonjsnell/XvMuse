@@ -99,6 +99,7 @@ internal class MusePPGSensor {
     // deriving time = index / 64 gives a regular grid immune to BLE delivery jitter.
     private let ppgSampleRate: Double = 64.0
     private var _detectionSampleIndex: Int = 0
+    private var _rawStartupCount: Int = 0 // startup diagnostic: raw vs normalized detection signal
     private let respOutputAlpha: Double = 0.12
 
     // Raw amplitude tracking — works on pre-normalization optical values so z-score
@@ -157,6 +158,15 @@ internal class MusePPGSensor {
                     let t = Double(_detectionSampleIndex) / ppgSampleRate
                     _detectionSampleIndex += 1
                     newSamples.append((t: t, x: detectionSample))
+
+                    // Startup diagnostic: is the RAW pulse flat (contact/hardware) or is the
+                    // normalizer flattening a real pulse? Prints first ~25s, every 4th sample.
+                    if _rawStartupCount < 1600 {
+                        if _rawStartupCount % 4 == 0 {
+                            print(String(format: "RAW | i:%d  raw:%.1f  norm:%.4f", _rawStartupCount, sample, detectionSample))
+                        }
+                        _rawStartupCount += 1
+                    }
                 }
             }
 
@@ -216,7 +226,9 @@ internal class MusePPGSensor {
         let respSource = channelIndex == legacyRespChannelIndex
             ? legacyRespNormalizer.update(with: sample, smoothingOn: true)
             : nil
-        let detectionSource = channelIndex == legacyRespChannelIndex ? channelValue : nil
+        // Detection runs on the combined multi-channel average (more robust at startup than a
+        // single channel warming up alone), gated to the detection channel so it fires once/packet.
+        let detectionSource = channelIndex == legacyRespChannelIndex ? combined : nil
         return (combined, respSource, detectionSource)
     }
 

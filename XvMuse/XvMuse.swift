@@ -131,9 +131,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestNoisePct: Double = 0.0
     private var latestTensionPct: Double = 0.0
 
-    // Muse 2 PPG tolerates higher tension before gating heart metrics; other devices stay at 85.
+    // Muse 2 PPG tolerates higher tension before gating heart metrics; Muse S / Athena gate at 75.
     private var heartTensionThreshold: Double {
-        deviceName == .muse2 ? 99.0 : 85.0
+        deviceName == .muse2 ? 99.0 : 75.0
     }
 
     //helper classes
@@ -409,7 +409,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 if let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
-                    allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
+                    allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
                 ) {
                     
                     //if streams are valid...
@@ -599,7 +599,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
-            allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
+            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
         ) {
             
             //if streams are valid...
@@ -735,7 +735,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
         if let testPPGResult:MusePPGResult = _testPPG.update(
             withPPGPacket: testPPGPacket,
-            allowsHeartMetrics: latestNoisePct <= 40.0 && latestTensionPct < heartTensionThreshold
+            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
         ) {
             
             //if streams are valid...

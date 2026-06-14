@@ -78,8 +78,9 @@ class PPGAnalyzer {
         var didAcceptNNInterval = false
         var nnRelDiff = 0.0
         
-        // Accept only plausible NN intervals based on absolute bounds
-        if beatLength > 0.4 && beatLength < 1.8 { // ~40–180 bpm
+        // Accept only plausible NN intervals based on absolute bounds. prevTimestamp > 0 skips the
+        // first beat, whose beatLength = timestamp − 0 is a bogus interval (was reading ~90 bpm).
+        if prevTimestamp > 0 && beatLength > 0.4 && beatLength < 1.8 { // ~40–180 bpm
             let instantBpm = 60.0 / beatLength
 
             // --- BPM buffer: reject gross outliers, but unstick on a sustained real HR change.
@@ -231,7 +232,8 @@ class PPGAnalyzer {
 
         // --- BPM (smoothed) ---
         let bpmArray = bpms.toArray()
-        let averageBpm = bpmArray.isEmpty ? 0.0 : bpmArray.reduce(0, +) / Double(bpmArray.count)
+        // 65 = resting-ish seed shown before any real beat-to-beat interval lands (was 90).
+        let averageBpm = bpmArray.isEmpty ? 65.0 : bpmArray.reduce(0, +) / Double(bpmArray.count)
 
         // --- blended beat strength (kick driver) ---
         // Flip perfusion (guarded: no-data 0 stays 0, not a full-blast 1), normalize BPM to

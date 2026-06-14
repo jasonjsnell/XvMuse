@@ -64,15 +64,17 @@ internal class MusePPG {
     private var lastTimestamp: Double = 0.0
     
     private var lastBeatTime: Double = 0.0
-    // Refractory floor, gated on signal health. A real pulse keeps the detection signal's
-    // variance healthy at any rate (normalization preserves the swing), so when std is healthy
-    // we allow a fast floor for genuine high heart rates (kids/exercise, up to ~214 bpm). When
-    // the signal collapses to flat noise (post-motion dropout), the prominence/threshold gates
-    // can't tell a dicrotic/noise bump from a beat — there a high floor (~136 bpm) blocks the
-    // double-counts that fire on the notch of one real beat.
-    private let refractoryFloorHealthy: Double = 0.28 // ~214 bpm
-    private let refractoryFloorFlat: Double = 0.44    // ~136 bpm
-    private let flatSignalStd: Double = 0.03          // below this, signal is dropout, not a pulse
+    // Refractory = max(absolute floor, 0.6 × expected heartbeat interval). The dicrotic notch /
+    // double-beat always lands at ~0.3–0.5× the RR interval, so a rate-relative gate rejects it
+    // at any heart rate. The absolute floor (~214 bpm) is the ceiling for genuine fast beats
+    // (kids/exercise). Expected RR is the robust median of recent accepted intervals, so a single
+    // double that slips in can't collapse the gate (which is how the cascade started).
+    private let refractoryFloor: Double = 0.353 // ~170 bpm absolute floor
+    private let refractoryCeil: Double = 0.50  // ~120 bpm — cap so a polluted (every-other-beat)
+                                               // median can't push the gate above real fast beats
+    private let refractoryFraction: Double = 0.7
+    private var recentIntervals: [Double] = [] // recent accepted beat intervals (seconds)
+    private let recentIntervalsCap: Int = 8
     private var lastAcceptedBeatInterval: Double = 0.0
     private var prevAllowedHeartMetrics: Bool = true
     
@@ -140,6 +142,7 @@ internal class MusePPG {
         // unstick. (Wiping here forced a cold-start rebuild that seeded SDNN with junk.)
         if !prevAllowedHeartMetrics {
             lastAcceptedBeatInterval = 0.0
+            recentIntervals.removeAll() // re-establish the rate from scratch (e.g. post-workout)
         }
         prevAllowedHeartMetrics = true
 
@@ -244,17 +247,16 @@ internal class MusePPG {
             }
 
             let timeSinceLastBeat = refinedPeakTime - lastBeatTime
-            // Fast floor when a real pulse is present, strict floor when the signal is flat
-            // dropout (where dicrotic doubles slip past prominence/threshold).
-            let refractoryFloor = noiseStd >= flatSignalStd ? refractoryFloorHealthy : refractoryFloorFlat
-            let adaptiveMinimumInterval: Double
-            if lastAcceptedBeatInterval > 0 {
-                // Factor 0.45 + cap 0.50s lets the rate roughly double beat-to-beat (rest→exercise)
-                // while the floor handles the absolute ceiling.
-                adaptiveMinimumInterval = max(refractoryFloor, min(lastAcceptedBeatInterval * 0.45, 0.50))
-            } else {
-                adaptiveMinimumInterval = refractoryFloor
-            }
+            // Rate-relative refractory: a fraction of the expected RR (robust median of recent
+            // accepted intervals), floored at the absolute ceiling. Rejects the dicrotic notch /
+            // double-beat (always at ~0.3–0.5× RR) at every heart rate, without a high flat floor
+            // that would block genuine fast beats. Median (not the last interval) so one stray
+            // double can't drag the gate down and start a cascade. Until ~3 beats establish the
+            // rate, fall back to the bare floor so a fast rate can take hold from cold.
+            let expectedRR = recentIntervals.count >= 3 ? medianInterval(recentIntervals) : 0.0
+            let adaptiveMinimumInterval = expectedRR > 0
+                ? min(refractoryCeil, max(refractoryFloor, expectedRR * refractoryFraction))
+                : refractoryFloor
 
             let peakProminence = candidatePeakValue - lastTroughValue
             // measured on Muse 2/S: real beats show prominence 0.015–0.28, noise wiggles ≤0.010.
@@ -266,8 +268,8 @@ internal class MusePPG {
             // drop the floor so weak-but-real beats are caught. Scoped to the overdue window
             // only, so steady-state detection is unaffected. The interval gate still prevents
             // double-counts.
-            let overdue = lastAcceptedBeatInterval > 0 &&
-                          timeSinceLastBeat > lastAcceptedBeatInterval * 1.3
+            let overdueRef = expectedRR > 0 ? expectedRR : lastAcceptedBeatInterval
+            let overdue = overdueRef > 0 && timeSinceLastBeat > overdueRef * 1.3
             let promFloor = overdue ? 0.006 : 0.012
             let minProminence = max(promFloor, noiseStd * 0.2)
 
@@ -277,10 +279,13 @@ internal class MusePPG {
 
             if passInterval && passThreshold && passProminence {
 
-                // a gap-spanning interval (missed beats / dropout) isn't a real beat-to-beat
-                // interval — storing it inflates the adaptive minimum to its cap and can block
-                // the first beat after the gap at high heart rates
+                // Feed the expected-RR estimate only with plausible beat-to-beat intervals; a
+                // gap-spanning interval (missed beats) isn't a real RR and would corrupt it.
                 lastAcceptedBeatInterval = timeSinceLastBeat < 1.8 ? timeSinceLastBeat : 0.0
+                if timeSinceLastBeat > 0.3 && timeSinceLastBeat < 1.8 {
+                    recentIntervals.append(timeSinceLastBeat)
+                    if recentIntervals.count > recentIntervalsCap { recentIntervals.removeFirst() }
+                }
                 lastBeatTime = refinedPeakTime
 
                 let ppgAnalysis = _ppgAnalyzer.update(
@@ -320,6 +325,13 @@ internal class MusePPG {
         lastTimestamp = t
 
         return heartEvent
+    }
+
+    private func medianInterval(_ arr: [Double]) -> Double {
+        guard !arr.isEmpty else { return 0.0 }
+        let sorted = arr.sorted()
+        let mid = sorted.count / 2
+        return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2.0 : sorted[mid]
     }
 
     private func updateRollingStats(_ x: Double) {
