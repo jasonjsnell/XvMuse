@@ -54,6 +54,8 @@ internal class MusePPG {
     
     internal func set(deviceName:XvDeviceName) {
         sensor.set(deviceName: deviceName)
+        resetDetectionState()
+        _ppgAnalyzer.resetMetrics()
     }
     
     internal var sensor: MusePPGSensor = MusePPGSensor(id: 0)
@@ -164,6 +166,11 @@ internal class MusePPG {
 
     /// Runs the peak-detection state machine for a single 64 Hz sample.
     private func processDetectionSample(rawX: Double, t: Double) -> MusePPGHeartEvent? {
+
+        if detectionInitialized && t < lastTimestamp {
+            resetDetectionState()
+            _ppgAnalyzer.resetMetrics()
+        }
 
         // beat-smoothing EMA
         let x: Double
@@ -345,5 +352,31 @@ internal class MusePPG {
             rollingMean += alpha * diff
             rollingVar = (1.0 - alpha) * (rollingVar + alpha * diff * diff)
         }
+    }
+
+    private func resetDetectionState() {
+        lastSample = 0.0
+        lastTimestamp = 0.0
+        lastBeatTime = 0.0
+        lastAcceptedBeatInterval = 0.0
+        prevAllowedHeartMetrics = true
+
+        candidatePeakValue = 0.0
+        candidatePeakTime = 0.0
+        wasRising = false
+
+        candidateTroughValue = 0.0
+        candidateTroughTime = 0.0
+        lastTroughValue = 0.0
+        lastTroughTime = 0.0
+
+        rollingMean = 0.0
+        rollingVar = 0.0
+        rollingCount = 0
+
+        detectionSample = 0.0
+        detectionInitialized = false
+        secondLastSample = 0.0
+        _detPrintCounter = 0
     }
 }
