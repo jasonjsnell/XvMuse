@@ -3,19 +3,19 @@ struct PPGAnalysisPacket {
     var sdnnMs: Double     // SDNN in ms
     var rmssdMs: Double    // RMSSD in ms
     var hrvIndex: Double   // 0–100 scaled HRV index (from RMSSD)
-    var pulseAmp: Double   // latest beat amplitude (arb units)
+    var beatStrength: Double // 0–1 kick driver: flipped perfusion blended with normalized BPM
     var rawSdnnMs: Double
     var rawRmssdMs: Double
     var nnCount: Int
     var didAcceptNNInterval: Bool
     var nnRelDiff: Double
-    
+
     init(
         bpm: Double,
         sdnnMs: Double,
         rmssdMs: Double,
         hrvIndex: Double,
-        pulseAmp: Double,
+        beatStrength: Double,
         rawSdnnMs: Double,
         rawRmssdMs: Double,
         nnCount: Int,
@@ -26,7 +26,7 @@ struct PPGAnalysisPacket {
         self.sdnnMs = sdnnMs
         self.rmssdMs = rmssdMs
         self.hrvIndex = hrvIndex
-        self.pulseAmp = pulseAmp
+        self.beatStrength = beatStrength
         self.rawSdnnMs = rawSdnnMs
         self.rawRmssdMs = rawRmssdMs
         self.nnCount = nnCount
@@ -60,8 +60,16 @@ class PPGAnalyzer {
     private let hrvFallSmoothing: Double = 0.28
     private var publishedSdnnMs: Double = 0.0
     private var publishedRmssdMs: Double = 0.0
-    private var publishedAmp: Double = 0.0
-    private let ampSmoothing: Double = 0.2
+    private var publishedPerfusion: Double = 0.0
+    private let perfusionSmoothing: Double = 0.2
+
+    // Blended beat strength (kick-drum driver). Optical amplitude is FLIPPED — it's high when
+    // calm/vasodilated, low under exertion/vasoconstriction — then blended with normalized BPM
+    // so "working harder" reads louder, with BPM tempering the amplitude's signal-quality
+    // confound (loose band / cold also drop amplitude).
+    private let strengthBpmMin: Double = 60.0
+    private let strengthBpmMax: Double = 120.0
+    private let strengthAmpWeight: Double = 0.5 // 0 = all BPM, 1 = all flipped-amplitude
 
     internal func update(at timestamp: Double, amplitude: Double) -> PPGAnalysisPacket {
         
@@ -151,10 +159,14 @@ class PPGAnalyzer {
             }
         }
         
-        // --- SDNN (ms) ---
+        // --- SDNN (ms), detrended ---
+        // Plain SDNN over a sliding window inflates whenever the heart rate is drifting (the
+        // launch settle-down, post-cardio recovery): the monotonic ramp registers as "spread."
+        // Subtract the linear trend first so SDNN reflects true variability (incl. breathing
+        // RSA) regardless of a slow rate drift. At a steady rate the trend is flat → unchanged.
         var sdnnMs: Double = 0.0
         if nnIntervals.count >= minIntervalsForHRV {
-            let sdSec = Number.getStandardDeviation(ofArray: nnIntervals.toArray())
+            let sdSec = detrendedStdDev(nnIntervals.toArray())
             sdnnMs = sdSec * 1000.0
             if sdnnMs.isInfinite || sdnnMs.isNaN { sdnnMs = 0.0 }
         }
@@ -207,32 +219,70 @@ class PPGAnalyzer {
         let clamped = max(minHRV, min(maxHRV, rmssdMs))
         let hrvIndex = (clamped - minHRV) / (maxHRV - minHRV) * 100.0
         
-        // --- pulse amplitude (raw optical envelope, pre-normalization) ---
-        if publishedAmp == 0.0 {
-            publishedAmp = amplitude
+        // --- perfusion (peripheral blood-volume pulse amplitude, raw optical envelope 0–1).
+        // High when calm/warm/vasodilated, low under exertion/vasoconstriction. Stays local —
+        // only the blended beatStrength leaves this class.
+        if publishedPerfusion == 0.0 {
+            publishedPerfusion = amplitude
         } else {
-            publishedAmp += ampSmoothing * (amplitude - publishedAmp)
+            publishedPerfusion += perfusionSmoothing * (amplitude - publishedPerfusion)
         }
-        let pulseAmp = publishedAmp
-        
+        let perfusion = publishedPerfusion
+
         // --- BPM (smoothed) ---
         let bpmArray = bpms.toArray()
         let averageBpm = bpmArray.isEmpty ? 0.0 : bpmArray.reduce(0, +) / Double(bpmArray.count)
-        
+
+        // --- blended beat strength (kick driver) ---
+        // Flip perfusion (guarded: no-data 0 stays 0, not a full-blast 1), normalize BPM to
+        // 0–1 over the resting→exertion band, then weighted-blend the two.
+        let flippedPerfusion = perfusion > 0.0 ? (1.0 - perfusion) : 0.0
+        let normBpm = max(0.0, min(1.0, (averageBpm - strengthBpmMin) / (strengthBpmMax - strengthBpmMin)))
+        let beatStrength = strengthAmpWeight * flippedPerfusion + (1.0 - strengthAmpWeight) * normBpm
+
+        print(String(format: "  STR | str:%.2f  perfusion:%.2f (flip:%.2f)  bpm:%.0f",
+                     beatStrength, perfusion, flippedPerfusion, averageBpm))
+
         prevTimestamp = timestamp
-        
+
         return PPGAnalysisPacket(
             bpm: averageBpm,
             sdnnMs: sdnnMs,
             rmssdMs: rmssdMs,
             hrvIndex: hrvIndex,
-            pulseAmp: pulseAmp,
+            beatStrength: beatStrength,
             rawSdnnMs: rawSdnnMs,
             rawRmssdMs: rawRmssdMs,
             nnCount: nnIntervals.count,
             didAcceptNNInterval: didAcceptNNInterval,
             nnRelDiff: nnRelDiff
         )
+    }
+
+    /// Standard deviation of the array after removing its linear trend (least-squares line).
+    /// Strips slow heart-rate drift (settle-down, recovery ramp) that would otherwise inflate
+    /// SDNN, leaving the true beat-to-beat + respiratory variability.
+    private func detrendedStdDev(_ arr: [Double]) -> Double {
+        let n = arr.count
+        guard n >= 3 else { return Number.getStandardDeviation(ofArray: arr) }
+        let nD = Double(n)
+        let sumX = (nD - 1.0) * nD / 2.0
+        let sumX2 = (nD - 1.0) * nD * (2.0 * nD - 1.0) / 6.0
+        var sumY = 0.0, sumXY = 0.0
+        for i in 0..<n {
+            sumY += arr[i]
+            sumXY += Double(i) * arr[i]
+        }
+        let denom = nD * sumX2 - sumX * sumX
+        guard abs(denom) > 1e-12 else { return Number.getStandardDeviation(ofArray: arr) }
+        let slope = (nD * sumXY - sumX * sumY) / denom
+        let intercept = (sumY - slope * sumX) / nD
+        var sumSq = 0.0
+        for i in 0..<n {
+            let resid = arr[i] - (slope * Double(i) + intercept)
+            sumSq += resid * resid
+        }
+        return sqrt(sumSq / nD)
     }
 
     // Drop the stale NN window and reseed with the current interval. Used when a sustained run
@@ -256,7 +306,7 @@ class PPGAnalyzer {
         bpmOutlierRun = 0
         publishedSdnnMs = 0.0
         publishedRmssdMs = 0.0
-        publishedAmp = 0.0
+        publishedPerfusion = 0.0
         prevTimestamp = 0
     }
 

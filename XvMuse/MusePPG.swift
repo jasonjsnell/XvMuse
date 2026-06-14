@@ -64,7 +64,15 @@ internal class MusePPG {
     private var lastTimestamp: Double = 0.0
     
     private var lastBeatTime: Double = 0.0
-    private let minBeatInterval: Double = 0.35 // seconds (~171 bpm max)
+    // Refractory floor, gated on signal health. A real pulse keeps the detection signal's
+    // variance healthy at any rate (normalization preserves the swing), so when std is healthy
+    // we allow a fast floor for genuine high heart rates (kids/exercise, up to ~214 bpm). When
+    // the signal collapses to flat noise (post-motion dropout), the prominence/threshold gates
+    // can't tell a dicrotic/noise bump from a beat — there a high floor (~136 bpm) blocks the
+    // double-counts that fire on the notch of one real beat.
+    private let refractoryFloorHealthy: Double = 0.28 // ~214 bpm
+    private let refractoryFloorFlat: Double = 0.44    // ~136 bpm
+    private let flatSignalStd: Double = 0.03          // below this, signal is dropout, not a pulse
     private var lastAcceptedBeatInterval: Double = 0.0
     private var prevAllowedHeartMetrics: Bool = true
     
@@ -236,14 +244,16 @@ internal class MusePPG {
             }
 
             let timeSinceLastBeat = refinedPeakTime - lastBeatTime
+            // Fast floor when a real pulse is present, strict floor when the signal is flat
+            // dropout (where dicrotic doubles slip past prominence/threshold).
+            let refractoryFloor = noiseStd >= flatSignalStd ? refractoryFloorHealthy : refractoryFloorFlat
             let adaptiveMinimumInterval: Double
             if lastAcceptedBeatInterval > 0 {
-                // Factor 0.45 (was 0.6) + cap 0.50s (was 0.75s): allows detecting up to ~171 bpm
-                // even when transitioning from a slow resting rate, while still rejecting
-                // double-counts of a single noisy beat (which appear <200ms apart).
-                adaptiveMinimumInterval = max(minBeatInterval, min(lastAcceptedBeatInterval * 0.45, 0.50))
+                // Factor 0.45 + cap 0.50s lets the rate roughly double beat-to-beat (rest→exercise)
+                // while the floor handles the absolute ceiling.
+                adaptiveMinimumInterval = max(refractoryFloor, min(lastAcceptedBeatInterval * 0.45, 0.50))
             } else {
-                adaptiveMinimumInterval = minBeatInterval
+                adaptiveMinimumInterval = refractoryFloor
             }
 
             let peakProminence = candidatePeakValue - lastTroughValue
@@ -279,10 +289,12 @@ internal class MusePPG {
                 )
 
                 let bpm = ppgAnalysis.bpm
-                print(String(format: "BEAT | t:%.3f  interval:%.3fs  bpm:%.0f  hrv:%.0f raw:%.0f nn:%d nnOK:%@ rel:%.2f  peak:%.3f  prom:%.3f  thr:%.3f",
+                print(String(format: "BEAT | t:%.3f  interval:%.3fs  bpm:%.0f  hrv:%.0f raw:%.0f rmssd:%.0f rawRMSSD:%.0f nn:%d nnOK:%@ rel:%.2f  peak:%.3f  prom:%.3f  thr:%.3f",
                              refinedPeakTime, timeSinceLastBeat, bpm,
                              ppgAnalysis.sdnnMs,
                              ppgAnalysis.rawSdnnMs,
+                             ppgAnalysis.rmssdMs,
+                             ppgAnalysis.rawRmssdMs,
                              ppgAnalysis.nnCount,
                              ppgAnalysis.didAcceptNNInterval ? "Y" : "N",
                              ppgAnalysis.nnRelDiff,
@@ -290,7 +302,7 @@ internal class MusePPG {
 
                 heartEvent = MusePPGHeartEvent(
                     bpm: bpm,
-                    pulseStrength: ppgAnalysis.pulseAmp,
+                    pulseStrength: ppgAnalysis.beatStrength,
                     sdnn: ppgAnalysis.sdnnMs
                 )
             } else {
