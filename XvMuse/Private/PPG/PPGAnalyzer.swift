@@ -242,8 +242,8 @@ class PPGAnalyzer {
         let normBpm = max(0.0, min(1.0, (averageBpm - strengthBpmMin) / (strengthBpmMax - strengthBpmMin)))
         let beatStrength = strengthAmpWeight * flippedPerfusion + (1.0 - strengthAmpWeight) * normBpm
 
-        print(String(format: "  STR | str:%.2f  perfusion:%.2f (flip:%.2f)  bpm:%.0f",
-                     beatStrength, perfusion, flippedPerfusion, averageBpm))
+        // print(String(format: "  STR | str:%.2f  perfusion:%.2f (flip:%.2f)  bpm:%.0f",
+        //              beatStrength, perfusion, flippedPerfusion, averageBpm))
 
         prevTimestamp = timestamp
 

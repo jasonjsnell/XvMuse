@@ -73,11 +73,14 @@ class ParserAthena {
     // Buffer one shared EEG window size, mirroring legacy Muse
     private let eegWindowSize = 12
     
-    // Per-channel EEG buffers
-    private var tp9Buffer  = RingBuffer<Float>(capacity: 64)
-    private var af7Buffer  = RingBuffer<Float>(capacity: 64)
-    private var af8Buffer  = RingBuffer<Float>(capacity: 64)
-    private var tp10Buffer = RingBuffer<Float>(capacity: 64)
+    // Per-channel EEG buffers. FIFO arrays (not ring buffers): samples are consumed in
+    // non-overlapping eegWindowSize chunks so the FFT is fed fresh data once — exactly like the
+    // legacy 12-sample EEG packets. (The old RingBuffer re-emitted last(12) every packet, feeding
+    // the FFT overlapping/duplicate samples → distorted spectrum + chunky/plateaued chart.)
+    private var tp9Buffer:  [Float] = []
+    private var af7Buffer:  [Float] = []
+    private var af8Buffer:  [Float] = []
+    private var tp10Buffer: [Float] = []
     
     private enum AthenaSensorType {
         case eeg
@@ -457,17 +460,25 @@ class ParserAthena {
                 tp10Buffer.append(sample[3])
             }
             
-            // When we have enough samples, emit a window per channel
-            if tp9Buffer.count >= eegWindowSize &&
-               af7Buffer.count >= eegWindowSize &&
-               af8Buffer.count >= eegWindowSize &&
-               tp10Buffer.count >= eegWindowSize {
-                
-                let tp9Window  = tp9Buffer.last(eegWindowSize)
-                let af7Window  = af7Buffer.last(eegWindowSize)
-                let af8Window  = af8Buffer.last(eegWindowSize)
-                let tp10Window = tp10Buffer.last(eegWindowSize)
-                
+            // Emit FRESH, non-overlapping eegWindowSize chunks (consume them) so each sample
+            // reaches the FFT exactly once — mirroring legacy's 12-sample EEG packets. The while
+            // loop drains every complete chunk that has accumulated (in case a burst arrived),
+            // keeping the publish rate locked to the true sample rate (256 Hz / 12 ≈ 21/sec).
+            while tp9Buffer.count >= eegWindowSize &&
+                  af7Buffer.count >= eegWindowSize &&
+                  af8Buffer.count >= eegWindowSize &&
+                  tp10Buffer.count >= eegWindowSize {
+
+                let tp9Window  = Array(tp9Buffer.prefix(eegWindowSize))
+                let af7Window  = Array(af7Buffer.prefix(eegWindowSize))
+                let af8Window  = Array(af8Buffer.prefix(eegWindowSize))
+                let tp10Window = Array(tp10Buffer.prefix(eegWindowSize))
+
+                tp9Buffer.removeFirst(eegWindowSize)
+                af7Buffer.removeFirst(eegWindowSize)
+                af8Buffer.removeFirst(eegWindowSize)
+                tp10Buffer.removeFirst(eegWindowSize)
+
                 delegate?.didReceiveAthenaEEGBuffers(
                     packetIndex: packetIndex,
                     timestamp: timestamp,

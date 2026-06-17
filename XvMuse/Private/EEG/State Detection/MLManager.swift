@@ -84,6 +84,33 @@ final class EEGMLManager {
         }
     }
 
+    /// Runs the model on a single sensor's spectrum and returns its raw noise score (0–100),
+    /// unsmoothed. Used for per-sensor noise localization when device-level noise is high — each
+    /// sensor is judged on its own. Does NOT touch the device-level smoothing/delegate path.
+    func noiseProbability(forSpectrum spectrum: [Double]) -> Double? {
+        guard spectrum.count == 128, let model else { return nil }
+        do {
+            let usable = usableBins(from: spectrum)
+            var dict: [String: MLFeatureValue] = [:]
+            dict.reserveCapacity(usable.count)
+            for (i, value) in usable.enumerated() {
+                dict["bin\(i)"] = MLFeatureValue(double: value)
+            }
+            let provider = try MLDictionaryFeatureProvider(dictionary: dict)
+            let out = try model.prediction(from: provider)
+            let probs = out.featureValue(for: "labelProbability")?.dictionaryValue as? [String: Double] ?? [:]
+            func prob(_ key: String) -> Double {
+                let lower = key.lowercased()
+                for (label, value) in probs where label.lowercased() == lower { return value }
+                return 0.0
+            }
+            return max(prob("noise"), prob("loose")) * 100.0
+        } catch {
+            print("❌ EEGMLManager: per-sensor prediction failed:", error)
+            return nil
+        }
+    }
+
     private func usableBins(from spectrum: [Double]) -> [Double] {
         guard spectrum.count >= 3 else { return [] }
         let endExclusive = min(spectrum.count, 48)

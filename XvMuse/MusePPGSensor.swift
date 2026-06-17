@@ -119,7 +119,7 @@ internal class MusePPGSensor {
     private var legacyChannelNormalizers: [StreamNormalizer] = []
     private var legacyChannelLatestValues: [Double?] = []
 
-    internal func getStreams(from packet: MusePPGPacket) -> MusePPGStreams? {
+    internal func getStreams(from packet: MusePPGPacket, allowsRespMetrics: Bool = true) -> MusePPGStreams? {
         
         //need to know which device is being used before processing streams
         guard deviceName != .unknown else { return nil }
@@ -163,44 +163,48 @@ internal class MusePPGSensor {
                     // normalizer flattening a real pulse? Prints first ~25s, every 4th sample.
                     if _rawStartupCount < 1600 {
                         if _rawStartupCount % 4 == 0 {
-                            print(String(format: "RAW | i:%d  raw:%.1f  norm:%.4f", _rawStartupCount, sample, detectionSample))
+                            // print(String(format: "RAW | i:%d  raw:%.1f  norm:%.4f", _rawStartupCount, sample, detectionSample))
                         }
                         _rawStartupCount += 1
                     }
                 }
             }
 
-            if let respSourceSample = sampleSet.respSource {
+            if allowsRespMetrics, let respSourceSample = sampleSet.respSource {
                 appendRespSourceSample(respSourceSample)
             }
         }
         
         
-        if deviceName == .museAthena, lpInitialized {
+        if allowsRespMetrics, deviceName == .museAthena, lpInitialized {
             let normResp = respNormalizer.update(with: lpBaseline2, smoothingOn: true)
             let smoothResp = smoothRespOutput(normResp)
             baselineAveragedFirstSamples.append(smoothResp)
 
             _respPrintCounter += 1
             if _respPrintCounter % 32 == 0 {
-                print(String(format: "RESP Athena | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
-                      lpBaseline, lpBaseline2, normResp, smoothResp))
+                // print(String(format: "RESP Athena | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
+                //       lpBaseline, lpBaseline2, normResp, smoothResp))
             }
 
-        } else if legacyRespInitialized {
+        } else if allowsRespMetrics, legacyRespInitialized {
             let normResp = respNormalizer.update(with: legacyRespBaseline2, smoothingOn: true)
             let smoothResp = smoothRespOutput(normResp)
             baselineAveragedFirstSamples.append(smoothResp)
 
             _respPrintCounter += 1
             if _respPrintCounter % 64 == 0 {
-                print(String(format: "RESP Muse2 | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
-                      legacyRespBaseline, legacyRespBaseline2, normResp, smoothResp))
+                // print(String(format: "RESP Muse2 | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
+                //       legacyRespBaseline, legacyRespBaseline2, normResp, smoothResp))
             }
         }
         
         let bloodFlow = bloodFlowSamples.toArray()
-        let resp = baselineAveragedFirstSamples.toArray()
+        let resp = allowsRespMetrics ? baselineAveragedFirstSamples.toArray() : []
+
+        guard allowsRespMetrics else {
+            return MusePPGStreams(bloodFlow: bloodFlow, resp: resp, newSamples: newSamples)
+        }
 
         //block until the resp stream has at least one populated value
         guard let firstResp = resp.first, firstResp != 0.0 else { return nil }

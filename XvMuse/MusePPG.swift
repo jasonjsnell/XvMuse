@@ -109,10 +109,17 @@ internal class MusePPG {
 
     private var _detPrintCounter: Int = 0
     
-    internal func update(withPPGPacket: MusePPGPacket, allowsHeartMetrics: Bool = true) -> MusePPGResult? {
+    internal func update(
+        withPPGPacket: MusePPGPacket,
+        allowsHeartMetrics: Bool = true,
+        allowsRespMetrics: Bool = true
+    ) -> MusePPGResult? {
 
         //are the streams valid? if not, no streams or heart events are returned
-        guard let streams = sensor.getStreams(from: withPPGPacket) else {
+        guard let streams = sensor.getStreams(
+            from: withPPGPacket,
+            allowsRespMetrics: allowsRespMetrics
+        ) else {
             return nil
         }
 
@@ -195,7 +202,7 @@ internal class MusePPG {
 
         _detPrintCounter += 1
         if _detPrintCounter % 128 == 0 {
-            print(String(format: "PPG | x:%.3f  mean:%.3f  std:%.3f  thr:%.3f", x, rollingMean, noiseStd, dynamicThreshold))
+            // print(String(format: "PPG | x:%.3f  mean:%.3f  std:%.3f  thr:%.3f", x, rollingMean, noiseStd, dynamicThreshold))
         }
 
         // derivative sign
@@ -301,16 +308,16 @@ internal class MusePPG {
                 )
 
                 let bpm = ppgAnalysis.bpm
-                print(String(format: "BEAT | t:%.3f  interval:%.3fs  bpm:%.0f  hrv:%.0f raw:%.0f rmssd:%.0f rawRMSSD:%.0f nn:%d nnOK:%@ rel:%.2f  peak:%.3f  prom:%.3f  thr:%.3f",
-                             refinedPeakTime, timeSinceLastBeat, bpm,
-                             ppgAnalysis.sdnnMs,
-                             ppgAnalysis.rawSdnnMs,
-                             ppgAnalysis.rmssdMs,
-                             ppgAnalysis.rawRmssdMs,
-                             ppgAnalysis.nnCount,
-                             ppgAnalysis.didAcceptNNInterval ? "Y" : "N",
-                             ppgAnalysis.nnRelDiff,
-                             candidatePeakValue, peakProminence, dynamicThreshold))
+                // print(String(format: "BEAT | t:%.3f  interval:%.3fs  bpm:%.0f  hrv:%.0f raw:%.0f rmssd:%.0f rawRMSSD:%.0f nn:%d nnOK:%@ rel:%.2f  peak:%.3f  prom:%.3f  thr:%.3f",
+                //              refinedPeakTime, timeSinceLastBeat, bpm,
+                //              ppgAnalysis.sdnnMs,
+                //              ppgAnalysis.rawSdnnMs,
+                //              ppgAnalysis.rmssdMs,
+                //              ppgAnalysis.rawRmssdMs,
+                //              ppgAnalysis.nnCount,
+                //              ppgAnalysis.didAcceptNNInterval ? "Y" : "N",
+                //              ppgAnalysis.nnRelDiff,
+                //              candidatePeakValue, peakProminence, dynamicThreshold))
 
                 heartEvent = MusePPGHeartEvent(
                     bpm: bpm,
@@ -322,7 +329,7 @@ internal class MusePPG {
                 if !passInterval   { reasons.append(String(format: "interval(%.3f<%.3f)", timeSinceLastBeat, adaptiveMinimumInterval)) }
                 if !passThreshold  { reasons.append(String(format: "threshold(%.3f<%.3f)", candidatePeakValue, dynamicThreshold)) }
                 if !passProminence { reasons.append(String(format: "prominence(%.3f<%.3f)", peakProminence, minProminence)) }
-                print("MISS | \(reasons.joined(separator: " ")) | peak:\(String(format: "%.3f", candidatePeakValue))")
+                // print("MISS | \(reasons.joined(separator: " ")) | peak:\(String(format: "%.3f", candidatePeakValue))")
             }
         }
 

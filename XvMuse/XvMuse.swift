@@ -131,9 +131,22 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestNoisePct: Double = 0.0
     private var latestTensionPct: Double = 0.0
 
-    // Muse 2 PPG tolerates higher tension before gating heart metrics; Muse S / Athena gate at 75.
+    // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
+    // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
+    private var _eegPublishCount: Int = 0
+    private var _eegPublishWindowStart: Double = 0.0
+
+    // Muse 2 PPG tolerates higher tension before gating heart metrics.
+    // Muse S / Athena get a little more headroom because their PPG is stable under mild tension.
     private var heartTensionThreshold: Double {
-        deviceName == .muse2 ? 99.0 : 75.0
+        switch deviceName {
+        case .muse2:
+            return 99.0
+        case .museS, .museAthena:
+            return 85.0
+        default:
+            return 75.0
+        }
     }
 
     //helper classes
@@ -409,7 +422,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 if let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
-                    allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
+                    allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
+                    allowsRespMetrics: latestNoisePct <= 30.0
                 ) {
                     
                     //if streams are valid...
@@ -500,8 +514,19 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
     
     private func processAndPublishEEGData(from eegPacket: XvEEGPacket) {
+
+        // === EEG publish-rate diagnostic === (history points/sec → chart smoothness)
+        let now = Date().timeIntervalSince1970
+        if _eegPublishWindowStart == 0.0 { _eegPublishWindowStart = now }
+        _eegPublishCount += 1
+        if now - _eegPublishWindowStart >= 1.0 {
+            // print(String(format: "EEG RATE | %@ | %d publishes/sec", "\(deviceName ?? .unknown)", _eegPublishCount))
+            _eegPublishCount = 0
+            _eegPublishWindowStart = now
+        }
+
         eeg.process(eegPacket: eegPacket)
-        
+
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         _mlManager.process(linearSpectrum: eeg.linearSpectrum)
         _stateAnalyzer.processBrainwave(
@@ -538,6 +563,20 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         latestTensionPct = tension
         _stateAnalyzer.updateSignalQuality(clean: clean, tension: tension)
         delegate?.didReceiveML(noise: noise, tension: tension, clean: clean)
+
+        // Per-sensor noise localization: only when the device-level (averaged) noise is high, run
+        // each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each
+        // sensor judged independently (no peer comparison) so "all loose / headset off" → all high.
+        if noise > 10.0 {
+            func sensorNoise(_ sensor: XvEEGSensor) -> String {
+                guard sensor.hasValidSpectrum,
+                      let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) else {
+                    return "--"
+                }
+                return String(format: "%.0f", p)
+            }
+            print("SENSOR NOISE | dev:\(Int(noise.rounded()))  TP9(Lear):\(sensorNoise(eeg.TP9))  AF7(Lfhd):\(sensorNoise(eeg.AF7))  AF8(Rfhd):\(sensorNoise(eeg.AF8))  TP10(Rear):\(sensorNoise(eeg.TP10))")
+        }
     }
 
     func didReceiveBaselineProgress(_ progress: Double) {
@@ -576,17 +615,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         func makePacket(samples: [Double], sensor: Int) -> MuseEEGPacket {
             return MuseEEGPacket(
                 packetIndex: UInt16(packetIndex),
-                sensor: sensor,        // 0: TP9, 1: AF7, 2: AF8, 3: TP10 (legacy convention)
+                sensor: sensor,
                 timestamp: timestamp,
                 samples: samples
             )
         }
         
-        // Run FFT for each channel, updating your shared MuseEEG model
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp9D,  sensor: 0)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af7D,  sensor: 1)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af8D,  sensor: 2)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 3)))
+        // Athena columns are TP9, AF7, AF8, TP10. Convert them to the legacy
+        // Muse IDs expected by MuseEEG: 0 TP10, 1 AF8, 2 TP9, 3 AF7.
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp9D,  sensor: 2)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af7D,  sensor: 3)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af8D,  sensor: 1)))
+        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 0)))
         
         // Send a single combined EEG packet out, just like in the legacy path
         processAndPublishEEGData(from: convert(museEEG: _eeg))
@@ -599,7 +639,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
-            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
+            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: latestNoisePct <= 30.0
         ) {
             
             //if streams are valid...
@@ -735,7 +776,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
         if let testPPGResult:MusePPGResult = _testPPG.update(
             withPPGPacket: testPPGPacket,
-            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold
+            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: latestNoisePct <= 30.0
         ) {
             
             //if streams are valid...
@@ -863,12 +905,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.TP.rawValue,
                     index: 9,
-                    spectrum: _eeg.TP9.linearSpectrum
+                    spectrum: museEEG.TP9.linearSpectrum
                 ),
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.AF.rawValue,
                     index: 7,
-                    spectrum: _eeg.AF7.linearSpectrum
+                    spectrum: museEEG.AF7.linearSpectrum
                 ),
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.AF.rawValue,
