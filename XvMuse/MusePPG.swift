@@ -23,17 +23,34 @@ internal struct MusePPGHeartEvent {
 }
 
 //continuous data stream of bloodflow and respiratory data
+internal struct MuseRespDiagnostic {
+    internal var raw: Double
+    internal var lp1: Double
+    internal var lp2: Double
+    internal var bandPassed: Double
+    internal var depth: Double
+    internal var normalized: Double
+    internal var output: Double
+}
+
 internal struct MusePPGStreams {
     internal var bloodFlow: [Double]
     internal var resp: [Double]
+    internal var respDiagnostic: MuseRespDiagnostic?
     // The detection channel's new samples this packet, each carrying a regular 64 Hz
     // sample-clock time (NOT the jittery BLE packet-arrival time). Empty for non-detection
     // channels. Beat detection runs per-sample over these so beat timing is on a clean grid.
     internal var newSamples: [(t: Double, x: Double)]
 
-    init(bloodFlow: [Double], resp: [Double], newSamples: [(t: Double, x: Double)] = []) {
+    init(
+        bloodFlow: [Double],
+        resp: [Double],
+        respDiagnostic: MuseRespDiagnostic? = nil,
+        newSamples: [(t: Double, x: Double)] = []
+    ) {
         self.bloodFlow = bloodFlow
         self.resp = resp
+        self.respDiagnostic = respDiagnostic
         self.newSamples = newSamples
     }
 }
@@ -329,6 +346,13 @@ internal class MusePPG {
                 if !passInterval   { reasons.append(String(format: "interval(%.3f<%.3f)", timeSinceLastBeat, adaptiveMinimumInterval)) }
                 if !passThreshold  { reasons.append(String(format: "threshold(%.3f<%.3f)", candidatePeakValue, dynamicThreshold)) }
                 if !passProminence { reasons.append(String(format: "prominence(%.3f<%.3f)", peakProminence, minProminence)) }
+                print(String(format: "BEAT MISS | t:%.3f | %@ | expectedRR:%.3f | peak:%.3f | prom:%.3f | thr:%.3f",
+                             refinedPeakTime,
+                             reasons.joined(separator: " "),
+                             expectedRR,
+                             candidatePeakValue,
+                             peakProminence,
+                             dynamicThreshold))
                 // print("MISS | \(reasons.joined(separator: " ")) | peak:\(String(format: "%.3f", candidatePeakValue))")
             }
         }

@@ -22,6 +22,7 @@ public protocol XvMuseDelegate:AnyObject {
     
     //ML and state detection
     func didReceiveML(noise: Double, tension: Double, clean: Double)
+    func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceive(eegBaselineProgress progress: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
     
@@ -130,6 +131,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private let _stateAnalyzer: EEGStateAnalyzer
     private var latestNoisePct: Double = 0.0
     private var latestTensionPct: Double = 0.0
+    private var latestAccelPacket: XvAccelPacket?
+    private var _breathTraceStartTime: Double = 0.0
+    private var _lastBreathTracePrintTime: Double = 0.0
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -428,6 +432,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     
                     //if streams are valid...
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
+                        printBreathTraceIfNeeded(ppgStreams)
                         //send blood flow and resp streams to parent
                         delegate?.didReceive(ppgStreams: convert(musePPGStreams: ppgStreams))
                     }
@@ -459,6 +464,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                         )
                     )
                 )
+                rememberAccel(_accelPacket)
                 delegate?.didReceive(accelPacket: _accelPacket)
                 
                 
@@ -564,18 +570,26 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         _stateAnalyzer.updateSignalQuality(clean: clean, tension: tension)
         delegate?.didReceiveML(noise: noise, tension: tension, clean: clean)
 
-        // Per-sensor noise localization: only when the device-level (averaged) noise is high, run
-        // each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each
-        // sensor judged independently (no peer comparison) so "all loose / headset off" → all high.
+        // Per-sensor noise localization: only when the device-level (averaged) noise is high, run each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each sensor judged independently (no peer comparison) so "all loose / headset off" → all high.
         if noise > 10.0 {
-            func sensorNoise(_ sensor: XvEEGSensor) -> String {
+            func sensorNoise(_ sensor: XvEEGSensor) -> Double {
                 guard sensor.hasValidSpectrum,
                       let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) else {
-                    return "--"
+                    return 0.0
                 }
-                return String(format: "%.0f", p)
+                return p
             }
-            print("SENSOR NOISE | dev:\(Int(noise.rounded()))  TP9(Lear):\(sensorNoise(eeg.TP9))  AF7(Lfhd):\(sensorNoise(eeg.AF7))  AF8(Rfhd):\(sensorNoise(eeg.AF8))  TP10(Rear):\(sensorNoise(eeg.TP10))")
+
+            let tp9Noise = sensorNoise(eeg.TP9)
+            let af7Noise = sensorNoise(eeg.AF7)
+            let af8Noise = sensorNoise(eeg.AF8)
+            let tp10Noise = sensorNoise(eeg.TP10)
+
+            delegate?.didReceiveSensorNoise(tp9: tp9Noise, af7: af7Noise, af8: af8Noise, tp10: tp10Noise)
+
+            print("SENSOR NOISE | all:\(Int(noise.rounded()))  TP9(L Ear):\(Int(tp9Noise.rounded()))  AF7(L Frnt):\(Int(af7Noise.rounded()))  AF8(R Frnt):\(Int(af8Noise.rounded()))  TP10(R Ear):\(Int(tp10Noise.rounded()))")
+        } else {
+            delegate?.didReceiveSensorNoise(tp9: 0, af7: 0, af8: 0, tp10: 0)
         }
     }
 
@@ -645,6 +659,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
             //if streams are valid...
             if let ppgStreams:MusePPGStreams = ppgResult.streams {
+                printBreathTraceIfNeeded(ppgStreams)
                 //send blood flow and resp streams to parent
                 delegate?.didReceive(ppgStreams: convert( musePPGStreams: ppgStreams))
             }
@@ -660,9 +675,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     func didReceiveAthena(accelPacket: MuseAccelPacket) {
        //receive muse accel, convert to xvaccel, and send to parent
-        delegate?.didReceive(
-            accelPacket: convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
-        )
+        let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
+        rememberAccel(_accelPacket)
+        delegate?.didReceive(accelPacket: _accelPacket)
     }
     
     func didReceiveAthena(batteryPacket: XvBatteryPacket) {
@@ -892,6 +907,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         eegTestDataLoop.invalidate()
         ppgTestDataLoop.invalidate()
     }
+
+    public func markInhale() {
+        printBreathPhaseMarker("INHALE")
+    }
+
+    public func markExhale() {
+        printBreathPhaseMarker("EXHALE")
+    }
    
     
     //MARK: - Converters -
@@ -927,7 +950,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
     
     private func convert(musePPGStreams:MusePPGStreams) -> XvPPGStreams {
-        return XvPPGStreams(bloodFlow: musePPGStreams.bloodFlow, resp: musePPGStreams.resp)
+        return XvPPGStreams(
+            bloodFlow: musePPGStreams.bloodFlow,
+            resp: musePPGStreams.resp
+        )
     }
     
     private func convert(musePPGHeartEvent:MusePPGHeartEvent) -> XvPPGHeartEvent {
@@ -945,5 +971,42 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             z: museAccelPacket.z,
             movement: museAccelPacket.movement
         )
+    }
+
+    private func rememberAccel(_ packet: XvAccelPacket) {
+        latestAccelPacket = packet
+    }
+
+    private func printBreathTraceIfNeeded(_ streams: MusePPGStreams) {
+        guard let resp = streams.respDiagnostic else { return }
+
+        let now = Date().timeIntervalSince1970
+        if _breathTraceStartTime == 0.0 {
+            _breathTraceStartTime = now
+        }
+
+        guard now - _lastBreathTracePrintTime >= 0.25 else { return }
+        _lastBreathTracePrintTime = now
+
+        let t = now - _breathTraceStartTime
+        let accel = latestAccelPacket
+        let x = accel?.x ?? Double.nan
+        let y = accel?.y ?? Double.nan
+        let z = accel?.z ?? Double.nan
+        let movement = accel?.movement ?? Double.nan
+        let deviceLabel = "\(deviceName ?? .unknown)"
+
+        print(String(format: "BREATH TRACE | t:%.3f | dev:%@ | raw:%.2f | hp:%.5f | bp:%.5f | depth:%.5f | out:%.5f | move:%.5f | x:%.5f | y:%.5f | z:%.5f",
+                     t, deviceLabel, resp.raw, resp.lp1, resp.bandPassed, resp.depth, resp.output, movement, x, y, z))
+    }
+
+    private func printBreathPhaseMarker(_ phase: String) {
+        let now = Date().timeIntervalSince1970
+        if _breathTraceStartTime == 0.0 {
+            _breathTraceStartTime = now
+        }
+
+        let t = now - _breathTraceStartTime
+        print(String(format: "BREATH MARK | t:%.3f | %@", t, phase))
     }
 }

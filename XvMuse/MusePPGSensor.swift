@@ -32,18 +32,9 @@ internal class MusePPGSensor {
     internal func set(deviceName:XvDeviceName) {
         self.deviceName = deviceName
         bloodFlowNormalizer.reset()
-        respNormalizer.reset()
-        legacyRespNormalizer.reset()
+        respSignalProcessor.reset()
         bloodFlowSamples = RingBuffer<Double>(capacity: 128)
         _detectionSampleIndex = 0
-        lpBaseline = 0.0
-        lpBaseline2 = 0.0
-        lpInitialized = false
-        legacyRespBaseline = 0.0
-        legacyRespBaseline2 = 0.0
-        legacyRespInitialized = false
-        respOutputEMA = 0.0
-        respOutputInitialized = false
         legacyChannelNormalizers = []
         legacyChannelLatestValues = []
         baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
@@ -54,12 +45,9 @@ internal class MusePPGSensor {
         rawAmplitude = 0.0
         switch deviceName {
         case .museAthena:
-            lpAlpha = 0.02
             ampDCAlpha = 1.0 / (30.0 * 64.0)
             ampEnvDecayAlpha = 1.0 / (3.0 * 64.0)
         default:
-            // 0.015 gives ~0.61 Hz cutoff at 256 Hz — LP lag ~0.51s total across two stages
-            lpAlpha = 0.015
             ampDCAlpha = 1.0 / (30.0 * 256.0)
             ampEnvDecayAlpha = 1.0 / (3.0 * 256.0)
         }
@@ -77,19 +65,6 @@ internal class MusePPGSensor {
     // resp output history
     private var baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
 
-    // low-passed baseline "flow" value — two cascaded passes to better reject heartbeat
-    private var lpBaseline: Double = 0.0
-    private var lpBaseline2: Double = 0.0
-    private var lpInitialized = false
-    private var legacyRespBaseline: Double = 0.0
-    private var legacyRespBaseline2: Double = 0.0
-    private var legacyRespInitialized = false
-    private var respOutputEMA: Double = 0.0
-    private var respOutputInitialized = false
-    
-    // higher is more responsive, but more likely to pick up heart beat movements
-    // lower is less resposnive, but less likely to pick up heart beat movements
-    private var lpAlpha: Double = 0.005
     private var _respPrintCounter: Int = 0
     private var _lastTraceTimestamp: Double = 0 // HRV timing trace: prev packet arrival time
 
@@ -100,7 +75,6 @@ internal class MusePPGSensor {
     private let ppgSampleRate: Double = 64.0
     private var _detectionSampleIndex: Int = 0
     private var _rawStartupCount: Int = 0 // startup diagnostic: raw vs normalized detection signal
-    private let respOutputAlpha: Double = 0.12
 
     // Raw amplitude tracking — works on pre-normalization optical values so z-score
     // normalization doesn't erase true pump strength information.
@@ -114,12 +88,14 @@ internal class MusePPGSensor {
     
     // normalizes the streams so Muse 2/S and Athena work with their different ranges
     private var bloodFlowNormalizer:StreamNormalizer = StreamNormalizer()
-    private let respNormalizer:StreamNormalizer = StreamNormalizer()
-    private let legacyRespNormalizer: StreamNormalizer = StreamNormalizer()
+    private let respSignalProcessor = RespiratorySignalProcessor(sampleRate: 64.0)
     private var legacyChannelNormalizers: [StreamNormalizer] = []
     private var legacyChannelLatestValues: [Double?] = []
 
-    internal func getStreams(from packet: MusePPGPacket, allowsRespMetrics: Bool = true) -> MusePPGStreams? {
+    internal func getStreams(
+        from packet: MusePPGPacket,
+        allowsRespMetrics: Bool = true
+    ) -> MusePPGStreams? {
         
         //need to know which device is being used before processing streams
         guard deviceName != .unknown else { return nil }
@@ -141,6 +117,8 @@ internal class MusePPGSensor {
         // so each of its samples gets a regular 64 Hz sample-clock time for clean beat timing.
         let isDetectionChannel = (deviceName == .museAthena) || (packet.sensor == legacyRespChannelIndex)
         var newSamples: [(t: Double, x: Double)] = []
+        var latestRespSample: RespiratorySignalSample?
+        var respDiagnostic: MuseRespDiagnostic?
 
         // append incoming samples and update baseline per sample
         for sample in packet.samples {
@@ -171,34 +149,28 @@ internal class MusePPGSensor {
             }
 
             if allowsRespMetrics, let respSourceSample = sampleSet.respSource {
-                appendRespSourceSample(respSourceSample)
+                latestRespSample = respSignalProcessor.update(rawSample: respSourceSample)
             }
         }
         
-        
-        if allowsRespMetrics, deviceName == .museAthena, lpInitialized {
-            let normResp = respNormalizer.update(with: lpBaseline2, smoothingOn: true)
-            let smoothResp = smoothRespOutput(normResp)
-            baselineAveragedFirstSamples.append(smoothResp)
+        if allowsRespMetrics, let respSample = latestRespSample {
+            baselineAveragedFirstSamples.append(respSample.output)
+            respDiagnostic = MuseRespDiagnostic(
+                raw: respSample.raw,
+                lp1: respSample.highPassed,
+                lp2: respSample.bandPassed,
+                bandPassed: respSample.bandPassed,
+                depth: respSample.depth,
+                normalized: respSample.depth,
+                output: respSample.output
+            )
 
             _respPrintCounter += 1
             if _respPrintCounter % 32 == 0 {
-                // print(String(format: "RESP Athena | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
-                //       lpBaseline, lpBaseline2, normResp, smoothResp))
-            }
-
-        } else if allowsRespMetrics, legacyRespInitialized {
-            let normResp = respNormalizer.update(with: legacyRespBaseline2, smoothingOn: true)
-            let smoothResp = smoothRespOutput(normResp)
-            baselineAveragedFirstSamples.append(smoothResp)
-
-            _respPrintCounter += 1
-            if _respPrintCounter % 64 == 0 {
-                // print(String(format: "RESP Muse2 | lp1:%.5f | lp2:%.5f | norm:%.5f | out:%.5f",
-                //       legacyRespBaseline, legacyRespBaseline2, normResp, smoothResp))
+                // BREATH TRACE in XvMuse prints this at a fixed cadence with accel movement.
             }
         }
-        
+
         let bloodFlow = bloodFlowSamples.toArray()
         let resp = allowsRespMetrics ? baselineAveragedFirstSamples.toArray() : []
 
@@ -209,13 +181,18 @@ internal class MusePPGSensor {
         //block until the resp stream has at least one populated value
         guard let firstResp = resp.first, firstResp != 0.0 else { return nil }
 
-        return MusePPGStreams(bloodFlow: bloodFlow, resp: resp, newSamples: newSamples)
+        return MusePPGStreams(
+            bloodFlow: bloodFlow,
+            resp: resp,
+            respDiagnostic: respDiagnostic,
+            newSamples: newSamples
+        )
     }
 
     private func normalizedSamples(for sample: Double, fromSensor sensor: Int) -> (bloodFlow: Double, respSource: Double?, detectionSource: Double?) {
         guard deviceName != .museAthena else {
             let value = bloodFlowNormalizer.update(with: sample, smoothingOn: true)
-            return (value, value, value)
+            return (value, sample, value)
         }
 
         ensureLegacyChannelStorage()
@@ -227,45 +204,11 @@ internal class MusePPGSensor {
         let combined = activeValues.isEmpty
             ? channelValue
             : activeValues.reduce(0.0, +) / Double(activeValues.count)
-        let respSource = channelIndex == legacyRespChannelIndex
-            ? legacyRespNormalizer.update(with: sample, smoothingOn: true)
-            : nil
+        let respSource = channelIndex == legacyRespChannelIndex ? sample : nil
         // Detection runs on the combined multi-channel average (more robust at startup than a
         // single channel warming up alone), gated to the detection channel so it fires once/packet.
         let detectionSource = channelIndex == legacyRespChannelIndex ? combined : nil
         return (combined, respSource, detectionSource)
-    }
-
-    private func appendRespSourceSample(_ sample: Double) {
-        if deviceName == .museAthena {
-            if !lpInitialized {
-                lpBaseline = sample
-                lpBaseline2 = sample
-                lpInitialized = true
-            } else {
-                lpBaseline += lpAlpha * (sample - lpBaseline)
-                lpBaseline2 += lpAlpha * (lpBaseline - lpBaseline2)
-            }
-        } else {
-            if !legacyRespInitialized {
-                legacyRespBaseline = sample
-                legacyRespBaseline2 = sample
-                legacyRespInitialized = true
-            } else {
-                legacyRespBaseline += lpAlpha * (sample - legacyRespBaseline)
-                legacyRespBaseline2 += lpAlpha * (legacyRespBaseline - legacyRespBaseline2)
-            }
-        }
-    }
-
-    private func smoothRespOutput(_ sample: Double) -> Double {
-        if !respOutputInitialized {
-            respOutputEMA = sample
-            respOutputInitialized = true
-        } else {
-            respOutputEMA += respOutputAlpha * (sample - respOutputEMA)
-        }
-        return respOutputEMA
     }
 
     private func updateRawAmplitude(_ sample: Double) {
@@ -307,6 +250,146 @@ internal class MusePPGSensor {
     //muse lsl python script uses 64 samples
     //https://github.com/alexandrebarachant/muse-lsl/blob/0afbdaafeaa6592eba6d4ff7869572e5853110a1/muselsl/constants.py
 
+}
+
+private struct RespiratorySignalSample {
+    var raw: Double
+    var highPassed: Double
+    var bandPassed: Double
+    var depth: Double
+    var output: Double
+}
+
+private final class RespiratorySignalProcessor {
+
+    private let highPassAlpha: Double
+    private let lowPassAlpha: Double
+    private let outputAlpha: Double
+    private let envelopeFallAlpha: Double
+    private let referenceRiseAlpha: Double
+    private let referenceFallAlpha: Double
+    private let warmupSamples: Int
+    private let outputPolarity: Double = 1.0
+    private let outputGain: Double = 0.47        // final swing around center: 0.5 ± this (rails ~0.03/0.97)
+    private let phaseSoftness: Double = 1.2      // lower = more excursion per breath (tanh + clamp keep it safe)
+
+    private var initialized = false
+    private var dcBaseline: Double = 0.0
+    private var lowPassedBand: Double = 0.0
+    private var lowPassedBand2: Double = 0.0
+    private var envelope: Double = 0.0
+    private var referenceEnvelope: Double = 1e-6
+    private var warmupMaxEnvelope: Double = 1e-6
+    private var sampleCount: Int = 0
+    private var output: Double = 0.5
+
+    // Slow-AGC depth preservation: an absolute floor on the normalizing scale, plus warmup
+    // accumulators to calibrate a representative "typical breath" size over the first ~30s.
+    private var ampFloor: Double = 0.0
+    private var warmupEnvSum: Double = 0.0
+    private var warmupEnvCount: Int = 0
+
+    init(sampleRate: Double) {
+        self.highPassAlpha = Self.onePoleAlpha(cutoffHz: 0.05, sampleRate: sampleRate)
+        // Applied as two cascaded stages (see update) → −12 dB/oct at 0.4 Hz, the breath/heart gap.
+        self.lowPassAlpha = Self.onePoleAlpha(cutoffHz: 0.4, sampleRate: sampleRate)
+        self.outputAlpha = Self.onePoleAlpha(cutoffHz: 1.0, sampleRate: sampleRate)
+        self.envelopeFallAlpha = Self.onePoleAlpha(cutoffHz: 0.18, sampleRate: sampleRate)
+        // Reference adapts over tens of seconds (rise ~40s / fall ~80s) so a single deep or
+        // shallow breath cannot move the scale — that is what preserves breath depth.
+        self.referenceRiseAlpha = Self.onePoleAlpha(cutoffHz: 0.004, sampleRate: sampleRate)
+        self.referenceFallAlpha = Self.onePoleAlpha(cutoffHz: 0.002, sampleRate: sampleRate)
+        // Warm up over ~30s so the typical-breath scale is built from several full breaths.
+        self.warmupSamples = Int(sampleRate * 30.0)
+    }
+
+    func reset() {
+        initialized = false
+        dcBaseline = 0.0
+        lowPassedBand = 0.0
+        lowPassedBand2 = 0.0
+        envelope = 0.0
+        referenceEnvelope = 1e-6
+        warmupMaxEnvelope = 1e-6
+        sampleCount = 0
+        output = 0.5
+        ampFloor = 0.0
+        warmupEnvSum = 0.0
+        warmupEnvCount = 0
+    }
+
+    func update(rawSample: Double) -> RespiratorySignalSample {
+        guard initialized else {
+            initialized = true
+            dcBaseline = rawSample
+            output = 0.5
+            let sample = RespiratorySignalSample(
+                raw: rawSample,
+                highPassed: 0.0,
+                bandPassed: 0.0,
+                depth: 0.0,
+                output: output
+            )
+            return sample
+        }
+
+        dcBaseline += highPassAlpha * (rawSample - dcBaseline)
+        let highPassed = rawSample - dcBaseline
+        // Two cascaded 1-pole low-passes at 0.4 Hz (−12 dB/oct). A single pole was too shallow
+        // and let the cardiac pulse (~0.75–1.5 Hz) bleed through and ripple the output; this
+        // sits in the gap between max breathing (~0.4 Hz) and min heart rate (~0.75 Hz / 45 bpm),
+        // passing the breath while pushing the heartbeat down ~4× further. bp = lowPassedBand2.
+        lowPassedBand += lowPassAlpha * (highPassed - lowPassedBand)
+        lowPassedBand2 += lowPassAlpha * (lowPassedBand - lowPassedBand2)
+
+        let bandMagnitude = abs(lowPassedBand2)
+        if bandMagnitude > envelope {
+            envelope = bandMagnitude
+        } else {
+            envelope += envelopeFallAlpha * (bandMagnitude - envelope)
+        }
+
+        sampleCount += 1
+        warmupMaxEnvelope = max(warmupMaxEnvelope, envelope)
+        if sampleCount < warmupSamples {
+            // Accumulate a representative breath size from the first ~30s of breathing.
+            warmupEnvSum += envelope
+            warmupEnvCount += 1
+            referenceEnvelope = max(warmupMaxEnvelope, 1e-6)
+        } else if sampleCount == warmupSamples {
+            let warmupMean = warmupEnvCount > 0 ? warmupEnvSum / Double(warmupEnvCount) : warmupMaxEnvelope
+            referenceEnvelope = max(warmupMean, 1e-6)
+            // Floor stops the slow AGC from zooming into shallow breathing (which would
+            // re-inflate small breaths to full scale). 40% of the typical warmup breath.
+            ampFloor = 0.4 * referenceEnvelope
+        } else {
+            let refAlpha = envelope > referenceEnvelope ? referenceRiseAlpha : referenceFallAlpha
+            referenceEnvelope += refAlpha * (envelope - referenceEnvelope)
+            referenceEnvelope = max(referenceEnvelope, 1e-6)
+        }
+
+        let scale = max(max(referenceEnvelope, ampFloor), 1e-6)
+        // Relative breath depth (typical ≈ 1, deep > 1, shallow < 1); diagnostic only.
+        let depth = min(2.5, envelope / scale)
+        // Soft-saturating 0–1 map of the band-passed breath (bp). tanh preserves depth — a
+        // deeper breath gives a larger excursion — and rolls off instead of hard-clipping.
+        let phase = tanh(lowPassedBand2 / (phaseSoftness * scale))
+        let target = max(0.0, min(1.0, 0.5 + outputPolarity * outputGain * phase))
+        output += outputAlpha * (target - output)
+
+        let sample = RespiratorySignalSample(
+            raw: rawSample,
+            highPassed: highPassed,
+            bandPassed: lowPassedBand2,
+            depth: depth,
+            output: output
+        )
+        return sample
+    }
+
+    private static func onePoleAlpha(cutoffHz: Double, sampleRate: Double) -> Double {
+        return 1.0 - exp(-2.0 * Double.pi * cutoffHz / sampleRate)
+    }
 }
 
 
