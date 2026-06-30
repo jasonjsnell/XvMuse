@@ -24,6 +24,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveML(noise: Double, tension: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceive(eegBaselineProgress progress: Double)
+    func didReceiveEEGPosition(thetaPan: Double, alphaPan: Double, betaPan: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
     
     //brainwaves
@@ -532,6 +533,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
 
         eeg.process(eegPacket: eegPacket)
+        delegate?.didReceiveEEGPosition(
+            thetaPan: eeg.position.panTheta,
+            alphaPan: eeg.position.panAlpha,
+            betaPan: eeg.position.panBeta,
+            thetaX: eeg.position.theta.x,
+            thetaY: eeg.position.theta.y,
+            alphaX: eeg.position.alpha.x,
+            alphaY: eeg.position.alpha.y,
+            betaX: eeg.position.beta.x,
+            betaY: eeg.position.beta.y
+        )
 
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         _mlManager.process(linearSpectrum: eeg.linearSpectrum)
@@ -900,9 +912,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //processes pre-recorded PPG data from muse framework
         //note: delegate callbacks happen inside the processTestPPG func
         processTestPPG(id: testDataSet)
-        
     }
-    
+
     public func stopTestData(){
         eegTestDataLoop.invalidate()
         ppgTestDataLoop.invalidate()
