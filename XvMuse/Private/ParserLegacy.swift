@@ -9,9 +9,6 @@
 import Foundation
 
 class ParserLegacy {
-    
-    private let debug:Bool = true
-    
 
     //MARK: - PACKET INDEX
     // many of the characteristics include a counter that moves up with each received packet

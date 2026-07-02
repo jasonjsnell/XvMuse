@@ -15,7 +15,6 @@ class TestEEGData {
     
     //helper classes
     private let _parser:ParserLegacy = ParserLegacy() //processes incoming data into useable / readable values
-    private var _fft:FFTManager = FFTManager()
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
     
     private var name:String

@@ -132,9 +132,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private let _stateAnalyzer: EEGStateAnalyzer
     private var latestNoisePct: Double = 0.0
     private var latestTensionPct: Double = 0.0
-    private var latestAccelPacket: XvAccelPacket?
-    private var _breathTraceStartTime: Double = 0.0
-    private var _lastBreathTracePrintTime: Double = 0.0
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -433,7 +430,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     
                     //if streams are valid...
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
-                        printBreathTraceIfNeeded(ppgStreams)
+                        
                         //send blood flow and resp streams to parent
                         delegate?.didReceive(ppgStreams: convert(musePPGStreams: ppgStreams))
                     }
@@ -465,7 +462,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                         )
                     )
                 )
-                rememberAccel(_accelPacket)
                 delegate?.didReceive(accelPacket: _accelPacket)
                 
                 
@@ -671,7 +667,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
             //if streams are valid...
             if let ppgStreams:MusePPGStreams = ppgResult.streams {
-                printBreathTraceIfNeeded(ppgStreams)
+
                 //send blood flow and resp streams to parent
                 delegate?.didReceive(ppgStreams: convert( musePPGStreams: ppgStreams))
             }
@@ -686,9 +682,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
     
     func didReceiveAthena(accelPacket: MuseAccelPacket) {
-       //receive muse accel, convert to xvaccel, and send to parent
+        //receive muse accel, convert to xvaccel, and send to parent
         let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
-        rememberAccel(_accelPacket)
         delegate?.didReceive(accelPacket: _accelPacket)
     }
     
@@ -919,14 +914,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         ppgTestDataLoop.invalidate()
     }
 
-    public func markInhale() {
-        printBreathPhaseMarker("INHALE")
-    }
-
-    public func markExhale() {
-        printBreathPhaseMarker("EXHALE")
-    }
-   
     
     //MARK: - Converters -
     
@@ -984,40 +971,4 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         )
     }
 
-    private func rememberAccel(_ packet: XvAccelPacket) {
-        latestAccelPacket = packet
-    }
-
-    private func printBreathTraceIfNeeded(_ streams: MusePPGStreams) {
-        guard let resp = streams.respDiagnostic else { return }
-
-        let now = Date().timeIntervalSince1970
-        if _breathTraceStartTime == 0.0 {
-            _breathTraceStartTime = now
-        }
-
-        guard now - _lastBreathTracePrintTime >= 0.25 else { return }
-        _lastBreathTracePrintTime = now
-
-        let t = now - _breathTraceStartTime
-        let accel = latestAccelPacket
-        let x = accel?.x ?? Double.nan
-        let y = accel?.y ?? Double.nan
-        let z = accel?.z ?? Double.nan
-        let movement = accel?.movement ?? Double.nan
-        let deviceLabel = "\(deviceName ?? .unknown)"
-
-        print(String(format: "BREATH TRACE | t:%.3f | dev:%@ | raw:%.2f | hp:%.5f | bp:%.5f | depth:%.5f | out:%.5f | move:%.5f | x:%.5f | y:%.5f | z:%.5f",
-                     t, deviceLabel, resp.raw, resp.lp1, resp.bandPassed, resp.depth, resp.output, movement, x, y, z))
-    }
-
-    private func printBreathPhaseMarker(_ phase: String) {
-        let now = Date().timeIntervalSince1970
-        if _breathTraceStartTime == 0.0 {
-            _breathTraceStartTime = now
-        }
-
-        let t = now - _breathTraceStartTime
-        print(String(format: "BREATH MARK | t:%.3f | %@", t, phase))
-    }
 }
