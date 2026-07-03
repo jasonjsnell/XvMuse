@@ -21,6 +21,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceive(linearSpectrum:[Double])
     
     //ML and state detection
+    func didReceiveQuiet(_ quiet: Double)
     func didReceiveML(noise: Double, tension: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceive(eegBaselineProgress progress: Double)
@@ -543,6 +544,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         _mlManager.process(linearSpectrum: eeg.linearSpectrum)
+        delegate?.didReceiveQuiet(gatedQuiet(fromRawQuiet: eeg.analysis.quiet))
         _stateAnalyzer.processBrainwave(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
@@ -599,6 +601,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         } else {
             delegate?.didReceiveSensorNoise(tp9: 0, af7: 0, af8: 0, tp10: 0)
         }
+    }
+
+    private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
+        var quiet = rawQuiet
+
+        if latestNoisePct > 70.0 {
+            quiet = min(quiet, 30.0)
+        } else if latestTensionPct > 70.0 {
+            quiet *= 0.6
+        }
+
+        return min(max(quiet, 0.0), 100.0)
     }
 
     func didReceiveBaselineProgress(_ progress: Double) {
