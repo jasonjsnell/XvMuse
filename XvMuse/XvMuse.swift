@@ -27,6 +27,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceive(eegBaselineProgress progress: Double)
     func didReceiveEEGPosition(thetaPan: Double, alphaPan: Double, betaPan: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+    func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     
     //brainwaves
     func didReceiveBrainwave(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
@@ -52,6 +53,10 @@ public protocol XvMuseDelegate:AnyObject {
     func museLostConnection()
     func didFindNearby(muses: [CBPeripheral])
     
+}
+
+public extension XvMuseDelegate {
+    func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
 }
 
 //MARK: - PACKETS -
@@ -101,7 +106,7 @@ internal struct MuseBattery {
 }
 
 //MARK: - MUSE -
-public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDelegate, EEGStateAnalyzerDelegate {
+public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDelegate, EEGStateAnalyzerDelegate, XvEEGNoteTriggerDelegate {
 
     //MARK: - vars
 
@@ -215,6 +220,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         bluetooth.start()
         
         _parserAthena.delegate = self
+        eeg.noteTriggers.delegate = self
         _mlManager.delegate = self
         _stateAnalyzer.delegate = self
     }
@@ -621,6 +627,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double) {
         delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
+    }
+
+    public func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {
+        delegate?.didReceiveEEGNoteTrigger(trigger)
     }
     
     //MARK: - Athena
