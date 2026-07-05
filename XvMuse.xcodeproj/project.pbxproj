@@ -84,6 +84,7 @@
 		BBEFB50E2E85417C005AEC3B /* MockPPGArousalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50D2E854177005AEC3B /* MockPPGArousalData.swift */; };
 		BBEFB5102E8541C4005AEC3B /* MockPPGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */; };
 		BBEFB5122E854291005AEC3B /* TestEEGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5112E85428C005AEC3B /* TestEEGCoffeeData.swift */; };
+		BBF829712FFACF8F00D0002A /* XvDataMapping.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBF829702FFACF8F00D0002A /* XvDataMapping.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -166,6 +167,7 @@
 		BBEFB50D2E854177005AEC3B /* MockPPGArousalData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGArousalData.swift; sourceTree = "<group>"; };
 		BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGCoffeeData.swift; sourceTree = "<group>"; };
 		BBEFB5112E85428C005AEC3B /* TestEEGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGCoffeeData.swift; sourceTree = "<group>"; };
+		BBF829702FFACF8F00D0002A /* XvDataMapping.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = XvDataMapping.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +175,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				BB48D8E12F707F14003622A7 /* XvSensors.framework in Frameworks */,
+				BBF829712FFACF8F00D0002A /* XvDataMapping.framework in Frameworks */,
 				BB48D8DD2F707F0F003622A7 /* XvEEG.framework in Frameworks */,
 			);
 		};
@@ -195,6 +198,7 @@
 		BB14EEB028B1A08900B2A14D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BBF829702FFACF8F00D0002A /* XvDataMapping.framework */,
 				BB48D8E02F707F14003622A7 /* XvSensors.framework */,
 				BB48D8DC2F707F0F003622A7 /* XvEEG.framework */,
 			);

@@ -5,6 +5,7 @@
 
 import Foundation
 import CoreML
+import XvDataMapping
 
 protocol EEGMLManagerDelegate: AnyObject {
     func didReceiveML(noise: Double, tension: Double, clean: Double)
@@ -17,9 +18,10 @@ final class EEGMLManager {
     private let mlEveryN: Int = 3
     private var mlCounter: Int = 0
 
-    private var smoothedTensionPct: Double = 0.0
-    private let tensionRiseSmoothing: Double = 0.12
-    private let tensionFallSmoothing: Double = 0.35
+    private let tensionSmoother = XvAttackReleaseSmoother(
+        attack: 0.32,
+        release: 0.35
+    )
 
     init() {
         do {
@@ -70,12 +72,7 @@ final class EEGMLManager {
                 return max(current, item.value * 100.0)
             }
 
-            smoothedTensionPct = asymSmooth(
-                old: smoothedTensionPct,
-                new: tensionScore,
-                rise: tensionRiseSmoothing,
-                fall: tensionFallSmoothing
-            )
+            let smoothedTensionPct = tensionSmoother.update(with: tensionScore)
 
             let cleanScore = max(0.0, 100.0 - max(noiseScore, smoothedTensionPct))
             delegate?.didReceiveML(noise: noiseScore, tension: smoothedTensionPct, clean: cleanScore)
@@ -118,12 +115,4 @@ final class EEGMLManager {
         return Array(spectrum[2..<endExclusive])
     }
 
-    private func clamp01(_ value: Double) -> Double {
-        min(max(value, 0.0), 1.0)
-    }
-
-    private func asymSmooth(old: Double, new: Double, rise: Double, fall: Double) -> Double {
-        let factor = new > old ? clamp01(rise) : clamp01(fall)
-        return (factor * new) + ((1.0 - factor) * old)
-    }
 }

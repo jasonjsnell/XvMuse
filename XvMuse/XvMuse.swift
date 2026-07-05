@@ -25,7 +25,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveML(noise: Double, tension: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceive(eegBaselineProgress progress: Double)
-    func didReceiveEEGPosition(thetaPan: Double, alphaPan: Double, betaPan: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
+    func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     
@@ -537,9 +537,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         eeg.process(eegPacket: eegPacket)
         delegate?.didReceiveEEGPosition(
+            deltaPan: eeg.position.panDelta,
             thetaPan: eeg.position.panTheta,
             alphaPan: eeg.position.panAlpha,
             betaPan: eeg.position.panBeta,
+            deltaX: eeg.position.delta.x,
+            deltaY: eeg.position.delta.y,
             thetaX: eeg.position.theta.x,
             thetaY: eeg.position.theta.y,
             alphaX: eeg.position.alpha.x,
