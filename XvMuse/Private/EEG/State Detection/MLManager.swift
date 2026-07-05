@@ -19,7 +19,7 @@ final class EEGMLManager {
     private var mlCounter: Int = 0
 
     private let tensionSmoother = XvAttackReleaseSmoother(
-        attack: 0.32,
+        attack: 0.55,
         release: 0.35
     )
 
