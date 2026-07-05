@@ -346,13 +346,14 @@ internal class MusePPG {
                 if !passInterval   { reasons.append(String(format: "interval(%.3f<%.3f)", timeSinceLastBeat, adaptiveMinimumInterval)) }
                 if !passThreshold  { reasons.append(String(format: "threshold(%.3f<%.3f)", candidatePeakValue, dynamicThreshold)) }
                 if !passProminence { reasons.append(String(format: "prominence(%.3f<%.3f)", peakProminence, minProminence)) }
-                print(String(format: "BEAT MISS | t:%.3f | %@ | expectedRR:%.3f | peak:%.3f | prom:%.3f | thr:%.3f",
+                /*print(String(format: "BEAT MISS | t:%.3f | %@ | expectedRR:%.3f | peak:%.3f | prom:%.3f | thr:%.3f",
                              refinedPeakTime,
                              reasons.joined(separator: " "),
                              expectedRR,
                              candidatePeakValue,
                              peakProminence,
                              dynamicThreshold))
+                 */
                 // print("MISS | \(reasons.joined(separator: " ")) | peak:\(String(format: "%.3f", candidatePeakValue))")
             }
         }

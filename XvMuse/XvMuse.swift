@@ -603,7 +603,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
             delegate?.didReceiveSensorNoise(tp9: tp9Noise, af7: af7Noise, af8: af8Noise, tp10: tp10Noise)
 
-            print("SENSOR NOISE | all:\(Int(noise.rounded()))  TP9(L Ear):\(Int(tp9Noise.rounded()))  AF7(L Frnt):\(Int(af7Noise.rounded()))  AF8(R Frnt):\(Int(af8Noise.rounded()))  TP10(R Ear):\(Int(tp10Noise.rounded()))")
+            //print("SENSOR NOISE | all:\(Int(noise.rounded()))  TP9(L Ear):\(Int(tp9Noise.rounded()))  AF7(L Frnt):\(Int(af7Noise.rounded()))  AF8(R Frnt):\(Int(af8Noise.rounded()))  TP10(R Ear):\(Int(tp10Noise.rounded()))")
         } else {
             delegate?.didReceiveSensorNoise(tp9: 0, af7: 0, af8: 0, tp10: 0)
         }
@@ -730,8 +730,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 //        TestEEGForeheadData(name: "Forehead"),
 //        TestEEGBlinksData(name: "Blinks"),
 //        
-        TestEEGRestingFocusData(name: "Resting Focus"),
+        
         TestEEGCodingData(name:"Coding"),
+        TestEEGRestingFocusData(name: "Resting Focus"),
 //
 //        TestEEGGammaBurstData(name: "Gamma Bursts")
         
