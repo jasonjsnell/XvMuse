@@ -151,7 +151,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         case .muse2:
             return 99.0
         case .museS, .museAthena:
-            return 85.0
+            return 90.0
         default:
             return 75.0
         }
@@ -431,8 +431,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 if let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
-                    allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
-                    allowsRespMetrics: latestNoisePct <= 30.0
+                    allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+                    allowsRespMetrics: latestNoisePct <= 35.0
                 ) {
                     
                     //if streams are valid...
@@ -688,8 +688,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
-            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
-            allowsRespMetrics: latestNoisePct <= 30.0
+            allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: latestNoisePct <= 35.0
         ) {
             
             //if streams are valid...
@@ -826,8 +826,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
         if let testPPGResult:MusePPGResult = _testPPG.update(
             withPPGPacket: testPPGPacket,
-            allowsHeartMetrics: latestNoisePct <= 30.0 && latestTensionPct < heartTensionThreshold,
-            allowsRespMetrics: latestNoisePct <= 30.0
+            allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: latestNoisePct <= 35.0
         ) {
             
             //if streams are valid...
