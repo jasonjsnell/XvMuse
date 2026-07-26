@@ -25,6 +25,7 @@ internal protocol MuseBluetoothObserver:AnyObject {
     func didLoseConnection()
     func isAttemptingConnection()
     func didFindNearby(muses:[CBPeripheral])
+    func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String)
 }
 
 public class MuseBluetooth:XvBluetoothDelegate {
@@ -82,8 +83,9 @@ public class MuseBluetooth:XvBluetoothDelegate {
     
     
     //MARK: - Updates from the Muse headband via Bluetooth -
-    public func update(state: String) {
-        //print("XvMuse: State:", state)
+    public func update(bluetoothStateDescription: String, rawState: CBManagerState) {
+        let bluetoothState = XvMuseBluetoothState(managerState: rawState)
+        delegate?.didReceiveBluetoothState(bluetoothState, message: bluetoothStateDescription)
     }
     
     public func discovered(targetDevice: CBPeripheral) {

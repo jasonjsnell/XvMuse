@@ -18,7 +18,7 @@ import CoreBluetooth
 
 public protocol XvBluetoothDelegate:AnyObject {
     
-    func update(state:String)
+    func update(bluetoothStateDescription: String, rawState: CBManagerState)
     
     //connecting
     func discovered(targetDevice:CBPeripheral)
@@ -100,6 +100,14 @@ class BluetoothListener:NSObject {
             if (debug){
                 print("BLUETOOTH: Connect")
             }
+
+            let currentState = _centralManager!.state
+            let currentMessage = BluetoothUtils.getDesc(forState: currentState)
+            delegate?.update(bluetoothStateDescription: currentMessage, rawState: currentState)
+
+            guard currentState == .poweredOn else {
+                return
+            }
             
             
             if (_serviceUUID != nil && _deviceUUID != nil) {
@@ -174,7 +182,7 @@ extension BluetoothListener: CBCentralManagerDelegate {
             BluetoothUtils.printState(state: central.state) //output status during debugging
         }
         
-        delegate?.update(state: BluetoothUtils.getDesc(forState: central.state))
+        delegate?.update(bluetoothStateDescription: BluetoothUtils.getDesc(forState: central.state), rawState: central.state)
         
     }
     
@@ -415,6 +423,3 @@ extension BluetoothListener: CBPeripheralDelegate {
         return nil
     }
 }
-
-
-

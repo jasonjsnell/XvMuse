@@ -14,6 +14,38 @@ import CoreBluetooth
 import XvSensors
 import XvEEG
 
+public enum XvMuseBluetoothState: Equatable {
+    case unknown
+    case resetting
+    case unsupported
+    case unauthorized
+    case poweredOff
+    case poweredOn
+
+    internal init(managerState: CBManagerState) {
+        switch managerState {
+        case .poweredOn:
+            self = .poweredOn
+        case .poweredOff:
+            self = .poweredOff
+        case .unsupported:
+            self = .unsupported
+        case .unauthorized:
+            self = .unauthorized
+        case .resetting:
+            self = .resetting
+        case .unknown:
+            self = .unknown
+        @unknown default:
+            self = .unknown
+        }
+    }
+
+    public var canScan: Bool {
+        self == .poweredOn
+    }
+}
+
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseDelegate:AnyObject {
     
@@ -52,11 +84,13 @@ public protocol XvMuseDelegate:AnyObject {
     func museDidDisconnect()
     func museLostConnection()
     func didFindNearby(muses: [CBPeripheral])
+    func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String)
     
 }
 
 public extension XvMuseDelegate {
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
+    func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
 }
 
 //MARK: - PACKETS -
@@ -242,6 +276,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public func didFindNearby(muses: [CBPeripheral]) {
         //print("XvMuse: didFindNearby", muses)
         delegate?.didFindNearby(muses: muses)
+    }
+
+    public func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {
+        delegate?.didReceiveBluetoothState(bluetoothState, message: message)
     }
     
     //MARK: User selects Muse
