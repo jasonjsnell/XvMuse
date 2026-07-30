@@ -51,6 +51,7 @@ public protocol XvMuseDelegate:AnyObject {
     
     //post FFT PSD
     func didReceive(linearSpectrum:[Double])
+    func didReceive(detailLinearSpectrum:[Double])
     
     //ML and state detection
     func didReceiveQuiet(_ quiet: Double)
@@ -89,6 +90,7 @@ public protocol XvMuseDelegate:AnyObject {
 }
 
 public extension XvMuseDelegate {
+    func didReceive(detailLinearSpectrum:[Double]) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
 }
@@ -218,6 +220,28 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         print(ppgSensorBytes)
         print("========== EEG/PPG Data End ==========")
     }
+
+    private static func museFrequencyBand(_ values: [Int], fallback: ClosedRange<Int>) -> ClosedRange<Int> {
+        guard values.count >= 2 else { return fallback }
+        let low = min(values[0], values[1])
+        let high = max(values[0], values[1])
+        return low...high
+    }
+
+    private static func museEEGConfig() -> XvEEGConfig {
+        let baseConfig = XvSupportedDevices.museConfig
+        let museBandConfig = baseConfig.withBandRanges((
+            delta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_DELTA, fallback: baseConfig.bandRanges.delta),
+            theta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_THETA, fallback: baseConfig.bandRanges.theta),
+            alpha: museFrequencyBand(MuseConstants.FREQUENCY_BAND_ALPHA, fallback: baseConfig.bandRanges.alpha),
+            beta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_BETA, fallback: baseConfig.bandRanges.beta),
+            gamma: museFrequencyBand(MuseConstants.FREQUENCY_BAND_GAMMA, fallback: baseConfig.bandRanges.gamma)
+        ))
+
+        return museBandConfig.withDetailBandRangeHz(
+            MuseConstants.DETAIL_BANDPASS_LOW_HZ...MuseConstants.DETAIL_BANDPASS_HIGH_HZ
+        )
+    }
     
     
     //MARK: - INIT -
@@ -236,7 +260,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             deviceCBUUID = CBUUID(string: deviceUUID!)
         }
         
-        eeg = XvmEEG(config: XvSupportedDevices.museConfig)
+        eeg = XvmEEG(config: Self.museEEGConfig())
         
         _eeg = MuseEEG()
         _testEEG = MuseEEG()
@@ -590,6 +614,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         )
 
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
+        delegate?.didReceive(detailLinearSpectrum: eeg.detailLinearSpectrum)
         _mlManager.process(linearSpectrum: eeg.linearSpectrum)
         delegate?.didReceiveQuiet(gatedQuiet(fromRawQuiet: eeg.analysis.quiet))
         _stateAnalyzer.processBrainwave(

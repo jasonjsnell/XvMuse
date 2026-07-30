@@ -9,7 +9,7 @@
 import Foundation
 import CoreBluetooth
 
-internal class MuseConstants {
+public class MuseConstants {
     
     public static let EEG_SENSOR_TOTAL:Int = 4
     
@@ -162,7 +162,7 @@ internal class MuseConstants {
     public static let FREQUENCY_BAND_DELTA:[Int] = [2,  3]
     public static let FREQUENCY_BAND_THETA:[Int] = [4,  7]
     public static let FREQUENCY_BAND_ALPHA:[Int] = [8,  12]
-    public static let FREQUENCY_BAND_BETA :[Int] = [14, 30]
+    public static let FREQUENCY_BAND_BETA :[Int] = [13, 30]
     public static let FREQUENCY_BAND_GAMMA:[Int] = [31, 44]
     
     public static let FREQUENCY_BAND_HIGH:Int = 45
@@ -201,6 +201,9 @@ internal class MuseConstants {
     public static let FREQUENCY_SLICE_MAX:Int = 128 //half the sampling rate
     public static let EEG_FFT_BINS:Int = 256
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
+    public static let DETAIL_BANDPASS_LOW_HZ:Double = 7.0
+    public static let DETAIL_BANDPASS_HIGH_HZ:Double = 20.0
+    public static let DETAIL_EEG_SENSOR_IDS:Set<Int> = [1, 3] //AF8 and AF7 forehead sensors
     
     //MARK: PPG
     public static let PPG_RESTING:Int = 0

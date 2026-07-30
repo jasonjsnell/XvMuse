@@ -91,8 +91,8 @@ public class FFTManager {
             _detailFilters.append(
                 FFTFilter(
                     sampleRate: MuseConstants.SAMPLING_RATE,
-                    lowCutHz: 5.0,
-                    highCutHz: 20.0
+                    lowCutHz: MuseConstants.DETAIL_BANDPASS_LOW_HZ,
+                    highCutHz: MuseConstants.DETAIL_BANDPASS_HIGH_HZ
                 )
             )
         }
@@ -119,9 +119,14 @@ public class FFTManager {
                 // Full Window: current unfiltered spectrum.
                 let fullResult:FFTResult? = _fullFFT.transform(epoch: epoch)
 
-                // Detail Window: same epoch, filtered to the intentional EEG detail band.
-                let detailEpoch:Epoch = _detailFilters[epoch.sensor].process(epoch: epoch)
-                let detailResult:FFTResult? = _detailFFT.transform(epoch: detailEpoch)
+                // Detail Window: forehead-only AF8/AF7 branch, filtered before FFT.
+                let detailResult:FFTResult?
+                if MuseConstants.DETAIL_EEG_SENSOR_IDS.contains(epoch.sensor) {
+                    let detailEpoch:Epoch = _detailFilters[epoch.sensor].process(epoch: epoch)
+                    detailResult = _detailFFT.transform(epoch: detailEpoch)
+                } else {
+                    detailResult = nil
+                }
 
                 if fullResult != nil || detailResult != nil {
                     return FFTResultSet(
