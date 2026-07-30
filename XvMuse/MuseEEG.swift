@@ -60,23 +60,27 @@ internal class MuseEEG {
     //Incoming data from device -> FFT
     //this is the entry point from the FFT process to where the data gets mapped out into different sensors, regions, waves, histories, etc...
 
-    public func update(withFFTResult: FFTResult?) {
+    public func update(withFFTResultSet: FFTResultSet?) {
         
         //fftResult is nil when the buffers are loading in the beginning and inbetween Epoch window firings
         
-        guard let _fftResult = withFFTResult else { return }
+        guard let _fftResultSet = withFFTResultSet else { return }
         //so when the fft result is valid...
         
         //MARK: Convert FFT result into Hz bin spectrum
-        let _powerSpectrum = _fftResult.power
+        let _powerSpectrum = _fftResultSet.full?.power
+        let _detailPowerSpectrum = _fftResultSet.detail?.power
         
         //MARK: Save spectrum into the correct sensor
         //what sensor is this?
-        let sensorIndex = getSensorPosition(from: _fftResult.sensor)
+        let sensorIndex = getSensorPosition(from: _fftResultSet.sensor)
         if sensorIndex >= 0 && sensorIndex < sensors.count {
-            sensors[sensorIndex].update(withFftPowerSpectrum: _powerSpectrum)
+            sensors[sensorIndex].update(
+                withFftPowerSpectrum: _powerSpectrum,
+                detailPowerSpectrum: _detailPowerSpectrum
+            )
         } else {
-            print("MuseEEG: Warning: sensor index out of range for id", _fftResult.sensor)
+            print("MuseEEG: Warning: sensor index out of range for id", _fftResultSet.sensor)
         }
         
         //and then the parent, XvMuse, then pulls data from the sensors in this class via eeg.TP9, eeg.FP1, (etc)

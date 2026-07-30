@@ -62,6 +62,14 @@ public struct FFTResult {
     public var power: [Double] // One-sided linear POWER per bin (|X[k]|^2), scaled for FFT length and window.
 }
 
+/* Holds the parallel FFT outputs from the same epoch:
+   full = unfiltered full-window spectrum, detail = 5-20 Hz pre-filtered spectrum. */
+public struct FFTResultSet {
+    public var sensor: Int
+    public var full: FFTResult?
+    public var detail: FFTResult?
+}
+
 
 public class FFTManager {
     
@@ -69,7 +77,9 @@ public class FFTManager {
     
     private var _buffers:[Buffer] = []
     private var _epochGenerator:EpochGenerator = EpochGenerator()
-    private lazy var _fft: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
+    private lazy var _fullFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
+    private lazy var _detailFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
+    private var _detailFilters:[FFTFilter] = []
     
     internal init() {
         
@@ -78,11 +88,18 @@ public class FFTManager {
         
         for i in 0..<MuseConstants.EEG_SENSOR_TOTAL {
             _buffers.append(Buffer(sensor:i))
+            _detailFilters.append(
+                FFTFilter(
+                    sampleRate: MuseConstants.SAMPLING_RATE,
+                    lowCutHz: 5.0,
+                    highCutHz: 20.0
+                )
+            )
         }
     }
     
     //An eeg data packet is sent in from the XvMuse class
-    internal func process(eegPacket:MuseEEGPacket) -> FFTResult? {
+    internal func process(eegPacket:MuseEEGPacket) -> FFTResultSet? {
         
         //make sure this is one of the main 4 sensors (2 forehead, 2 ears, not an AUX)
         let s = eegPacket.sensor
@@ -99,15 +116,20 @@ public class FFTManager {
             //once the epoch interval is complete...
             if let epoch:Epoch = _epochGenerator.getEpoch(from: dataStream) {
                 
-                //perform Fast Fourier Transform
-                if let fftResult:FFTResult = _fft.transform(epoch: epoch) {
-                    
-                    //return the result
-                    return fftResult
-                    
-                } //else {
-                    //print("FFT error")
-                //}
+                // Full Window: current unfiltered spectrum.
+                let fullResult:FFTResult? = _fullFFT.transform(epoch: epoch)
+
+                // Detail Window: same epoch, filtered to the intentional EEG detail band.
+                let detailEpoch:Epoch = _detailFilters[epoch.sensor].process(epoch: epoch)
+                let detailResult:FFTResult? = _detailFFT.transform(epoch: detailEpoch)
+
+                if fullResult != nil || detailResult != nil {
+                    return FFTResultSet(
+                        sensor: epoch.sensor,
+                        full: fullResult,
+                        detail: detailResult
+                    )
+                }
             }// else {
                // print("epoch error")
             //}
@@ -116,5 +138,94 @@ public class FFTManager {
         //}
         
         return nil
+    }
+}
+
+final class FFTFilter {
+    private let coefficients:[Double]
+
+    init(sampleRate:Double, lowCutHz:Double, highCutHz:Double, tapCount:Int = 101) {
+        let oddTapCount = tapCount % 2 == 0 ? tapCount + 1 : tapCount
+        coefficients = FFTFilter.makeBandPassCoefficients(
+            sampleRate: sampleRate,
+            lowCutHz: lowCutHz,
+            highCutHz: highCutHz,
+            tapCount: oddTapCount
+        )
+    }
+
+    func process(epoch:Epoch) -> Epoch {
+        Epoch(
+            sensor: epoch.sensor,
+            samples: process(samples: epoch.samples)
+        )
+    }
+
+    private func process(samples:[Double]) -> [Double] {
+        guard !samples.isEmpty else { return [] }
+
+        let half = coefficients.count / 2
+        var output:[Double] = Array(repeating: 0.0, count: samples.count)
+
+        for i in 0..<samples.count {
+            var y = 0.0
+            for tap in 0..<coefficients.count {
+                let sampleIndex = i + tap - half
+                guard sampleIndex >= 0 && sampleIndex < samples.count else { continue }
+                y += samples[sampleIndex] * coefficients[tap]
+            }
+            output[i] = y
+        }
+
+        return output
+    }
+
+    private static func makeBandPassCoefficients(
+        sampleRate:Double,
+        lowCutHz:Double,
+        highCutHz:Double,
+        tapCount:Int
+    ) -> [Double] {
+        let low = max(0.0, min(lowCutHz, sampleRate / 2.0))
+        let high = max(low, min(highCutHz, sampleRate / 2.0))
+        let middle = tapCount / 2
+
+        var coeffs:[Double] = []
+        coeffs.reserveCapacity(tapCount)
+
+        for n in 0..<tapCount {
+            let m = Double(n - middle)
+            let ideal:Double
+            if m == 0.0 {
+                ideal = 2.0 * (high - low) / sampleRate
+            } else {
+                ideal = (
+                    sin(2.0 * .pi * high * m / sampleRate) -
+                    sin(2.0 * .pi * low * m / sampleRate)
+                ) / (.pi * m)
+            }
+
+            let window = 0.54 - (0.46 * cos(2.0 * .pi * Double(n) / Double(tapCount - 1)))
+            coeffs.append(ideal * window)
+        }
+
+        return normalize(coefficients: coeffs, sampleRate: sampleRate, centerHz: (low + high) / 2.0)
+    }
+
+    private static func normalize(coefficients:[Double], sampleRate:Double, centerHz:Double) -> [Double] {
+        let middle = coefficients.count / 2
+        var real = 0.0
+        var imag = 0.0
+
+        for n in 0..<coefficients.count {
+            let m = Double(n - middle)
+            let phase = -2.0 * .pi * centerHz * m / sampleRate
+            real += coefficients[n] * cos(phase)
+            imag += coefficients[n] * sin(phase)
+        }
+
+        let gain = sqrt((real * real) + (imag * imag))
+        guard gain > 1e-9 else { return coefficients }
+        return coefficients.map { $0 / gain }
     }
 }

@@ -53,13 +53,11 @@ import XvSensors
 protocol ParserAthenaDelegate:AnyObject {
     func didReceiveAthena(accelPacket:MuseAccelPacket)
     func didReceiveAthena(batteryPacket:XvBatteryPacket)
-    func didReceiveAthenaEEGBuffers(
+    func didReceiveAthenaEEGBuffer(
         packetIndex:UInt8,
         timestamp:TimeInterval,
-        tp9: [Float],
-        af7: [Float],
-        af8: [Float],
-        tp10: [Float]
+        sensor: Int,
+        samples: [Float]
     )
     func didReceiveAthena(ppgPacket:MusePPGPacket)
 }
@@ -479,13 +477,31 @@ class ParserAthena {
                 af8Buffer.removeFirst(eegWindowSize)
                 tp10Buffer.removeFirst(eegWindowSize)
 
-                delegate?.didReceiveAthenaEEGBuffers(
+                // Emit one buffer at a time in the same sensor order used by legacy Muse:
+                // 0 TP10, 1 AF8, 2 TP9, 3 AF7. XvMuse publishes after AF7.
+                delegate?.didReceiveAthenaEEGBuffer(
                     packetIndex: packetIndex,
                     timestamp: timestamp,
-                    tp9: tp9Window,
-                    af7: af7Window,
-                    af8: af8Window,
-                    tp10: tp10Window
+                    sensor: 0,
+                    samples: tp10Window
+                )
+                delegate?.didReceiveAthenaEEGBuffer(
+                    packetIndex: packetIndex,
+                    timestamp: timestamp,
+                    sensor: 1,
+                    samples: af8Window
+                )
+                delegate?.didReceiveAthenaEEGBuffer(
+                    packetIndex: packetIndex,
+                    timestamp: timestamp,
+                    sensor: 2,
+                    samples: tp9Window
+                )
+                delegate?.didReceiveAthenaEEGBuffer(
+                    packetIndex: packetIndex,
+                    timestamp: timestamp,
+                    sensor: 3,
+                    samples: af7Window
                 )
             }
             

@@ -423,13 +423,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //2 TP09: left ear
             //3 AF07: left forehead
             case MuseConstants.CHAR_TP10:
-                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
+                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
             case MuseConstants.CHAR_AF8:
-                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
             case MuseConstants.CHAR_TP9:
-                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
             case MuseConstants.CHAR_AF7:
-                 _eeg.update(withFFTResult: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  
                  //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
                  processAndPublishEEGData(from: convert(museEEG: _eeg))
@@ -594,9 +594,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceiveQuiet(gatedQuiet(fromRawQuiet: eeg.analysis.quiet))
         _stateAnalyzer.processBrainwave(
             delta: eeg.delta.decibel,
-            theta: eeg.theta.decibel,
-            alpha: eeg.alpha.decibel,
-            beta: eeg.beta.decibel,
+            theta: eeg.detailTheta.decibel,
+            alpha: eeg.detailAlpha.decibel,
+            beta: eeg.detailBeta.decibel,
             gamma: eeg.gamma.decibel
         )
         delegate?.didReceiveBrainwave(
@@ -676,47 +676,30 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     //MARK: - Athena
     //packets received from Athena and passed up to the parent app
-    func didReceiveAthenaEEGBuffers(
+    func didReceiveAthenaEEGBuffer(
         packetIndex:UInt8,
         timestamp:TimeInterval,
-        tp9: [Float],
-        af7: [Float],
-        af8: [Float],
-        tp10: [Float]
+        sensor: Int,
+        samples: [Float]
     ) {
-        // Convert to Double to match legacy FFT pipeline
-        let tp9D  = tp9.map { Double($0) }
-        let af7D  = af7.map { Double($0) }
-        let af8D  = af8.map { Double($0) }
-        let tp10D = tp10.map { Double($0) }
-        
-        // Simple safety guard: all buffers should be same size
-        guard tp9D.count == af7D.count,
-              tp9D.count == af8D.count,
-              tp9D.count == tp10D.count,
-              tp9D.count > 0 else {
-            print("XvMuse: Error: Athena EEG buffers not the same size or empty")
+        guard !samples.isEmpty else {
+            print("XvMuse: Error: Athena EEG buffer is empty")
             return
         }
-        
-        func makePacket(samples: [Double], sensor: Int) -> MuseEEGPacket {
-            return MuseEEGPacket(
-                packetIndex: UInt16(packetIndex),
-                sensor: sensor,
-                timestamp: timestamp,
-                samples: samples
-            )
+
+        let eegPacket = MuseEEGPacket(
+            packetIndex: UInt16(packetIndex),
+            sensor: sensor,
+            timestamp: timestamp,
+            samples: samples.map { Double($0) }
+        )
+
+        _eeg.update(withFFTResultSet: _fft.process(eegPacket: eegPacket))
+
+        // AF7 is the final sensor in the legacy publish cycle.
+        if sensor == 3 {
+            processAndPublishEEGData(from: convert(museEEG: _eeg))
         }
-        
-        // Athena columns are TP9, AF7, AF8, TP10. Convert them to the legacy
-        // Muse IDs expected by MuseEEG: 0 TP10, 1 AF8, 2 TP9, 3 AF7.
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp9D,  sensor: 2)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af7D,  sensor: 3)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: af8D,  sensor: 1)))
-        _eeg.update(withFFTResult: _fft.process(eegPacket: makePacket(samples: tp10D, sensor: 0)))
-        
-        // Send a single combined EEG packet out, just like in the legacy path
-        processAndPublishEEGData(from: convert(museEEG: _eeg))
     }
     
     //Athena parser creates and sends a Muse PPG packet
@@ -837,7 +820,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //loop through all four sensors, getting test data and processing it via FFT
         for i:Int in 0..<4 {
             let testEEGPacket:MuseEEGPacket = _testEEGData[dataID].getPacket(for: i)
-            _testEEG.update(withFFTResult: _fft.process(eegPacket: testEEGPacket))
+            _testEEG.update(withFFTResultSet: _fft.process(eegPacket: testEEGPacket))
         }
         //after the four sensors are processed, return the object to use by the application
         return convert(museEEG: _testEEG)
@@ -992,22 +975,26 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.TP.rawValue,
                     index: 9,
-                    spectrum: museEEG.TP9.linearSpectrum
+                    spectrum: museEEG.TP9.linearSpectrum,
+                    detailSpectrum: museEEG.TP9.detailLinearSpectrum
                 ),
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.AF.rawValue,
                     index: 7,
-                    spectrum: museEEG.AF7.linearSpectrum
+                    spectrum: museEEG.AF7.linearSpectrum,
+                    detailSpectrum: museEEG.AF7.detailLinearSpectrum
                 ),
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.AF.rawValue,
                     index: 8,
-                    spectrum: museEEG.AF8.linearSpectrum
+                    spectrum: museEEG.AF8.linearSpectrum,
+                    detailSpectrum: museEEG.AF8.detailLinearSpectrum
                 ),
                 XvEEGSensorPacket(
                     area: XvEEGScalpLocation.TP.rawValue,
                     index: 10,
-                    spectrum: museEEG.TP10.linearSpectrum
+                    spectrum: museEEG.TP10.linearSpectrum,
+                    detailSpectrum: museEEG.TP10.detailLinearSpectrum
                 )
             ]
         )

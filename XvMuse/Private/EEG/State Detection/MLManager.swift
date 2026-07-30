@@ -66,11 +66,19 @@ final class EEGMLManager {
 
             let tensionScore = probs.reduce(0.0) { current, item in
                 let normalized = item.key.lowercased()
-                guard normalized != "clean", normalized != "noise", normalized != "loose" else {
+                guard normalized != "clean",
+                      normalized != "noise",
+                      normalized != "loose",
+                      normalized != "jaw" else {
                     return current
                 }
                 return max(current, item.value * 100.0)
             }
+            let labelSummary = probs
+                .sorted { $0.value > $1.value }
+                .map { String(format: "%@:%0.1f", $0.key, $0.value * 100.0) }
+                .joined(separator: " ")
+            print(String(format: "ML LABELS | %@ | jaw ignored | tensionRaw:%0.1f", labelSummary, tensionScore))
 
             let smoothedTensionPct = tensionSmoother.update(with: tensionScore)
 
