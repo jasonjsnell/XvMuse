@@ -8,8 +8,16 @@ import CoreML
 import XvDataMapping
 
 protocol EEGMLManagerDelegate: AnyObject {
-    func didReceiveML(noise: Double, tension: Double, clean: Double)
+    func didReceiveMLNoise(noise: Double, clean: Double)
 }
+
+/* The model now answers exactly one question: is this signal noise, or is it not?
+
+ It used to also report muscle tension and jaw clenching, but those are far better measured
+ directly off the spectrum — EMG has a specific frequency range and shows up as an obvious spike
+ above the resting level, which needs no model. Every label other than noise and loose is
+ therefore ignored here. Clean is simply the inverse of noise, and it is what opens the gate for
+ baseline collection and state scoring. */
 
 final class EEGMLManager {
     weak var delegate: EEGMLManagerDelegate?
@@ -17,11 +25,6 @@ final class EEGMLManager {
     private let model: MLModel?
     private let mlEveryN: Int = 3
     private var mlCounter: Int = 0
-
-    private let tensionSmoother = XvAttackReleaseSmoother(
-        attack: 0.55,
-        release: 0.35
-    )
 
     init() {
         do {
@@ -62,28 +65,13 @@ final class EEGMLManager {
                 return 0.0
             }
 
+            /* "noise" and "loose" both mean the same thing here: this is not usable brain
+             signal. Whichever the model is more confident about is the one that counts.
+             Every other label, tension and jaw included, is deliberately ignored. */
             let noiseScore = max(prob("noise"), prob("loose")) * 100.0
+            let cleanScore = max(0.0, 100.0 - noiseScore)
 
-            let tensionScore = probs.reduce(0.0) { current, item in
-                let normalized = item.key.lowercased()
-                guard normalized != "clean",
-                      normalized != "noise",
-                      normalized != "loose",
-                      normalized != "jaw" else {
-                    return current
-                }
-                return max(current, item.value * 100.0)
-            }
-            let labelSummary = probs
-                .sorted { $0.value > $1.value }
-                .map { String(format: "%@:%0.1f", $0.key, $0.value * 100.0) }
-                .joined(separator: " ")
-            print(String(format: "ML LABELS | %@ | jaw ignored | tensionRaw:%0.1f", labelSummary, tensionScore))
-
-            let smoothedTensionPct = tensionSmoother.update(with: tensionScore)
-
-            let cleanScore = max(0.0, 100.0 - max(noiseScore, smoothedTensionPct))
-            delegate?.didReceiveML(noise: noiseScore, tension: smoothedTensionPct, clean: cleanScore)
+            delegate?.didReceiveMLNoise(noise: noiseScore, clean: cleanScore)
         } catch {
             print("❌ EEGMLManager: prediction failed:", error)
         }

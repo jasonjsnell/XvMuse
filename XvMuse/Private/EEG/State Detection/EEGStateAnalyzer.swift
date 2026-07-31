@@ -10,8 +10,452 @@ protocol EEGStateAnalyzerDelegate: AnyObject {
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
 }
 
+/* Measures brainwave states from the pre-filtered detail spectrum.
+
+ FLOW
+   detail spectrum (already band-passed before the FFT, forehead sensors only)
+     -> undo the filter's own frequency response
+     -> reduce to three numbers: centroid, spread, total power
+     -> compare each against this person's running baseline
+     -> blend into focus / meditation / dreamy / quiet
+
+ BASELINE
+ There is no warm-up discard and no locked/unlocked gate. The baseline starts learning from the
+ first clean sample and scores publish from the first clean sample. Early samples are weighted
+ down rather than thrown away, because electrode contact is usually still settling, and the
+ spread of each measurement is blended against a prior so a one-sample baseline is still safe to
+ divide by. The result gets steadily more accurate instead of arriving all at once, so the
+ collection window can be generous without the app feeling dead while it fills.
+
+ Learning stops once the baseline is mature, otherwise it would slowly follow the user into
+ whatever state they held and quietly re-zero their own scores. */
+
 final class EEGStateAnalyzer {
+
     weak var delegate: EEGStateAnalyzerDelegate?
+
+    //MARK: - Tunables
+
+    //signal must be at least this clean before anything is measured or learned
+    private let cleanThreshold: Double = 60.0
+
+    //how often scores are published, and how hard they are smoothed
+    private let publishInterval: TimeInterval = 0.25
+    private let scoreSmoothing: Double = 0.18
+
+    /* Early samples count, they just count less. Weight ramps from warmupMinimumWeight up to
+     full over warmupRampSeconds of clean time. */
+    private let warmupRampSeconds: TimeInterval = 15.0
+    private let warmupMinimumWeight: Double = 0.25
+
+    //clean seconds of observation before the baseline stops learning
+    private let baselineMaturitySeconds: TimeInterval = 90.0
+
+    /* Muscle tension above this blocks baseline learning, though scoring carries on against
+     whatever baseline already exists. A clench blasts energy right across the spectrum, so even
+     a few seconds of it would drag the personal normal somewhere it should never have gone —
+     and unlike a bad score, a polluted baseline stays wrong for the rest of the session. */
+    private let baselineTensionCeiling: Double = 40.0
+
+    /* Prior strength, in the same units as accumulated sample weight (roughly seconds).
+     Small, because it only needs to cover the first few seconds before real data takes over. */
+    private let priorWeight: Double = 4.0
+
+    //assumed spread of each measurement before the person's own variability is known
+    private let priorCentroidSD: Double = 1.5   //Hz
+    private let priorSpreadSD: Double = 0.8     //Hz
+    private let priorLogPowerSD: Double = 0.30  //log10 units, so about a 2x swing
+
+    //how far back the "is the centroid parked or wandering" judgement looks
+    private let stabilityWindow: TimeInterval = 8.0
+
+    //ignore bins the filter has pushed below half amplitude; correcting them amplifies noise
+    private let minimumFilterResponse: Double = 0.5
+
+    //MARK: - Diagnostics
+    //set false to silence the per-second state log
+    private let logStates: Bool = true
+    private let logInterval: TimeInterval = 1.0
+    private var lastLogTime: Date? = nil
+    private let launchTime = Date()
+
+    //MARK: - Signal quality
+
+    private var latestEffectiveCleanPct: Double = 0.0
+    private var latestTensionPct: Double = 0.0
+    private let effectiveCleanRiseSmoothing: Double = 0.35
+    private let effectiveCleanFallSmoothing: Double = 0.12
+
+    //full-spectrum band levels in dB, used for dreamy only
+    private var latestBands: BandBalance? = nil
+
+    //MARK: - Detail window mapping
+
+    private let usableBins: [Int]       //spectrum indices inside the trusted part of the band
+    private let usableFreqs: [Double]   //centre frequency of each, in Hz
+    private let compensation: [Double]  //1 / |H(f)|^2, undoes the band-pass filter's own shape
+
+    //MARK: - Baseline
+
+    private var centroidStat = WeightedStat()
+    private var spreadStat = WeightedStat()
+    private var logPowerStat = WeightedStat()
+    private var cleanTimeAccum: TimeInterval = 0
+    private var lastSampleTime: Date? = nil
+
+    //MARK: - Stability
+
+    private var recentCentroids: [(value: Double, timestamp: Date)] = []
+
+    private var lastPublish: Date? = nil
+    private let scorer = EEGStateScorer()
+
+    //MARK: - Init
+
+    init(
+        sampleRate: Double = MuseConstants.SAMPLING_RATE,
+        fftBins: Int = MuseConstants.EEG_FFT_BINS,
+        lowHz: Double = MuseConstants.DETAIL_BANDPASS_LOW_HZ,
+        highHz: Double = MuseConstants.DETAIL_BANDPASS_HIGH_HZ
+    ) {
+        let binWidthHz = sampleRate / Double(fftBins)
+
+        /* Rebuild the same filter the detail spectrum was produced with, purely to read back its
+         frequency response. The filter ramps rather than cuts, so bins near the edges of the band
+         arrive quieter than the brain actually was there — without correcting for that, a centroid
+         would largely be measuring the filter. */
+        let filter = FFTFilter(sampleRate: sampleRate, lowCutHz: lowHz, highCutHz: highHz)
+
+        var bins: [Int] = []
+        var freqs: [Double] = []
+        var comp: [Double] = []
+
+        for bin in 0..<(fftBins / 2) {
+            let hz = Double(bin) * binWidthHz
+            guard hz >= lowHz, hz <= highHz else { continue }
+            let magnitude = filter.magnitudeResponse(atHz: hz)
+            guard magnitude >= minimumFilterResponse else { continue }
+            bins.append(bin)
+            freqs.append(hz)
+            comp.append(1.0 / (magnitude * magnitude))
+        }
+
+        //fallback: if the filter turned out too soft to trust anywhere, measure the band flat
+        if bins.count < 4 {
+            bins.removeAll(); freqs.removeAll(); comp.removeAll()
+            for bin in 0..<(fftBins / 2) {
+                let hz = Double(bin) * binWidthHz
+                guard hz >= lowHz, hz <= highHz else { continue }
+                bins.append(bin)
+                freqs.append(hz)
+                comp.append(1.0)
+            }
+            print("⚠️ EEGStateAnalyzer: filter response too soft to compensate, measuring band flat")
+        }
+
+        usableBins = bins
+        usableFreqs = freqs
+        compensation = comp
+
+        print("📐 EEGStateAnalyzer: detail window \(lowHz)-\(highHz) Hz, \(bins.count) usable bins")
+    }
+
+    //MARK: - Input
+
+    func updateSignalQuality(clean: Double, tension: Double) {
+
+        latestTensionPct = tension
+
+        /* Muscle tension makes the spectrum look busier than the brain actually is, so it caps
+         how clean the signal is allowed to count as rather than being handled separately. */
+        let target: Double
+        if tension > 75.0 {
+            target = min(clean, 25.0)
+        } else if tension > 60.0 {
+            target = min(clean, 50.0)
+        } else {
+            target = clean
+        }
+
+        latestEffectiveCleanPct = asymSmooth(
+            old: latestEffectiveCleanPct,
+            new: target,
+            rise: effectiveCleanRiseSmoothing,
+            fall: effectiveCleanFallSmoothing
+        )
+    }
+
+    /* Full-spectrum band levels in dB. Dreamy is scored from these rather than from the detail
+     window, since theta sits below the detail window's low cutoff. Call before
+     processDetailSpectrum; the stored values are used on the next publish. */
+    func updateBands(
+        delta: Double,
+        theta: Double,
+        alpha: Double,
+        beta: Double,
+        gamma: Double,
+        quiet: Double
+    ) {
+        latestBands = BandBalance(
+            delta: delta,
+            theta: theta,
+            alpha: alpha,
+            beta: beta,
+            gamma: gamma,
+            quiet: quiet
+        )
+    }
+
+    func processDetailSpectrum(_ spectrum: [Double]) {
+
+        guard !spectrum.isEmpty, !usableBins.isEmpty else { return }
+
+        let now = Date()
+        let dt = lastSampleTime.map { now.timeIntervalSince($0) } ?? 0
+        lastSampleTime = now
+
+        guard latestEffectiveCleanPct >= cleanThreshold else { return }
+        guard let features = measure(spectrum, at: now) else { return }
+
+        //the same sample both teaches the baseline and produces a score
+        learn(from: features, dt: dt)
+        trackStability(features, now: now)
+        publishIfDue(features, now: now)
+    }
+
+    func reset() {
+        centroidStat.reset()
+        spreadStat.reset()
+        logPowerStat.reset()
+        cleanTimeAccum = 0
+        lastSampleTime = nil
+        recentCentroids.removeAll()
+        lastPublish = nil
+        latestEffectiveCleanPct = 0
+        latestTensionPct = 0
+        latestBands = nil
+        scorer.reset()
+    }
+
+    //MARK: - Measurement
+
+    /* Reduce one spectrum to three independent numbers. Filter compensation happens here, so
+     everything downstream is working with the spectrum the brain actually produced. */
+    private func measure(_ spectrum: [Double], at now: Date) -> DetailFeatures? {
+
+        var powers = [Double](repeating: 0, count: usableBins.count)
+        var total = 0.0
+        var weightedFrequency = 0.0
+
+        for (i, bin) in usableBins.enumerated() {
+            guard bin < spectrum.count else { continue }
+            let power = max(0.0, spectrum[bin]) * compensation[i]
+            powers[i] = power
+            total += power
+            weightedFrequency += power * usableFreqs[i]
+        }
+
+        guard total > 1e-12, total.isFinite else { return nil }
+
+        //balance point of the distribution
+        let centroid = weightedFrequency / total
+
+        //width of the distribution around that balance point
+        var variance = 0.0
+        for (i, power) in powers.enumerated() {
+            let offset = usableFreqs[i] - centroid
+            variance += power * offset * offset
+        }
+        let spread = sqrt(max(0.0, variance / total))
+
+        guard centroid.isFinite, spread.isFinite else { return nil }
+
+        //power is log-distributed, so baseline statistics belong in log space
+        return DetailFeatures(
+            centroidHz: centroid,
+            spreadHz: spread,
+            logPower: log10(total + 1e-12),
+            timestamp: now
+        )
+    }
+
+    //MARK: - Baseline
+
+    private func learn(from features: DetailFeatures, dt: TimeInterval) {
+
+        guard cleanTimeAccum < baselineMaturitySeconds else { return }
+
+        //a clench distorts the whole spectrum; sit those moments out rather than learning from them
+        guard latestTensionPct < baselineTensionCeiling else { return }
+
+        //clamp so a dropout or a backgrounded app doesn't dump a huge chunk of time in at once
+        cleanTimeAccum += min(max(dt, 0.0), 0.5)
+
+        let ramp = min(1.0, cleanTimeAccum / warmupRampSeconds)
+        let weight = warmupMinimumWeight + ((1.0 - warmupMinimumWeight) * ramp)
+
+        centroidStat.add(features.centroidHz, weight: weight)
+        spreadStat.add(features.spreadHz, weight: weight)
+        logPowerStat.add(features.logPower, weight: weight)
+
+        delegate?.didReceiveBaselineProgress(baselineProgress)
+
+        if cleanTimeAccum >= baselineMaturitySeconds {
+            print(String(
+                format: "✅ Baseline mature — centroid %.2f Hz (sd %.2f), spread %.2f Hz, logPower %.2f",
+                centroidStat.mean,
+                centroidStat.standardDeviation(priorSD: priorCentroidSD, priorWeight: priorWeight),
+                spreadStat.mean,
+                logPowerStat.mean
+            ))
+        }
+    }
+
+    private var baselineProgress: Double {
+        min(100.0, (cleanTimeAccum / max(baselineMaturitySeconds, 1e-6)) * 100.0)
+    }
+
+    //MARK: - Stability
+
+    private func trackStability(_ features: DetailFeatures, now: Date) {
+        recentCentroids.append((features.centroidHz, now))
+        let cutoff = now.addingTimeInterval(-stabilityWindow)
+        recentCentroids.removeAll { $0.timestamp < cutoff }
+    }
+
+    /* How still the centroid has been holding, 0 (wandering) to 1 (parked), judged against this
+     person's own normal variability rather than an absolute number of Hz. */
+    private var centroidStability: Double {
+
+        guard recentCentroids.count >= 4 else { return 0.5 }
+
+        let values = recentCentroids.map { $0.value }
+        let mean = values.reduce(0, +) / Double(values.count)
+        let variance = values.reduce(0) { $0 + pow($1 - mean, 2) } / Double(values.count)
+        let recentSD = sqrt(variance)
+
+        let personalSD = centroidStat.standardDeviation(
+            priorSD: priorCentroidSD,
+            priorWeight: priorWeight
+        )
+
+        let ratio = recentSD / max(personalSD, 1e-6)
+        return clamp01(1.0 - ((ratio - 0.4) / 1.4))
+    }
+
+    //MARK: - Output
+
+    private func publishIfDue(_ features: DetailFeatures, now: Date) {
+
+        if let last = lastPublish, now.timeIntervalSince(last) < publishInterval { return }
+        lastPublish = now
+
+        let zCentroid = centroidStat.z(features.centroidHz, priorSD: priorCentroidSD, priorWeight: priorWeight)
+        let zSpread = spreadStat.z(features.spreadHz, priorSD: priorSpreadSD, priorWeight: priorWeight)
+        let zPower = logPowerStat.z(features.logPower, priorSD: priorLogPowerSD, priorWeight: priorWeight)
+
+        let scores = scorer.applyStateScores(
+            zCentroid: zCentroid,
+            zPower: zPower,
+            zSpread: zSpread,
+            stability: centroidStability,
+            bands: latestBands,
+            tension: latestTensionPct,
+            smoothing: scoreSmoothing
+        )
+
+        delegate?.didReceiveBrainwaveState(
+            meditation: scores.meditation,
+            focus: scores.focus,
+            dreamy: scores.dreamy
+        )
+
+        logState(
+            features: features,
+            scores: scores,
+            zCentroid: zCentroid,
+            zSpread: zSpread,
+            zPower: zPower,
+            now: now
+        )
+    }
+
+    /* Per-second diagnostic dump. Prints the inputs to every score alongside the scores, because
+     a score on its own only says something is wrong, never why.
+
+     Line 1 — the detail window: raw measurement, then how unusual it is for this person, which is
+              what actually drives focus and meditation. Also baseline maturity, since early
+              z-scores lean on the prior rather than on real evidence.
+     Line 2 — the full spectrum band balance and the dreamy breakdown, split into the shape that
+              says it looks drowsy and the credibility that says whether to believe it. */
+    private func logState(
+        features: DetailFeatures,
+        scores: (meditation: Double, focus: Double, dreamy: Double),
+        zCentroid: Double,
+        zSpread: Double,
+        zPower: Double,
+        now: Date
+    ) {
+        guard logStates else { return }
+        if let last = lastLogTime, now.timeIntervalSince(last) < logInterval { return }
+        lastLogTime = now
+
+        let elapsed = now.timeIntervalSince(launchTime)
+
+        print(String(
+            format: "🧠 t:%6.1f | foc:%3.0f med:%3.0f drm:%3.0f | cen:%5.2fHz z%+5.2f | spr:%5.2fHz z%+5.2f | pow z%+5.2f | stab:%4.2f | base:%3.0f%% | clean:%3.0f tens:%3.0f",
+            elapsed,
+            scores.focus, scores.meditation, scores.dreamy,
+            features.centroidHz, zCentroid,
+            features.spreadHz, zSpread,
+            zPower,
+            centroidStability,
+            baselineProgress,
+            latestEffectiveCleanPct,
+            latestTensionPct
+        ))
+
+        if let bands = latestBands {
+            print(String(
+                format: "🌙 t:%6.1f | Δ%6.1f Θ%6.1f Α%6.1f Β%6.1f Γ%6.1f | quiet:%3.0f | shape:%4.2f × cred:%4.2f (fast:%4.2f still:%4.2f)",
+                elapsed,
+                bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
+                bands.quiet,
+                scorer.dreamyShape,
+                scorer.dreamyCredibility,
+                scorer.dreamyFastBands,
+                scorer.dreamyStillness
+            ))
+        }
+    }
+
+    //MARK: - Helpers
+
+    private func asymSmooth(old: Double, new: Double, rise: Double, fall: Double) -> Double {
+        let factor = new > old ? clamp01(rise) : clamp01(fall)
+        return (factor * new) + ((1.0 - factor) * old)
+    }
+
+    private func clamp01(_ x: Double) -> Double {
+        max(0.0, min(1.0, x))
+    }
+}
+
+
+//MARK: - ARCHIVED -
+
+/* Previous state detection: relative band powers averaged into 10 second epochs, z-scored
+ against a baseline that was locked after a 15 second warm-up discard plus 30 seconds of
+ collection, with no scores at all until that finished. Replaced by the detail-window analyzer
+ above. Kept for reference; nothing in the live path constructs it. */
+
+protocol LegacyEEGStateAnalyzerDelegate: AnyObject {
+    func didReceiveBaselineProgress(_ progress: Double)
+    func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+}
+
+final class LegacyEEGStateAnalyzer {
+    weak var delegate: LegacyEEGStateAnalyzerDelegate?
 
     private var latestCleanPct: Double = 0.0
     private var latestEffectiveCleanPct: Double = 0.0
@@ -62,7 +506,7 @@ final class EEGStateAnalyzer {
     private var lastEpochZBeta: Double = 0.0
     private var lastEpochFAAShift: Double? = nil
 
-    private let scorer = EEGStateScorer()
+    private let scorer = LegacyEEGStateScorer()
 
     func updateSignalQuality(clean: Double, tension: Double) {
         latestCleanPct = clean

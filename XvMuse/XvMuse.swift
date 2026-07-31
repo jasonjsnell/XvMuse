@@ -55,7 +55,7 @@ public protocol XvMuseDelegate:AnyObject {
     
     //ML and state detection
     func didReceiveQuiet(_ quiet: Double)
-    func didReceiveML(noise: Double, tension: Double, clean: Double)
+    func didReceiveML(noise: Double, tension: Double, blink: Double, electrical: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceive(eegBaselineProgress progress: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
@@ -173,7 +173,16 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private let _mlManager: EEGMLManager
     private let _stateAnalyzer: EEGStateAnalyzer
     private var latestNoisePct: Double = 0.0
+    private var latestCleanPct: Double = 0.0
     private var latestTensionPct: Double = 0.0
+    private var latestBlinkPct: Double = 0.0
+    private var latestElectricalPct: Double = 0.0
+
+    //per-second signal quality log. Runs even when the clean gate is blocking state scoring,
+    //so a silent state log can be told apart from a blocked one.
+    private let logSignalQuality: Bool = true
+    private var lastSignalLogTime: Date? = nil
+    private let signalLogLaunchTime: Date = Date()
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -616,14 +625,50 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         delegate?.didReceive(detailLinearSpectrum: eeg.detailLinearSpectrum)
         _mlManager.process(linearSpectrum: eeg.linearSpectrum)
-        delegate?.didReceiveQuiet(gatedQuiet(fromRawQuiet: eeg.analysis.quiet))
-        _stateAnalyzer.processBrainwave(
-            delta: eeg.delta.decibel,
-            theta: eeg.detailTheta.decibel,
-            alpha: eeg.detailAlpha.decibel,
-            beta: eeg.detailBeta.decibel,
-            gamma: eeg.gamma.decibel
+
+        /* Signal quality is emitted from here rather than from the ML callback, because only one
+         of its three parts comes from the model. Noise is the model's job; tension and blink are
+         measured straight off the spectrum by XvEEGAnalysis, each against its own drifting
+         resting level. Publishing all of it on the EEG cadence keeps the three in step.
+
+         Both read the device average across all four sensors. Forehead and brow tension spikes
+         the 20-35 Hz window just as hard as jaw tension does, so limiting tension to the ears
+         would miss half of what it is there to catch. */
+        latestTensionPct = eeg.analysis.tension
+        latestBlinkPct = eeg.analysis.blink
+        latestElectricalPct = eeg.analysis.electrical
+
+        _stateAnalyzer.updateSignalQuality(clean: latestCleanPct, tension: latestTensionPct)
+
+        delegate?.didReceiveML(
+            noise: latestNoisePct,
+            tension: latestTensionPct,
+            blink: latestBlinkPct,
+            electrical: latestElectricalPct,
+            clean: latestCleanPct
         )
+
+        //Quiet: absolute low activity across the whole bandwidth, no baseline involved
+        let rawQuiet = eeg.analysis.quiet
+        let publishedQuiet = gatedQuiet(fromRawQuiet: rawQuiet)
+        delegate?.didReceiveQuiet(publishedQuiet)
+
+        logSignal(rawQuiet: rawQuiet, gatedQuiet: publishedQuiet)
+
+        /* Focus and meditation are measured from the clean detail window against a personal
+         baseline. Dreamy cannot be: the detail window starts at 8 Hz and theta lives below that,
+         so it is read from the full-spectrum band balance instead. */
+        _stateAnalyzer.updateBands(
+            delta: eeg.delta.decibel,
+            theta: eeg.theta.decibel,
+            alpha: eeg.alpha.decibel,
+            beta: eeg.beta.decibel,
+            gamma: eeg.gamma.decibel,
+            //raw, not gated — the gated value already carries tension damping, which dreamy
+            //applies separately, and double-counting it would suppress dreamy twice over
+            quiet: eeg.analysis.quiet
+        )
+        _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
         delegate?.didReceiveBrainwave(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
@@ -633,7 +678,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         )
         
         if let faa = eeg.faa {
-            _stateAnalyzer.processFAA(faa)
             delegate?.didReceive(faa: faa)
         }
         
@@ -646,11 +690,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         )
     }
 
-    func didReceiveML(noise: Double, tension: Double, clean: Double) {
+    func didReceiveMLNoise(noise: Double, clean: Double) {
         latestNoisePct = noise
-        latestTensionPct = tension
-        _stateAnalyzer.updateSignalQuality(clean: clean, tension: tension)
-        delegate?.didReceiveML(noise: noise, tension: tension, clean: clean)
+        latestCleanPct = clean
+
+        //the combined signal-quality update is published on the EEG cadence, not here
 
         // Per-sensor noise localization: only when the device-level (averaged) noise is high, run each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each sensor judged independently (no peer comparison) so "all loose / headset off" → all high.
         if noise > 10.0 {
@@ -675,14 +719,41 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
     }
 
+    /* Per-second signal quality dump. Deliberately outside the clean gate: when the state log
+     goes silent this is what says whether the signal was rejected or simply absent. */
+    private func logSignal(rawQuiet: Double, gatedQuiet: Double) {
+
+        guard logSignalQuality else { return }
+
+        let now = Date()
+        if let last = lastSignalLogTime, now.timeIntervalSince(last) < 1.0 { return }
+        lastSignalLogTime = now
+
+        print(String(
+            format: "📶 t:%6.1f | noise:%3.0f clean:%3.0f | tens:%3.0f blink:%3.0f elec:%3.0f | quiet raw:%3.0f gated:%3.0f",
+            now.timeIntervalSince(signalLogLaunchTime),
+            latestNoisePct,
+            latestCleanPct,
+            latestTensionPct,
+            latestBlinkPct,
+            latestElectricalPct,
+            rawQuiet,
+            gatedQuiet
+        ))
+    }
+
     private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
         var quiet = rawQuiet
 
+        //an unusable signal can't be called quiet, whatever the numbers say
         if latestNoisePct > 70.0 {
             quiet = min(quiet, 30.0)
-        } else if latestTensionPct > 70.0 {
-            quiet *= 0.6
         }
+
+        /* Muscle tension scales it down on the same ramp dreamy uses, so both relaxed states
+         respond to a clench identically. Replaces an all-or-nothing cut at 70, which meant the
+         score sat untouched through a moderate clench and then dropped by 40% in one frame. */
+        quiet *= RelaxedStateGate.damping(forTension: latestTensionPct)
 
         return min(max(quiet, 0.0), 100.0)
     }

@@ -148,15 +148,43 @@ public class FFTManager {
 
 final class FFTFilter {
     private let coefficients:[Double]
+    private let sampleRate:Double
 
     init(sampleRate:Double, lowCutHz:Double, highCutHz:Double, tapCount:Int = 101) {
         let oddTapCount = tapCount % 2 == 0 ? tapCount + 1 : tapCount
+        self.sampleRate = sampleRate
         coefficients = FFTFilter.makeBandPassCoefficients(
             sampleRate: sampleRate,
             lowCutHz: lowCutHz,
             highCutHz: highCutHz,
             tapCount: oddTapCount
         )
+    }
+
+    /* How much this filter passes at a given frequency, 0 (fully blocked) to ~1 (fully passed).
+
+     A windowed-sinc doesn't cut like scissors, it ramps. With 101 taps at 256 Hz the ramp is
+     several Hz wide on each side, so bins near the edges of the passband come out quieter than
+     the brain actually was there. Anything that measures the SHAPE of the spectrum (a centroid,
+     a spread) would be reading the filter instead of the person.
+
+     Dividing the measured power by the square of this value undoes that, restoring the true
+     shape inside the band. */
+
+    func magnitudeResponse(atHz hz:Double) -> Double {
+
+        let middle = coefficients.count / 2
+        var real = 0.0
+        var imag = 0.0
+
+        for n in 0..<coefficients.count {
+            let m = Double(n - middle)
+            let phase = -2.0 * .pi * hz * m / sampleRate
+            real += coefficients[n] * cos(phase)
+            imag += coefficients[n] * sin(phase)
+        }
+
+        return sqrt((real * real) + (imag * imag))
     }
 
     func process(epoch:Epoch) -> Epoch {
