@@ -17,7 +17,7 @@ protocol EEGMLManagerDelegate: AnyObject {
  directly off the spectrum — EMG has a specific frequency range and shows up as an obvious spike
  above the resting level, which needs no model. Every label other than noise and loose is
  therefore ignored here. Clean is simply the inverse of noise, and it is what opens the gate for
- baseline collection and state scoring. */
+ state scoring. */
 
 final class EEGMLManager {
     weak var delegate: EEGMLManagerDelegate?

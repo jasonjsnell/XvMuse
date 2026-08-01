@@ -55,9 +55,8 @@ public protocol XvMuseDelegate:AnyObject {
     
     //ML and state detection
     func didReceiveQuiet(_ quiet: Double)
-    func didReceiveML(noise: Double, tension: Double, blink: Double, electrical: Double, clean: Double)
+    func didReceiveML(noise: Double, tension: Double, blink: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
-    func didReceive(eegBaselineProgress progress: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
@@ -176,7 +175,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestCleanPct: Double = 0.0
     private var latestTensionPct: Double = 0.0
     private var latestBlinkPct: Double = 0.0
-    private var latestElectricalPct: Double = 0.0
 
     //per-second signal quality log. Runs even when the clean gate is blocking state scoring,
     //so a silent state log can be told apart from a blocked one.
@@ -636,7 +634,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
          would miss half of what it is there to catch. */
         latestTensionPct = eeg.analysis.tension
         latestBlinkPct = eeg.analysis.blink
-        latestElectricalPct = eeg.analysis.electrical
 
         _stateAnalyzer.updateSignalQuality(clean: latestCleanPct, tension: latestTensionPct)
 
@@ -644,20 +641,19 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             noise: latestNoisePct,
             tension: latestTensionPct,
             blink: latestBlinkPct,
-            electrical: latestElectricalPct,
             clean: latestCleanPct
         )
 
-        //Quiet: absolute low activity across the whole bandwidth, no baseline involved
+        //Quiet: absolute low activity across the whole bandwidth
         let rawQuiet = eeg.analysis.quiet
         let publishedQuiet = gatedQuiet(fromRawQuiet: rawQuiet)
         delegate?.didReceiveQuiet(publishedQuiet)
 
         logSignal(rawQuiet: rawQuiet, gatedQuiet: publishedQuiet)
 
-        /* Focus and meditation are measured from the clean detail window against a personal
-         baseline. Dreamy cannot be: the detail window starts at 8 Hz and theta lives below that,
-         so it is read from the full-spectrum band balance instead. */
+        /* Focus and meditation are measured from the clean detail-window shape. Dreamy cannot
+         be detail-only: the detail window may start above theta, so it is read from the
+         full-spectrum band balance instead. */
         _stateAnalyzer.updateBands(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
@@ -730,13 +726,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         lastSignalLogTime = now
 
         print(String(
-            format: "📶 t:%6.1f | noise:%3.0f clean:%3.0f | tens:%3.0f blink:%3.0f elec:%3.0f | quiet raw:%3.0f gated:%3.0f",
+            format: "📶 t:%6.1f | noise:%3.0f clean:%3.0f | tens:%3.0f blink:%3.0f | quiet raw:%3.0f gated:%3.0f",
             now.timeIntervalSince(signalLogLaunchTime),
             latestNoisePct,
             latestCleanPct,
             latestTensionPct,
             latestBlinkPct,
-            latestElectricalPct,
             rawQuiet,
             gatedQuiet
         ))
@@ -756,10 +751,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         quiet *= RelaxedStateGate.damping(forTension: latestTensionPct)
 
         return min(max(quiet, 0.0), 100.0)
-    }
-
-    func didReceiveBaselineProgress(_ progress: Double) {
-        delegate?.didReceive(eegBaselineProgress: progress)
     }
 
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double) {
@@ -1037,6 +1028,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public func startTestData(set:Int){
         print("MuseHelper: startTestData: Set", set)
         testDataSet = set
+
         eegTestDataLoop.invalidate()
         eegTestDataLoop = Timer.scheduledTimer(timeInterval: 0.05, target: self, selector: #selector(generateTestEEGData), userInfo: nil, repeats: true)
         ppgTestDataLoop.invalidate()
