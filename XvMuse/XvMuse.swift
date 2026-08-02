@@ -59,6 +59,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     
     //brainwaves
@@ -90,6 +91,7 @@ public protocol XvMuseDelegate:AnyObject {
 
 public extension XvMuseDelegate {
     func didReceive(detailLinearSpectrum:[Double]) {}
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
 }
@@ -175,12 +177,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestCleanPct: Double = 0.0
     private var latestTensionPct: Double = 0.0
     private var latestBlinkPct: Double = 0.0
-
-    //per-second signal quality log. Runs even when the clean gate is blocking state scoring,
-    //so a silent state log can be told apart from a blocked one.
-    private let logSignalQuality: Bool = true
-    private var lastSignalLogTime: Date? = nil
-    private let signalLogLaunchTime: Date = Date()
+    private var latestPublishedQuietPct: Double = 0.0
+    private let blockedQuietFadeSmoothing: Double = 0.04
+    private let quietRecoverSmoothing: Double = 0.25
+    private let blinkArtifactThreshold: Double = 50.0
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -204,6 +204,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private let _parserLegacy:ParserLegacy = ParserLegacy() //processes 1/2/S data
     private let _parserAthena:ParserAthena = ParserAthena() //processes Athena data
     private var _fft:FFTManager = FFTManager()
+
+    // Athena protocol diagnostics. These counters are observation-only: parsing still uses the
+    // characteristic value read on processingQ so this test does not change existing behavior.
+    private var _athenaRXSequence: UInt64 = 0
+    private var _athenaLastRXUptime: TimeInterval = 0
     
     //grabs a timestamp when the system launches, to make timestamps easier to read
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
@@ -370,6 +375,34 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     //MARK: - DATA PROCESSING -
     internal func parse(bluetoothCharacteristic: CBCharacteristic) {
+
+        // Snapshot at the CoreBluetooth callback boundary. CBCharacteristic is a mutable reference
+        // object, so comparing this value with the later processingQ value tells us whether queued
+        // work is ever observing a newer notification than the one that caused the callback.
+        let callbackUUID = bluetoothCharacteristic.uuid
+        let callbackData = bluetoothCharacteristic.value.map { Data($0) }
+        let callbackUptime = ProcessInfo.processInfo.systemUptime
+
+        var athenaRXSequence: UInt64 = 0
+        var athenaIngressDeltaMS: Double = 0
+        if callbackUUID == MuseConstants.CHAR_ATHENA_MAIN {
+            _athenaRXSequence &+= 1
+            athenaRXSequence = _athenaRXSequence
+
+            if _athenaLastRXUptime > 0 {
+                athenaIngressDeltaMS = (callbackUptime - _athenaLastRXUptime) * 1_000.0
+            }
+            _athenaLastRXUptime = callbackUptime
+
+            if let callbackData, athenaRXSequence <= 25 {
+                print(
+                    "ATHENA RX | seq:\(athenaRXSequence) uuid:\(callbackUUID.uuidString) " +
+                    "len:\(callbackData.count) dtMS:\(String(format: "%.2f", athenaIngressDeltaMS)) " +
+                    "checksum:\(Self.athenaDiagnosticChecksum(callbackData)) " +
+                    "prefix:\(Self.athenaDiagnosticHex(callbackData, limit: 40))"
+                )
+            }
+        }
         
         processingQ.async { [weak self] in
             
@@ -383,8 +416,31 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //MARK: route Athena data to parser
             // Special-case Athena main stream BEFORE legacy parsing
             if bluetoothCharacteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN {
+                let queueLagMS = (ProcessInfo.processInfo.systemUptime - callbackUptime) * 1_000.0
+                let snapshotMatchesQueuedValue = callbackData == _data
+
+                if athenaRXSequence <= 25 || !snapshotMatchesQueuedValue || queueLagMS > 20.0 {
+                    let callbackFingerprint = callbackData.map {
+                        "\($0.count)/\(Self.athenaDiagnosticChecksum($0))"
+                    } ?? "nil"
+                    let queuedFingerprint = "\(_data.count)/\(Self.athenaDiagnosticChecksum(_data))"
+                    print(
+                        "ATHENA QUEUE | seq:\(athenaRXSequence) " +
+                        "lagMS:\(String(format: "%.2f", queueLagMS)) " +
+                        "sameValue:\(snapshotMatchesQueuedValue) " +
+                        "callback:\(callbackFingerprint) queued:\(queuedFingerprint)"
+                    )
+                }
+
                 let bytes = [UInt8](_data)
-                _parserAthena.parse(bytes: bytes, timestamp: timestamp)
+                _parserAthena.parse(
+                    bytes: bytes,
+                    timestamp: timestamp,
+                    rxSequence: athenaRXSequence,
+                    ingressDeltaMS: athenaIngressDeltaMS,
+                    queueLagMS: queueLagMS,
+                    snapshotMatchesQueuedValue: snapshotMatchesQueuedValue
+                )
                 //results are returned by delegate callbacks below
                 return
             }
@@ -591,6 +647,20 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
         }
     }
+
+    private static func athenaDiagnosticHex(_ data: Data, limit: Int) -> String {
+        data.prefix(limit).map { String(format: "%02X", Int($0)) }.joined()
+    }
+
+    private static func athenaDiagnosticChecksum(_ data: Data) -> String {
+        // FNV-1a is only a compact log fingerprint; it is not used for validation or parsing.
+        var hash: UInt32 = 2_166_136_261
+        for byte in data {
+            hash ^= UInt32(byte)
+            hash &*= 16_777_619
+        }
+        return String(format: "%08X", hash)
+    }
     
     private func processAndPublishEEGData(from eegPacket: XvEEGPacket) {
 
@@ -635,7 +705,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         latestTensionPct = eeg.analysis.tension
         latestBlinkPct = eeg.analysis.blink
 
-        _stateAnalyzer.updateSignalQuality(clean: latestCleanPct, tension: latestTensionPct)
+        _stateAnalyzer.updateSignalQuality(
+            clean: latestCleanPct,
+            tension: latestTensionPct,
+            blink: latestBlinkPct
+        )
 
         delegate?.didReceiveML(
             noise: latestNoisePct,
@@ -646,10 +720,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         //Quiet: absolute low activity across the whole bandwidth
         let rawQuiet = eeg.analysis.quiet
-        let publishedQuiet = gatedQuiet(fromRawQuiet: rawQuiet)
-        delegate?.didReceiveQuiet(publishedQuiet)
-
-        logSignal(rawQuiet: rawQuiet, gatedQuiet: publishedQuiet)
+        let quiet = gatedQuiet(fromRawQuiet: rawQuiet)
+        delegate?.didReceiveQuiet(quiet)
 
         /* Focus and meditation are measured from the clean detail-window shape. Dreamy cannot
          be detail-only: the detail window may start above theta, so it is read from the
@@ -715,46 +787,45 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
     }
 
-    /* Per-second signal quality dump. Deliberately outside the clean gate: when the state log
-     goes silent this is what says whether the signal was rejected or simply absent. */
-    private func logSignal(rawQuiet: Double, gatedQuiet: Double) {
-
-        guard logSignalQuality else { return }
-
-        let now = Date()
-        if let last = lastSignalLogTime, now.timeIntervalSince(last) < 1.0 { return }
-        lastSignalLogTime = now
-
-        print(String(
-            format: "📶 t:%6.1f | noise:%3.0f clean:%3.0f | tens:%3.0f blink:%3.0f | quiet raw:%3.0f gated:%3.0f",
-            now.timeIntervalSince(signalLogLaunchTime),
-            latestNoisePct,
-            latestCleanPct,
-            latestTensionPct,
-            latestBlinkPct,
-            rawQuiet,
-            gatedQuiet
-        ))
-    }
-
     private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
         var quiet = rawQuiet
 
         //an unusable signal can't be called quiet, whatever the numbers say
-        if latestNoisePct > 70.0 {
+        if shouldFadeCleanStateValues {
+            quiet = 0.0
+        } else if latestNoisePct > 70.0 {
             quiet = min(quiet, 30.0)
         }
 
         /* Muscle tension scales it down on the same ramp dreamy uses, so both relaxed states
          respond to a clench identically. Replaces an all-or-nothing cut at 70, which meant the
          score sat untouched through a moderate clench and then dropped by 40% in one frame. */
-        quiet *= RelaxedStateGate.damping(forTension: latestTensionPct)
+        let tensionDamping = RelaxedStateGate.damping(forTension: latestTensionPct)
+        quiet *= tensionDamping
 
-        return min(max(quiet, 0.0), 100.0)
+        let target = min(max(quiet, 0.0), 100.0)
+        let smoothing = target < latestPublishedQuietPct ? blockedQuietFadeSmoothing : quietRecoverSmoothing
+        latestPublishedQuietPct = (smoothing * target) + ((1.0 - smoothing) * latestPublishedQuietPct)
+        return min(max(latestPublishedQuietPct, 0.0), 100.0)
+    }
+
+    private var shouldFadeCleanStateValues: Bool {
+        latestCleanPct < 60.0 ||
+        latestTensionPct > 60.0 ||
+        latestBlinkPct > blinkArtifactThreshold
     }
 
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double) {
         delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
+    }
+
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double) {
+        delegate?.didReceiveBrainwaveDimensions(
+            tiltHz: tiltHz,
+            steadiness: steadiness,
+            intensity: intensity,
+            spreadHz: spreadHz
+        )
     }
 
     public func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {

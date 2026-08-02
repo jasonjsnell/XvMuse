@@ -48,6 +48,7 @@
    - Final monotonicity ensured by stream.py buffering/sorting before LSL output
  */
 
+import Foundation
 import XvSensors
 
 protocol ParserAthenaDelegate:AnyObject {
@@ -79,6 +80,29 @@ class ParserAthena {
     private var af7Buffer:  [Float] = []
     private var af8Buffer:  [Float] = []
     private var tp10Buffer: [Float] = []
+
+    // MARK: Protocol diagnostics
+
+    private var diagnosticCurrentRXSequence: UInt64 = 0
+    private var diagnosticCurrentNotificationBytes: [UInt8] = []
+    private var diagnosticNotificationTotal: UInt64 = 0
+    private var diagnosticWindowStartUptime = ProcessInfo.processInfo.systemUptime
+    private var diagnosticWindowNotifications = 0
+    private var diagnosticWindowPackets = 0
+    private var diagnosticWindowAcceptedPackets = 0
+    private var diagnosticWindowRejectedPackets = 0
+    private var diagnosticWindowEEGSamples = 0
+    private var diagnosticWindowPacketIndexAnomalies = 0
+    private var diagnosticWindowSubpacketIndexAnomalies = 0
+    private var diagnosticWindowByte13Nonzero = 0
+    private var diagnosticWindowSnapshotMismatches = 0
+    private var diagnosticWindowIngressGaps = 0
+    private var diagnosticWindowMaxQueueLagMS: Double = 0
+    private var diagnosticWindowTagCounts: [UInt8: Int] = [:]
+    private var diagnosticWindowDropCounts: [String: Int] = [:]
+    private var diagnosticDropTotals: [String: Int] = [:]
+    private var diagnosticLastPacketIndex: UInt8?
+    private var diagnosticLastSubpacketIndex: [UInt8: UInt8] = [:]
     
     private enum AthenaSensorType {
         case eeg
@@ -120,17 +144,56 @@ class ParserAthena {
         static let opticsScale: Double = 1.0 / 32768.0
     }
     
-    func parse(bytes: [UInt8], timestamp: Double) {
+    func parse(
+        bytes: [UInt8],
+        timestamp: Double,
+        rxSequence: UInt64 = 0,
+        ingressDeltaMS: Double = 0,
+        queueLagMS: Double = 0,
+        snapshotMatchesQueuedValue: Bool = true
+    ) {
+        diagnosticCurrentRXSequence = rxSequence
+        diagnosticCurrentNotificationBytes = bytes
+        diagnosticNotificationTotal &+= 1
+        diagnosticWindowNotifications += 1
+        diagnosticWindowMaxQueueLagMS = max(diagnosticWindowMaxQueueLagMS, queueLagMS)
+        if !snapshotMatchesQueuedValue { diagnosticWindowSnapshotMismatches += 1 }
+        if ingressDeltaMS > 100.0 { diagnosticWindowIngressGaps += 1 }
+        defer { emitDiagnosticSummaryIfNeeded() }
+
         var offset = 0
         let count = bytes.count
         
         while offset < count {
             // Need at least a header
-            guard offset + Athena.packetHeaderSize <= count else { break }
+            guard offset + Athena.packetHeaderSize <= count else {
+                recordDiagnosticDrop(
+                    "short-packet-header",
+                    offset: offset,
+                    detail: "need:\(Athena.packetHeaderSize) available:\(count - offset)"
+                )
+                break
+            }
             
             let packetLen = Int(bytes[offset]) // first byte = declared packet length
             
-            guard packetLen > 0, offset + packetLen <= count else { break }
+            guard packetLen >= Athena.packetHeaderSize else {
+                recordDiagnosticDrop(
+                    "invalid-packet-length",
+                    offset: offset,
+                    detail: "declared:\(packetLen) minimum:\(Athena.packetHeaderSize)"
+                )
+                break
+            }
+
+            guard offset + packetLen <= count else {
+                recordDiagnosticDrop(
+                    "packet-length-overrun",
+                    offset: offset,
+                    detail: "declared:\(packetLen) available:\(count - offset)"
+                )
+                break
+            }
             
             let packetBytes = Array(bytes[offset ..< offset + packetLen])
             
@@ -153,6 +216,52 @@ class ParserAthena {
             let packetValid = (packetType != nil
                             && byte13 == 0
                             && packetLen >= Athena.packetHeaderSize)
+
+            diagnosticWindowPackets += 1
+            if packetValid {
+                diagnosticWindowAcceptedPackets += 1
+            } else {
+                diagnosticWindowRejectedPackets += 1
+            }
+            if byte13 != 0 { diagnosticWindowByte13Nonzero += 1 }
+
+            if let lastPacketIndex = diagnosticLastPacketIndex {
+                let delta = Int(packetIndex &- lastPacketIndex)
+                if delta != 1 {
+                    diagnosticWindowPacketIndexAnomalies += 1
+                    let occurrence = diagnosticWindowPacketIndexAnomalies
+                    if occurrence <= 12 {
+                        print(
+                            "ATHENA INDEX | rx:\(rxSequence) previous:\(lastPacketIndex) " +
+                            "current:\(packetIndex) delta:\(delta)"
+                        )
+                    }
+                }
+            }
+            diagnosticLastPacketIndex = packetIndex
+
+            if diagnosticNotificationTotal <= 25 || packetId == 0x88 || packetId == 0x98 {
+                print(
+                    "ATHENA PKT | rx:\(rxSequence) off:\(offset) len:\(packetLen) " +
+                    "idx:\(packetIndex) id:\(diagnosticTag(packetId)) byte13:\(byte13) " +
+                    "known:\(packetType != nil) valid:\(packetValid) remaining:\(count - offset)"
+                )
+            }
+
+            if packetType == nil {
+                recordDiagnosticDrop(
+                    "unknown-primary-tag",
+                    offset: offset,
+                    detail: "tag:\(diagnosticTag(packetId)) idx:\(packetIndex) byte13:\(byte13)"
+                )
+            }
+            if byte13 != 0 {
+                recordDiagnosticDrop(
+                    "byte13-nonzero",
+                    offset: offset,
+                    detail: "tag:\(diagnosticTag(packetId)) idx:\(packetIndex) byte13:\(byte13)"
+                )
+            }
             
             let dataSection: [UInt8]
             if packetBytes.count > Athena.packetHeaderSize {
@@ -171,7 +280,8 @@ class ParserAthena {
                 packetTimeRaw: packetTimeRaw,
                 packetTimeSec: packetTimeSec,
                 data: dataSection,
-                timestamp: timestamp
+                timestamp: timestamp,
+                packetByte13: byte13
             )
             
             offset += packetLen
@@ -187,7 +297,8 @@ class ParserAthena {
         packetTimeRaw: UInt32,
         packetTimeSec: Double,
         data: [UInt8],
-        timestamp: Double
+        timestamp: Double,
+        packetByte13: UInt8
     ) {
         var offset = 0
         let count = data.count
@@ -205,10 +316,26 @@ class ParserAthena {
                     packetIndex: packetIndex,
                     packetTimeRaw: packetTimeRaw,
                     packetTimeSec: packetTimeSec,
-                    timestamp: timestamp
+                    timestamp: timestamp,
+                    packetId: packetId,
+                    packetByte13: packetByte13,
+                    origin: "primary",
+                    dataOffset: Athena.packetHeaderSize
                 )
                 offset += len
+            } else {
+                recordDiagnosticDrop(
+                    "short-primary-data",
+                    offset: Athena.packetHeaderSize,
+                    detail: "tag:\(diagnosticTag(packetId)) need:\(len) available:\(count)"
+                )
             }
+        } else if !data.isEmpty {
+            recordDiagnosticDrop(
+                "primary-skipped-tag-scan-at-zero",
+                offset: Athena.packetHeaderSize,
+                detail: "parent:\(diagnosticTag(packetId)) firstDataByte:\(diagnosticTag(data[0])) byte13:\(packetByte13)"
+            )
         }
         
         // 2. Additional subpackets: TAG + 4-byte header + data
@@ -217,16 +344,49 @@ class ParserAthena {
             
             guard let cfg = Athena.sensors[tagByte] else {
                 // Unknown tag → stop parsing this packet
+                recordDiagnosticDrop(
+                    "unknown-subpacket-tag",
+                    offset: Athena.packetHeaderSize + offset,
+                    detail: "parent:\(diagnosticTag(packetId)) tag:\(diagnosticTag(tagByte))"
+                )
                 break
             }
             
             let dataLen = cfg.dataLen
-            if dataLen == 0 { break }
+            if dataLen == 0 {
+                recordDiagnosticDrop(
+                    "zero-subpacket-length",
+                    offset: Athena.packetHeaderSize + offset,
+                    detail: "tag:\(diagnosticTag(tagByte))"
+                )
+                break
+            }
             
             // Make sure we have header + data
-            guard offset + Athena.subpacketHeaderSize + dataLen <= count else { break }
+            guard offset + Athena.subpacketHeaderSize + dataLen <= count else {
+                recordDiagnosticDrop(
+                    "short-subpacket-data",
+                    offset: Athena.packetHeaderSize + offset,
+                    detail: "tag:\(diagnosticTag(tagByte)) need:\(Athena.subpacketHeaderSize + dataLen) available:\(count - offset)"
+                )
+                break
+            }
             
             let subpacketIndex = data[offset + 1]
+            if let lastSubpacketIndex = diagnosticLastSubpacketIndex[tagByte] {
+                let delta = Int(subpacketIndex &- lastSubpacketIndex)
+                if delta != 1 {
+                    diagnosticWindowSubpacketIndexAnomalies += 1
+                    if diagnosticWindowSubpacketIndexAnomalies <= 12 {
+                        print(
+                            "ATHENA SUBINDEX | rx:\(diagnosticCurrentRXSequence) " +
+                            "tag:\(diagnosticTag(tagByte)) previous:\(lastSubpacketIndex) " +
+                            "current:\(subpacketIndex) delta:\(delta)"
+                        )
+                    }
+                }
+            }
+            diagnosticLastSubpacketIndex[tagByte] = subpacketIndex
             // bytes [offset+2 ..< offset+5] are "unknown" metadata
             
             let start = offset + Athena.subpacketHeaderSize
@@ -241,7 +401,11 @@ class ParserAthena {
                 packetIndex: packetIndex,
                 packetTimeRaw: packetTimeRaw,
                 packetTimeSec: packetTimeSec,
-                timestamp: timestamp
+                timestamp: timestamp,
+                packetId: packetId,
+                packetByte13: packetByte13,
+                origin: "tagged",
+                dataOffset: Athena.packetHeaderSize + start
             )
             
             offset = end
@@ -437,13 +601,20 @@ class ParserAthena {
         packetIndex: UInt8,
         packetTimeRaw: UInt32,
         packetTimeSec: Double,
-        timestamp: Double
+        timestamp: Double,
+        packetId: UInt8,
+        packetByte13: UInt8,
+        origin: String,
+        dataOffset: Int
     ) {
+        diagnosticWindowTagCounts[tagByte, default: 0] += 1
+
         switch sensorType {
             
         case .eeg:
             guard let cfg = Athena.sensors[tagByte] else { return }
             guard let rows = decodeAthenaEEG(dataBytes: dataBytes, nChannels: cfg.nChannels) else { return }
+            diagnosticWindowEEGSamples += rows.count
             
             // rows: [sample][channel] in scaled units
             // Channel mapping for EEG8 (TP9, AF7, AF8, TP10, AUX1..4) matches python EEG_CHANNELS
@@ -520,6 +691,14 @@ class ParserAthena {
         case .battery:
             //grab pct and send to main
             if let pct: Float = decodeAthenaBattery(dataBytes: dataBytes) {
+                let rawSOC = UInt16(dataBytes[0]) | (UInt16(dataBytes[1]) << 8)
+                print(
+                    "ATHENA BATT | rx:\(diagnosticCurrentRXSequence) origin:\(origin) " +
+                    "parent:\(diagnosticTag(packetId)) tag:\(diagnosticTag(tagByte)) " +
+                    "packetIdx:\(packetIndex) byte13:\(packetByte13) dataOffset:\(dataOffset) " +
+                    "rawSOC:\(rawSOC) pct:\(String(format: "%.2f", pct)) " +
+                    "raw:\(diagnosticHex(dataBytes, limit: 20))"
+                )
                 delegate?.didReceiveAthena(
                     batteryPacket: XvBatteryPacket(percentage: Int16(pct))
                 )
@@ -573,5 +752,75 @@ class ParserAthena {
         }
         
         
+    }
+
+    private func recordDiagnosticDrop(_ reason: String, offset: Int, detail: String) {
+        diagnosticWindowDropCounts[reason, default: 0] += 1
+        diagnosticDropTotals[reason, default: 0] += 1
+        let occurrence = diagnosticDropTotals[reason, default: 0]
+
+        // Enough individual examples to identify the byte pattern without making logging itself
+        // the source of a processing backlog. Long tests still emit every 100th occurrence.
+        if occurrence <= 12 || occurrence % 100 == 0 {
+            let start = max(0, min(offset, diagnosticCurrentNotificationBytes.count))
+            let windowEnd = min(start + 32, diagnosticCurrentNotificationBytes.count)
+            let window = start < windowEnd
+                ? Array(diagnosticCurrentNotificationBytes[start ..< windowEnd])
+                : []
+            print(
+                "ATHENA DROP | rx:\(diagnosticCurrentRXSequence) reason:\(reason) " +
+                "occurrence:\(occurrence) offset:\(offset) \(detail) " +
+                "window:\(diagnosticHex(window, limit: 32))"
+            )
+        }
+    }
+
+    private func emitDiagnosticSummaryIfNeeded() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let elapsed = now - diagnosticWindowStartUptime
+        guard elapsed >= 1.0 else { return }
+
+        let tagSummary = diagnosticWindowTagCounts.keys.sorted().map { tag in
+            "\(diagnosticTag(tag)):\(diagnosticWindowTagCounts[tag, default: 0])"
+        }.joined(separator: ",")
+        let dropSummary = diagnosticWindowDropCounts.keys.sorted().map { reason in
+            "\(reason):\(diagnosticWindowDropCounts[reason, default: 0])"
+        }.joined(separator: ",")
+
+        print(
+            "ATHENA 1S | rx:\(diagnosticCurrentRXSequence) " +
+            "notifications:\(diagnosticWindowNotifications) packets:\(diagnosticWindowPackets) " +
+            "accepted:\(diagnosticWindowAcceptedPackets) rejected:\(diagnosticWindowRejectedPackets) " +
+            "byte13Nonzero:\(diagnosticWindowByte13Nonzero) eegSamples:\(diagnosticWindowEEGSamples) " +
+            "packetIndexAnomalies:\(diagnosticWindowPacketIndexAnomalies) " +
+            "subIndexAnomalies:\(diagnosticWindowSubpacketIndexAnomalies) " +
+            "ingressGaps:\(diagnosticWindowIngressGaps) " +
+            "queueLagMaxMS:\(String(format: "%.2f", diagnosticWindowMaxQueueLagMS)) " +
+            "snapshotMismatches:\(diagnosticWindowSnapshotMismatches) " +
+            "tags:{\(tagSummary)} drops:{\(dropSummary)}"
+        )
+
+        diagnosticWindowStartUptime = now
+        diagnosticWindowNotifications = 0
+        diagnosticWindowPackets = 0
+        diagnosticWindowAcceptedPackets = 0
+        diagnosticWindowRejectedPackets = 0
+        diagnosticWindowEEGSamples = 0
+        diagnosticWindowPacketIndexAnomalies = 0
+        diagnosticWindowSubpacketIndexAnomalies = 0
+        diagnosticWindowByte13Nonzero = 0
+        diagnosticWindowSnapshotMismatches = 0
+        diagnosticWindowIngressGaps = 0
+        diagnosticWindowMaxQueueLagMS = 0
+        diagnosticWindowTagCounts.removeAll(keepingCapacity: true)
+        diagnosticWindowDropCounts.removeAll(keepingCapacity: true)
+    }
+
+    private func diagnosticTag(_ tag: UInt8) -> String {
+        String(format: "0x%02X", Int(tag))
+    }
+
+    private func diagnosticHex(_ bytes: [UInt8], limit: Int) -> String {
+        bytes.prefix(limit).map { String(format: "%02X", Int($0)) }.joined()
     }
 }

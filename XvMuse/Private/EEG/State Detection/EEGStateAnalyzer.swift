@@ -7,6 +7,7 @@ import Foundation
 
 protocol EEGStateAnalyzerDelegate: AnyObject {
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double)
 }
 
 /* Measures brainwave states from the live spectrum.
@@ -32,6 +33,7 @@ final class EEGStateAnalyzer {
     //how often scores are published, and how hard they are smoothed
     private let publishInterval: TimeInterval = 0.25
     private let scoreSmoothing: Double = 0.18
+    private let blockedFadeSmoothing: Double = 0.05
 
     //how far back the "is the centroid parked or wandering" judgement looks
     private let stabilityWindow: TimeInterval = 8.0
@@ -49,15 +51,21 @@ final class EEGStateAnalyzer {
 
     //MARK: - Signal quality
 
+    private var latestCleanPct: Double = 0.0
     private var latestEffectiveCleanPct: Double = 0.0
     private var latestTensionPct: Double = 0.0
+    private var latestBlinkPct: Double = 0.0
     private let effectiveCleanRiseSmoothing: Double = 0.35
     private let effectiveCleanFallSmoothing: Double = 0.12
+
+    //blink above this cuts the clean gate instantly rather than easing down through the smoother
+    private let blinkHardBlockPct: Double = 60.0
 
     //full-spectrum band levels in dB
     private var latestBands: BandBalance? = nil
     private var smoothedQuiet: Double = 0.0
-    private let quietSmoothing: Double = 0.15
+    private let quietRiseSmoothing: Double = 0.12
+    private let quietFallSmoothing: Double = 0.45
 
     //MARK: - Detail window mapping
 
@@ -70,6 +78,10 @@ final class EEGStateAnalyzer {
     private var recentCentroids: [(value: Double, timestamp: Date)] = []
     private var lastPublish: Date? = nil
     private let scorer = EEGStateScorer()
+    private var lastTiltHz: Double = 0.0
+    private var lastSteadiness: Double = 0.0
+    private var lastIntensity: Double = 0.0
+    private var lastSpreadHz: Double = 0.0
 
     //MARK: - Init
 
@@ -126,19 +138,26 @@ final class EEGStateAnalyzer {
 
     //MARK: - Input
 
-    func updateSignalQuality(clean: Double, tension: Double) {
+    func updateSignalQuality(clean: Double, tension: Double, blink: Double) {
 
+        latestCleanPct = clean
         latestTensionPct = tension
+        latestBlinkPct = blink
 
         /* Muscle tension makes the spectrum look busier than the brain actually is, so it caps
          how clean the signal is allowed to count as rather than being handled separately. */
-        let target: Double
+        var target = clean
         if tension > 75.0 {
-            target = min(clean, 25.0)
+            target = min(target, 25.0)
         } else if tension > 60.0 {
-            target = min(clean, 50.0)
-        } else {
-            target = clean
+            target = min(target, 50.0)
+        }
+
+        //Blinks are brief artifacts; during one, the clean-state dimensions should fade, not freeze.
+        if blink > 75.0 {
+            target = min(target, 25.0)
+        } else if blink > 50.0 {
+            target = min(target, 50.0)
         }
 
         latestEffectiveCleanPct = asymSmooth(
@@ -147,6 +166,18 @@ final class EEGStateAnalyzer {
             rise: effectiveCleanRiseSmoothing,
             fall: effectiveCleanFallSmoothing
         )
+
+        /* A blink has to cut through instantly, not ease down.
+
+         Falling at 0.12 per update takes about eight frames to get from 100 down under the clean
+         threshold, and a blink is over in one or two — so blinks were leaking straight past the
+         gate. In the coding recording that showed up as centroid crashing to 9.5 Hz with logPower
+         spiking near 3.0, and stability sitting at 0.00 through every blink-heavy stretch.
+
+         Recovery still uses the normal rise smoothing, so this cuts sharply and returns gently. */
+        if blink > blinkHardBlockPct {
+            latestEffectiveCleanPct = min(latestEffectiveCleanPct, 20.0)
+        }
     }
 
     /* Full-spectrum band levels in dB. Call before processDetailSpectrum; the stored values are
@@ -163,6 +194,7 @@ final class EEGStateAnalyzer {
          bimodal — it swings between 0 and 100 from one reading to the next, because the absolute
          scale it maps through saturates at both ends. Used raw as a gate it made dreamy flicker
          on and off every second regardless of what the brain was doing. */
+        let quietSmoothing = quiet < smoothedQuiet ? quietFallSmoothing : quietRiseSmoothing
         smoothedQuiet += quietSmoothing * (quiet - smoothedQuiet)
 
         latestBands = BandBalance(
@@ -181,8 +213,26 @@ final class EEGStateAnalyzer {
 
         let now = Date()
 
-        guard latestEffectiveCleanPct >= cleanThreshold else { return }
-        guard let features = measure(spectrum, at: now) else { return }
+        guard !noiseBlocksCleanData else {
+            publishBlockedFadeIfDue(now: now)
+            return
+        }
+
+        guard let features = measure(spectrum, at: now) else {
+            publishBlockedFadeIfDue(now: now, liveIntensity: currentIntensity)
+            return
+        }
+
+        guard !cleanShapeIsBlocked else {
+            publishBlockedFadeIfDue(
+                now: now,
+                liveTiltHz: features.centroidHz,
+                liveIntensity: currentIntensity,
+                liveSpreadHz: features.spreadHz,
+                fadeFocus: shouldFadeFocusDuringCleanBlock
+            )
+            return
+        }
 
         trackStability(features, now: now)
         publishIfDue(features, now: now)
@@ -192,10 +242,16 @@ final class EEGStateAnalyzer {
         recentCentroids.removeAll()
         lastPublish = nil
         lastLogTime = nil
+        latestCleanPct = 0
         latestEffectiveCleanPct = 0
         latestTensionPct = 0
+        latestBlinkPct = 0
         latestBands = nil
         smoothedQuiet = 0
+        lastTiltHz = 0
+        lastSteadiness = 0
+        lastIntensity = 0
+        lastSpreadHz = 0
         scorer.reset()
     }
 
@@ -244,6 +300,10 @@ final class EEGStateAnalyzer {
 
     private func trackStability(_ features: DetailFeatures, now: Date) {
         recentCentroids.append((features.centroidHz, now))
+        pruneRecentCentroids(now: now)
+    }
+
+    private func pruneRecentCentroids(now: Date) {
         let cutoff = now.addingTimeInterval(-stabilityWindow)
         recentCentroids.removeAll { $0.timestamp < cutoff }
     }
@@ -269,15 +329,23 @@ final class EEGStateAnalyzer {
         if let last = lastPublish, now.timeIntervalSince(last) < publishInterval { return }
         lastPublish = now
 
+        let steadiness = centroidStability
+        let intensity = currentIntensity
+
         let scores = scorer.applyStateScores(
             centroidHz: features.centroidHz,
             spreadHz: features.spreadHz,
             logPower: features.logPower,
-            stability: centroidStability,
+            stability: steadiness,
             bands: latestBands,
             tension: latestTensionPct,
             smoothing: scoreSmoothing
         )
+
+        lastTiltHz = features.centroidHz
+        lastSteadiness = steadiness
+        lastIntensity = intensity
+        lastSpreadHz = features.spreadHz
 
         delegate?.didReceiveBrainwaveState(
             meditation: scores.meditation,
@@ -285,7 +353,59 @@ final class EEGStateAnalyzer {
             dreamy: scores.dreamy
         )
 
+        delegate?.didReceiveBrainwaveDimensions(
+            tiltHz: features.centroidHz,
+            steadiness: steadiness,
+            intensity: intensity,
+            spreadHz: features.spreadHz
+        )
+
         logState(features: features, scores: scores, now: now)
+    }
+
+    private func publishBlockedFadeIfDue(
+        now: Date,
+        liveTiltHz: Double? = nil,
+        liveIntensity: Double? = nil,
+        liveSpreadHz: Double? = nil,
+        fadeFocus: Bool = true
+    ) {
+
+        if let last = lastPublish, now.timeIntervalSince(last) < publishInterval { return }
+        lastPublish = now
+
+        let scores = scorer.fadeScores(factor: blockedFadeSmoothing, fadeFocus: fadeFocus)
+        if let liveTiltHz {
+            lastTiltHz = liveTiltHz
+        } else {
+            lastTiltHz = smoothTowardZero(lastTiltHz, factor: blockedFadeSmoothing)
+        }
+        lastSteadiness = smoothTowardZero(lastSteadiness, factor: blockedFadeSmoothing)
+        if let liveIntensity {
+            lastIntensity = liveIntensity
+        } else {
+            lastIntensity = smoothTowardZero(lastIntensity, factor: blockedFadeSmoothing)
+        }
+        if let liveSpreadHz {
+            lastSpreadHz = liveSpreadHz
+        } else {
+            lastSpreadHz = smoothTowardZero(lastSpreadHz, factor: blockedFadeSmoothing)
+        }
+
+        pruneRecentCentroids(now: now)
+
+        delegate?.didReceiveBrainwaveState(
+            meditation: scores.meditation,
+            focus: scores.focus,
+            dreamy: scores.dreamy
+        )
+
+        delegate?.didReceiveBrainwaveDimensions(
+            tiltHz: lastTiltHz,
+            steadiness: lastSteadiness,
+            intensity: lastIntensity,
+            spreadHz: lastSpreadHz
+        )
     }
 
     /* Per-second diagnostic dump. Prints the inputs to every score alongside the scores, because
@@ -338,6 +458,30 @@ final class EEGStateAnalyzer {
     private func asymSmooth(old: Double, new: Double, rise: Double, fall: Double) -> Double {
         let factor = new > old ? clamp01(rise) : clamp01(fall)
         return (factor * new) + ((1.0 - factor) * old)
+    }
+
+    private var noiseBlocksCleanData: Bool {
+        latestCleanPct < cleanThreshold
+    }
+
+    private var cleanShapeIsBlocked: Bool {
+        latestEffectiveCleanPct < cleanThreshold ||
+        latestTensionPct > 60.0 ||
+        latestBlinkPct > 50.0
+    }
+
+    private var shouldFadeFocusDuringCleanBlock: Bool {
+        latestTensionPct > 60.0
+    }
+
+    private func smoothTowardZero(_ old: Double, factor: Double) -> Double {
+        (1.0 - clamp01(factor)) * old
+    }
+
+    private var currentIntensity: Double {
+        guard let quiet = latestBands?.quiet else { return 0.0 }
+        //Quiet is low activity, so audio "intensity" moves in the opposite direction.
+        return clamp01(1.0 - (quiet / 100.0))
     }
 
     private func clamp01(_ x: Double) -> Double {
