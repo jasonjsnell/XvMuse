@@ -178,8 +178,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestTensionPct: Double = 0.0
     private var latestBlinkPct: Double = 0.0
     private var latestPublishedQuietPct: Double = 0.0
-    private let blockedQuietFadeSmoothing: Double = 0.04
-    private let quietRecoverSmoothing: Double = 0.25
+    private let quietFallSmoothing: Double = 0.45
+    private let quietRecoverSmoothing: Double = 0.12
     private let blinkArtifactThreshold: Double = 50.0
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
@@ -376,11 +376,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //MARK: - DATA PROCESSING -
     internal func parse(bluetoothCharacteristic: CBCharacteristic) {
 
-        // Snapshot at the CoreBluetooth callback boundary. CBCharacteristic is a mutable reference
-        // object, so comparing this value with the later processingQ value tells us whether queued
-        // work is ever observing a newer notification than the one that caused the callback.
         let callbackUUID = bluetoothCharacteristic.uuid
-        let callbackData = bluetoothCharacteristic.value.map { Data($0) }
         let callbackUptime = ProcessInfo.processInfo.systemUptime
 
         var athenaRXSequence: UInt64 = 0
@@ -393,15 +389,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 athenaIngressDeltaMS = (callbackUptime - _athenaLastRXUptime) * 1_000.0
             }
             _athenaLastRXUptime = callbackUptime
-
-            if let callbackData, athenaRXSequence <= 25 {
-                print(
-                    "ATHENA RX | seq:\(athenaRXSequence) uuid:\(callbackUUID.uuidString) " +
-                    "len:\(callbackData.count) dtMS:\(String(format: "%.2f", athenaIngressDeltaMS)) " +
-                    "checksum:\(Self.athenaDiagnosticChecksum(callbackData)) " +
-                    "prefix:\(Self.athenaDiagnosticHex(callbackData, limit: 40))"
-                )
-            }
         }
         
         processingQ.async { [weak self] in
@@ -416,30 +403,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //MARK: route Athena data to parser
             // Special-case Athena main stream BEFORE legacy parsing
             if bluetoothCharacteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN {
-                let queueLagMS = (ProcessInfo.processInfo.systemUptime - callbackUptime) * 1_000.0
-                let snapshotMatchesQueuedValue = callbackData == _data
-
-                if athenaRXSequence <= 25 || !snapshotMatchesQueuedValue || queueLagMS > 20.0 {
-                    let callbackFingerprint = callbackData.map {
-                        "\($0.count)/\(Self.athenaDiagnosticChecksum($0))"
-                    } ?? "nil"
-                    let queuedFingerprint = "\(_data.count)/\(Self.athenaDiagnosticChecksum(_data))"
-                    print(
-                        "ATHENA QUEUE | seq:\(athenaRXSequence) " +
-                        "lagMS:\(String(format: "%.2f", queueLagMS)) " +
-                        "sameValue:\(snapshotMatchesQueuedValue) " +
-                        "callback:\(callbackFingerprint) queued:\(queuedFingerprint)"
-                    )
-                }
-
                 let bytes = [UInt8](_data)
                 _parserAthena.parse(
                     bytes: bytes,
                     timestamp: timestamp,
                     rxSequence: athenaRXSequence,
-                    ingressDeltaMS: athenaIngressDeltaMS,
-                    queueLagMS: queueLagMS,
-                    snapshotMatchesQueuedValue: snapshotMatchesQueuedValue
+                    ingressDeltaMS: athenaIngressDeltaMS
                 )
                 //results are returned by delegate callbacks below
                 return
@@ -612,6 +581,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 _batteryRaw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
                 
                 //parse the percentage and send up to parent
+                lastPrimaryBatteryTime = Date()
                 delegate?.didReceive(batteryPacket:
                     XvBatteryPacket(
                         percentage: Int16(_batteryRaw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
@@ -638,6 +608,21 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     // Otherwise, broadcast the response
                     print("XvMuse: commandResponse:", filtered)
                     delegate?.didReceive(commandResponse: filtered)
+
+                    /* Battery now comes from here on Athena firmware 3.1.29.
+
+                     The old path was subpacket tag 0x98, which that firmware stopped sending —
+                     it appears zero times across thousands of packets. The readings that used to
+                     arrive on it were never real anyway: they came from a misaligned tag scan
+                     finding the byte 0x98 inside raw sensor data, which is why they reported
+                     139%, 178% and 255%.
+
+                     "bp" in the control response is a genuine percentage, arrives on its own
+                     schedule, and needs no reverse engineering. */
+                    if let bp = batteryPercentage(fromCommandResponse: filtered),
+                       primaryBatteryIsSilent {
+                        delegate?.didReceive(batteryPacket: XvBatteryPacket(percentage: bp))
+                    }
                 }
                 
             default:
@@ -787,6 +772,42 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
     }
 
+    /* "bp" is a FALLBACK, not a second source.
+
+     Muse 2 and S report battery on CHAR_BATTERY; Athena on older firmware reports it as subpacket
+     0x98. Both still work, and CHAR_CONTROL is shared by every model — so publishing "bp"
+     unconditionally would give those devices two battery feeds that could disagree and flicker.
+
+     Only publish "bp" when nothing has come from a primary path recently. On Athena 3.1.29 the
+     primary never fires, so the fallback carries battery there and nowhere else. */
+    private var lastPrimaryBatteryTime: Date? = nil
+    private let primaryBatterySilenceSeconds: TimeInterval = 30.0
+
+    private var primaryBatteryIsSilent: Bool {
+        guard let last = lastPrimaryBatteryTime else { return true }
+        return Date().timeIntervalSince(last) > primaryBatterySilenceSeconds
+    }
+
+    /* Pull "bp" out of a control response. Arrives as a Double (94.44) but has also been seen as
+     Int and as a String, so all three are accepted. Values outside 0-100 are rejected rather than
+     clamped — a percentage that far off means the field was misread, and reporting nothing beats
+     reporting a wrong number. */
+    private func batteryPercentage(fromCommandResponse response: [String: Any]) -> Int16? {
+
+        guard let raw = response["bp"] else { return nil }
+
+        let value: Double
+        switch raw {
+        case let d as Double: value = d
+        case let i as Int:    value = Double(i)
+        case let s as String: guard let d = Double(s) else { return nil }; value = d
+        default: return nil
+        }
+
+        guard value >= 0, value <= 100 else { return nil }
+        return Int16(value.rounded())
+    }
+
     private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
         var quiet = rawQuiet
 
@@ -804,7 +825,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         quiet *= tensionDamping
 
         let target = min(max(quiet, 0.0), 100.0)
-        let smoothing = target < latestPublishedQuietPct ? blockedQuietFadeSmoothing : quietRecoverSmoothing
+        let smoothing = target < latestPublishedQuietPct ? quietFallSmoothing : quietRecoverSmoothing
         latestPublishedQuietPct = (smoothing * target) + ((1.0 - smoothing) * latestPublishedQuietPct)
         return min(max(latestPublishedQuietPct, 0.0), 100.0)
     }
@@ -894,6 +915,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
     
     func didReceiveAthena(batteryPacket: XvBatteryPacket) {
+        lastPrimaryBatteryTime = Date()
         delegate?.didReceive(batteryPacket: batteryPacket)
     }
 

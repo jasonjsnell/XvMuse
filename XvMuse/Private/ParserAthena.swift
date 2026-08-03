@@ -84,7 +84,6 @@ class ParserAthena {
     // MARK: Protocol diagnostics
 
     private var diagnosticCurrentRXSequence: UInt64 = 0
-    private var diagnosticCurrentNotificationBytes: [UInt8] = []
     private var diagnosticNotificationTotal: UInt64 = 0
     private var diagnosticWindowStartUptime = ProcessInfo.processInfo.systemUptime
     private var diagnosticWindowNotifications = 0
@@ -95,9 +94,7 @@ class ParserAthena {
     private var diagnosticWindowPacketIndexAnomalies = 0
     private var diagnosticWindowSubpacketIndexAnomalies = 0
     private var diagnosticWindowByte13Nonzero = 0
-    private var diagnosticWindowSnapshotMismatches = 0
     private var diagnosticWindowIngressGaps = 0
-    private var diagnosticWindowMaxQueueLagMS: Double = 0
     private var diagnosticWindowTagCounts: [UInt8: Int] = [:]
     private var diagnosticWindowDropCounts: [String: Int] = [:]
     private var diagnosticDropTotals: [String: Int] = [:]
@@ -135,6 +132,16 @@ class ParserAthena {
             0x47: .init(type: .accgyro, nChannels: 6,  nSamples: 3, rate:  52.0, dataLen: 36),
             0x53: .init(type: .unknown, nChannels: 0,  nSamples: 0, rate:   0.0, dataLen: 24),
             0x98: .init(type: .battery, nChannels: 1,  nSamples: 1, rate:   1.0, dataLen: 20),
+
+            /* New in firmware 3.1.29. Its payload is almost entirely constant from packet to
+             packet — 63B600B800 ... FFFF F602BF72 recurs verbatim with only a few bytes moving —
+             so it reads as status or telemetry rather than sensor data. It arrives rarely, about
+             eight times in two thousand packets. Registered as known-but-unused so it stops being
+             reported as an unrecognised tag; revisit if the constant bytes turn out to encode
+             something worth having. */
+            /* dataLen 20, read off the drop log: "need:29 available:25" — 29 was 5 header bytes
+             plus a wrong 24, and only 25 bytes exist, so the payload is 20. */
+            0x88: .init(type: .unknown, nChannels: 0,  nSamples: 0, rate:   0.0, dataLen: 20),
         ]
         
         // scales
@@ -148,16 +155,11 @@ class ParserAthena {
         bytes: [UInt8],
         timestamp: Double,
         rxSequence: UInt64 = 0,
-        ingressDeltaMS: Double = 0,
-        queueLagMS: Double = 0,
-        snapshotMatchesQueuedValue: Bool = true
+        ingressDeltaMS: Double = 0
     ) {
         diagnosticCurrentRXSequence = rxSequence
-        diagnosticCurrentNotificationBytes = bytes
         diagnosticNotificationTotal &+= 1
         diagnosticWindowNotifications += 1
-        diagnosticWindowMaxQueueLagMS = max(diagnosticWindowMaxQueueLagMS, queueLagMS)
-        if !snapshotMatchesQueuedValue { diagnosticWindowSnapshotMismatches += 1 }
         if ingressDeltaMS > 100.0 { diagnosticWindowIngressGaps += 1 }
         defer { emitDiagnosticSummaryIfNeeded() }
 
@@ -213,8 +215,21 @@ class ParserAthena {
             // Unknown2: bytes[10...12]
             let byte13: UInt8 = packetBytes[13]
             
+            /* Byte 13 is NOT a validity marker.
+
+             Older Athena firmware left it as padding, always zero, so the original reverse
+             engineering treated a non-zero value as a malformed packet. Firmware 3.1.29
+             (Athena_RevF) began putting data there — values climbing by a few per packet and
+             wrapping around 40 — and this check started rejecting roughly 95% of all traffic.
+
+             The give-away in the logs was that rejected exactly equalled byte13Nonzero every
+             single second, while the two or three packets per second that happened to land on
+             zero parsed perfectly and produced EEG samples. Nothing else about the format changed:
+             length, packet index, timestamp and packet_id all still decode correctly.
+
+             Validity now rests on the checks that actually mean something — a recognised sensor
+             tag and a sane length. */
             let packetValid = (packetType != nil
-                            && byte13 == 0
                             && packetLen >= Athena.packetHeaderSize)
 
             diagnosticWindowPackets += 1
@@ -229,24 +244,9 @@ class ParserAthena {
                 let delta = Int(packetIndex &- lastPacketIndex)
                 if delta != 1 {
                     diagnosticWindowPacketIndexAnomalies += 1
-                    let occurrence = diagnosticWindowPacketIndexAnomalies
-                    if occurrence <= 12 {
-                        print(
-                            "ATHENA INDEX | rx:\(rxSequence) previous:\(lastPacketIndex) " +
-                            "current:\(packetIndex) delta:\(delta)"
-                        )
-                    }
                 }
             }
             diagnosticLastPacketIndex = packetIndex
-
-            if diagnosticNotificationTotal <= 25 || packetId == 0x88 || packetId == 0x98 {
-                print(
-                    "ATHENA PKT | rx:\(rxSequence) off:\(offset) len:\(packetLen) " +
-                    "idx:\(packetIndex) id:\(diagnosticTag(packetId)) byte13:\(byte13) " +
-                    "known:\(packetType != nil) valid:\(packetValid) remaining:\(count - offset)"
-                )
-            }
 
             if packetType == nil {
                 recordDiagnosticDrop(
@@ -255,13 +255,9 @@ class ParserAthena {
                     detail: "tag:\(diagnosticTag(packetId)) idx:\(packetIndex) byte13:\(byte13)"
                 )
             }
-            if byte13 != 0 {
-                recordDiagnosticDrop(
-                    "byte13-nonzero",
-                    offset: offset,
-                    detail: "tag:\(diagnosticTag(packetId)) idx:\(packetIndex) byte13:\(byte13)"
-                )
-            }
+            /* No longer recorded as a drop — byte 13 carrying data is normal on firmware 3.1.29
+             and later. The counter above still tracks it, since its behaviour is worth watching
+             while we work out what the field actually is. */
             
             let dataSection: [UInt8]
             if packetBytes.count > Athena.packetHeaderSize {
@@ -377,13 +373,6 @@ class ParserAthena {
                 let delta = Int(subpacketIndex &- lastSubpacketIndex)
                 if delta != 1 {
                     diagnosticWindowSubpacketIndexAnomalies += 1
-                    if diagnosticWindowSubpacketIndexAnomalies <= 12 {
-                        print(
-                            "ATHENA SUBINDEX | rx:\(diagnosticCurrentRXSequence) " +
-                            "tag:\(diagnosticTag(tagByte)) previous:\(lastSubpacketIndex) " +
-                            "current:\(subpacketIndex) delta:\(delta)"
-                        )
-                    }
                 }
             }
             diagnosticLastSubpacketIndex[tagByte] = subpacketIndex
@@ -691,14 +680,6 @@ class ParserAthena {
         case .battery:
             //grab pct and send to main
             if let pct: Float = decodeAthenaBattery(dataBytes: dataBytes) {
-                let rawSOC = UInt16(dataBytes[0]) | (UInt16(dataBytes[1]) << 8)
-                print(
-                    "ATHENA BATT | rx:\(diagnosticCurrentRXSequence) origin:\(origin) " +
-                    "parent:\(diagnosticTag(packetId)) tag:\(diagnosticTag(tagByte)) " +
-                    "packetIdx:\(packetIndex) byte13:\(packetByte13) dataOffset:\(dataOffset) " +
-                    "rawSOC:\(rawSOC) pct:\(String(format: "%.2f", pct)) " +
-                    "raw:\(diagnosticHex(dataBytes, limit: 20))"
-                )
                 delegate?.didReceiveAthena(
                     batteryPacket: XvBatteryPacket(percentage: Int16(pct))
                 )
@@ -757,48 +738,15 @@ class ParserAthena {
     private func recordDiagnosticDrop(_ reason: String, offset: Int, detail: String) {
         diagnosticWindowDropCounts[reason, default: 0] += 1
         diagnosticDropTotals[reason, default: 0] += 1
-        let occurrence = diagnosticDropTotals[reason, default: 0]
 
-        // Enough individual examples to identify the byte pattern without making logging itself
-        // the source of a processing backlog. Long tests still emit every 100th occurrence.
-        if occurrence <= 12 || occurrence % 100 == 0 {
-            let start = max(0, min(offset, diagnosticCurrentNotificationBytes.count))
-            let windowEnd = min(start + 32, diagnosticCurrentNotificationBytes.count)
-            let window = start < windowEnd
-                ? Array(diagnosticCurrentNotificationBytes[start ..< windowEnd])
-                : []
-            print(
-                "ATHENA DROP | rx:\(diagnosticCurrentRXSequence) reason:\(reason) " +
-                "occurrence:\(occurrence) offset:\(offset) \(detail) " +
-                "window:\(diagnosticHex(window, limit: 32))"
-            )
-        }
+        _ = offset
+        _ = detail
     }
 
     private func emitDiagnosticSummaryIfNeeded() {
         let now = ProcessInfo.processInfo.systemUptime
         let elapsed = now - diagnosticWindowStartUptime
         guard elapsed >= 1.0 else { return }
-
-        let tagSummary = diagnosticWindowTagCounts.keys.sorted().map { tag in
-            "\(diagnosticTag(tag)):\(diagnosticWindowTagCounts[tag, default: 0])"
-        }.joined(separator: ",")
-        let dropSummary = diagnosticWindowDropCounts.keys.sorted().map { reason in
-            "\(reason):\(diagnosticWindowDropCounts[reason, default: 0])"
-        }.joined(separator: ",")
-
-        print(
-            "ATHENA 1S | rx:\(diagnosticCurrentRXSequence) " +
-            "notifications:\(diagnosticWindowNotifications) packets:\(diagnosticWindowPackets) " +
-            "accepted:\(diagnosticWindowAcceptedPackets) rejected:\(diagnosticWindowRejectedPackets) " +
-            "byte13Nonzero:\(diagnosticWindowByte13Nonzero) eegSamples:\(diagnosticWindowEEGSamples) " +
-            "packetIndexAnomalies:\(diagnosticWindowPacketIndexAnomalies) " +
-            "subIndexAnomalies:\(diagnosticWindowSubpacketIndexAnomalies) " +
-            "ingressGaps:\(diagnosticWindowIngressGaps) " +
-            "queueLagMaxMS:\(String(format: "%.2f", diagnosticWindowMaxQueueLagMS)) " +
-            "snapshotMismatches:\(diagnosticWindowSnapshotMismatches) " +
-            "tags:{\(tagSummary)} drops:{\(dropSummary)}"
-        )
 
         diagnosticWindowStartUptime = now
         diagnosticWindowNotifications = 0
@@ -809,18 +757,12 @@ class ParserAthena {
         diagnosticWindowPacketIndexAnomalies = 0
         diagnosticWindowSubpacketIndexAnomalies = 0
         diagnosticWindowByte13Nonzero = 0
-        diagnosticWindowSnapshotMismatches = 0
         diagnosticWindowIngressGaps = 0
-        diagnosticWindowMaxQueueLagMS = 0
         diagnosticWindowTagCounts.removeAll(keepingCapacity: true)
         diagnosticWindowDropCounts.removeAll(keepingCapacity: true)
     }
 
     private func diagnosticTag(_ tag: UInt8) -> String {
         String(format: "0x%02X", Int(tag))
-    }
-
-    private func diagnosticHex(_ bytes: [UInt8], limit: Int) -> String {
-        bytes.prefix(limit).map { String(format: "%02X", Int($0)) }.joined()
     }
 }

@@ -188,7 +188,13 @@ public class MuseBluetooth:XvBluetoothDelegate {
         //up the counter
         connectionCounter += 1
         if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
-            keepAlive()
+            /* Status rather than plain keep-alive, because its reply carries "bp" — the battery
+             percentage. Any command resets the connection timeout, so this keeps the link alive
+             exactly as keepAlive() did while also refreshing battery roughly every 12 seconds.
+
+             Needed because Athena firmware 3.1.29 dropped the 0x98 battery subpacket that used to
+             stream continuously. Without this, battery arrives only at connect and never updates. */
+            controlStatus()
             //print("Connection time:", timeFormatter.string(from: connectionStartTime, to: Date())!)
             connectionCounter = 0
         }

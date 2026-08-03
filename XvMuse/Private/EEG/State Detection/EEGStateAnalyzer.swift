@@ -38,6 +38,10 @@ final class EEGStateAnalyzer {
     //how far back the "is the centroid parked or wandering" judgement looks
     private let stabilityWindow: TimeInterval = 8.0
 
+    //detail-window power range used for the 0...1 intensity dimension
+    private let intensityLowLogPower: Double = 0.0
+    private let intensityHighLogPower: Double = 3.0
+
     //ignore bins the filter has pushed below half amplitude; correcting them amplifies noise
     private let minimumFilterResponse: Double = 0.5
 
@@ -219,7 +223,7 @@ final class EEGStateAnalyzer {
         }
 
         guard let features = measure(spectrum, at: now) else {
-            publishBlockedFadeIfDue(now: now, liveIntensity: currentIntensity)
+            publishBlockedFadeIfDue(now: now)
             return
         }
 
@@ -227,7 +231,7 @@ final class EEGStateAnalyzer {
             publishBlockedFadeIfDue(
                 now: now,
                 liveTiltHz: features.centroidHz,
-                liveIntensity: currentIntensity,
+                liveIntensity: intensity(from: features),
                 liveSpreadHz: features.spreadHz,
                 fadeFocus: shouldFadeFocusDuringCleanBlock
             )
@@ -330,7 +334,7 @@ final class EEGStateAnalyzer {
         lastPublish = now
 
         let steadiness = centroidStability
-        let intensity = currentIntensity
+        let intensity = intensity(from: features)
 
         let scores = scorer.applyStateScores(
             centroidHz: features.centroidHz,
@@ -478,10 +482,8 @@ final class EEGStateAnalyzer {
         (1.0 - clamp01(factor)) * old
     }
 
-    private var currentIntensity: Double {
-        guard let quiet = latestBands?.quiet else { return 0.0 }
-        //Quiet is low activity, so audio "intensity" moves in the opposite direction.
-        return clamp01(1.0 - (quiet / 100.0))
+    private func intensity(from features: DetailFeatures) -> Double {
+        ramp(features.logPower, low: intensityLowLogPower, high: intensityHighLogPower)
     }
 
     private func clamp01(_ x: Double) -> Double {
