@@ -71,6 +71,10 @@ public struct FFTResultSet {
 }
 
 
+internal protocol FFTManagerDelegate:AnyObject {
+    func fftManagerDidUpdateBufferProgress(samples:Int, total:Int)
+}
+
 public class FFTManager {
     
     /* Instead of doing 2D arrays of 256 samples for each sensor, I'm optmizing the FFT processing by resuing the Epoch Generator and FFT Transformer for all data. The Buffers needs one object per sensor because it is storing an ongoing stream of data from each sensor. The epoch generator is just one object, but has an array of start times, since that's the only var that needs to be sensor-specific. And the FFT transformer processes different data each func call, with no data persisting inbetween calls, so I'm using one object to process the data of all the sensors (they all take turns sending in and processing their samples, getting their returned FFT data) */
@@ -80,6 +84,8 @@ public class FFTManager {
     private lazy var _fullFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
     private lazy var _detailFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
     private var _detailFilters:[FFTFilter] = []
+    internal weak var delegate:FFTManagerDelegate?
+    private var _lastPublishedBufferSamples:Int = -1
     
     internal init() {
         
@@ -97,6 +103,10 @@ public class FFTManager {
             )
         }
     }
+
+    internal func resetBufferProgress() {
+        _lastPublishedBufferSamples = -1
+    }
     
     //An eeg data packet is sent in from the XvMuse class
     internal func process(eegPacket:MuseEEGPacket) -> FFTResultSet? {
@@ -110,6 +120,7 @@ public class FFTManager {
         
         // once the buffer is full (it needs a few seconds of data before it can provide a stream)...
         if let dataStream:DataStream = _buffers[eegPacket.sensor].add(packet: eegPacket) {
+            publishBufferProgressIfNeeded()
             
             //send the data stream to the epoch manager
             
@@ -138,11 +149,25 @@ public class FFTManager {
             }// else {
                // print("epoch error")
             //}
-        } //else {
+        } else {
+            publishBufferProgressIfNeeded()
             //print("data stream error")
-        //}
+        }
         
         return nil
+    }
+
+    private func publishBufferProgressIfNeeded() {
+        guard let total = _buffers.map({ $0.samplesMax }).min(), total > 0 else { return }
+
+        let samples = _buffers
+            .map { min($0.samplesCount, total) }
+            .min() ?? 0
+
+        guard samples != _lastPublishedBufferSamples else { return }
+
+        _lastPublishedBufferSamples = samples
+        delegate?.fftManagerDidUpdateBufferProgress(samples: samples, total: total)
     }
 }
 

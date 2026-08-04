@@ -59,8 +59,9 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double)
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
+    func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
     
     //brainwaves
     func didReceiveBrainwave(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
@@ -91,8 +92,9 @@ public protocol XvMuseDelegate:AnyObject {
 
 public extension XvMuseDelegate {
     func didReceive(detailLinearSpectrum:[Double]) {}
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double) {}
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
+    func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
 }
 
@@ -290,6 +292,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         bluetooth.start()
         
         _parserAthena.delegate = self
+        _fft.delegate = self
         eeg.noteTriggers.delegate = self
         _mlManager.delegate = self
         _stateAnalyzer.delegate = self
@@ -368,6 +371,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //MARK: Start streaming
     public func startMuse(){
         print("XvMuse: Start streaming Muse data")
+        _fft.resetBufferProgress()
         bluetooth.startStreaming()
     }
     
@@ -581,10 +585,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 _batteryRaw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
                 
                 //parse the percentage and send up to parent
-                lastPrimaryBatteryTime = Date()
+                let primaryBatteryPercent = Int16(_batteryRaw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
+                guard !shouldIgnorePrimaryBattery(primaryBatteryPercent) else { return }
                 delegate?.didReceive(batteryPacket:
                     XvBatteryPacket(
-                        percentage: Int16(_batteryRaw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
+                        percentage: primaryBatteryPercent
                     )
                 )
 
@@ -619,8 +624,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                      "bp" in the control response is a genuine percentage, arrives on its own
                      schedule, and needs no reverse engineering. */
-                    if let bp = batteryPercentage(fromCommandResponse: filtered),
-                       primaryBatteryIsSilent {
+                    if let bp = batteryPercentage(fromCommandResponse: filtered) {
+                        didPublishCommandResponseBatteryPacket(bp)
                         delegate?.didReceive(batteryPacket: XvBatteryPacket(percentage: bp))
                     }
                 }
@@ -708,14 +713,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let quiet = gatedQuiet(fromRawQuiet: rawQuiet)
         delegate?.didReceiveQuiet(quiet)
 
-        /* Focus and meditation are measured from the clean detail-window shape. Dreamy cannot
-         be detail-only: the detail window may start above theta, so it is read from the
-         full-spectrum band balance instead. */
+        /* Focus and meditation are measured from the clean detail-window shape. Alpha/beta use
+         the detail-window bands; theta stays full-spectrum for drowsiness, and the state analyzer
+         delays/invalidates theta around blink and tension artifacts before scoring it. */
         _stateAnalyzer.updateBands(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
-            alpha: eeg.alpha.decibel,
-            beta: eeg.beta.decibel,
+            alpha: eeg.detailAlpha.decibel,
+            beta: eeg.detailBeta.decibel,
             gamma: eeg.gamma.decibel,
             //raw, not gated — the gated value already carries tension damping, which dreamy
             //applies separately, and double-counting it would suppress dreamy twice over
@@ -740,6 +745,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             alphaHistory: eeg.alpha.history.decibels,
             betaHistory: eeg.beta.history.decibels,
             gammaHistory: eeg.gamma.history.decibels
+        )
+    }
+
+    func fftManagerDidUpdateBufferProgress(samples:Int, total:Int) {
+        let safeTotal = max(total, 1)
+        let progress = min(1.0, max(0.0, Double(samples) / Double(safeTotal)))
+
+        delegate?.didReceiveEEGBufferProgress(
+            samples: min(samples, safeTotal),
+            total: safeTotal,
+            progress: progress
         )
     }
 
@@ -778,14 +794,32 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      0x98. Both still work, and CHAR_CONTROL is shared by every model — so publishing "bp"
      unconditionally would give those devices two battery feeds that could disagree and flicker.
 
-     Only publish "bp" when nothing has come from a primary path recently. On Athena 3.1.29 the
-     primary never fires, so the fallback carries battery there and nowhere else. */
-    private var lastPrimaryBatteryTime: Date? = nil
-    private let primaryBatterySilenceSeconds: TimeInterval = 30.0
+     Publish "bp" whenever it appears. Muse S/2 can send a real "bp" in the command response while
+     the notify battery characteristic decodes to 0, so a strict primary/fallback split lets a bad
+     primary value win. A recent nonzero "bp" also blocks primary zero packets from overwriting it. */
+    private var lastCommandResponseBatteryTime: Date? = nil
+    private var lastCommandResponseBatteryPercent: Int16? = nil
+    private let commandResponseBatteryGuardSeconds: TimeInterval = 60.0
 
-    private var primaryBatteryIsSilent: Bool {
-        guard let last = lastPrimaryBatteryTime else { return true }
-        return Date().timeIntervalSince(last) > primaryBatterySilenceSeconds
+    private func didPublishCommandResponseBatteryPacket(_ percent: Int16) {
+        lastCommandResponseBatteryTime = Date()
+        lastCommandResponseBatteryPercent = percent
+    }
+
+    private func shouldIgnorePrimaryBattery(_ percent: Int16) -> Bool {
+        guard percent == 0,
+              let commandPercent = lastCommandResponseBatteryPercent,
+              commandPercent > 0,
+              let lastCommandTime = lastCommandResponseBatteryTime else {
+            return false
+        }
+
+        return Date().timeIntervalSince(lastCommandTime) <= commandResponseBatteryGuardSeconds
+    }
+
+    private func resetBatteryStateForConnection() {
+        lastCommandResponseBatteryTime = nil
+        lastCommandResponseBatteryPercent = nil
     }
 
     /* Pull "bp" out of a control response. Arrives as a Double (94.44) but has also been seen as
@@ -840,12 +874,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
     }
 
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double) {
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double) {
         delegate?.didReceiveBrainwaveDimensions(
             tiltHz: tiltHz,
             steadiness: steadiness,
             intensity: intensity,
-            spreadHz: spreadHz
+            spreadHz: spreadHz,
+            confidence: confidence,
+            rhythmicityDb: rhythmicityDb,
+            alphaPaceHz: alphaPaceHz
         )
     }
 
@@ -915,7 +952,6 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
     
     func didReceiveAthena(batteryPacket: XvBatteryPacket) {
-        lastPrimaryBatteryTime = Date()
         delegate?.didReceive(batteryPacket: batteryPacket)
     }
 
@@ -1059,6 +1095,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public func didConnect() {
     
         connected = true
+        resetBatteryStateForConnection()
         
         //communication protocol
         //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
@@ -1100,11 +1137,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     public func didDisconnect() {
         connected = false
+        resetBatteryStateForConnection()
         delegate?.museDidDisconnect()
     }
     
     public func didLoseConnection() {
         connected = false
+        resetBatteryStateForConnection()
         delegate?.museLostConnection()
     }
     
@@ -1206,3 +1245,5 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
 
 }
+
+extension XvMuse: FFTManagerDelegate {}

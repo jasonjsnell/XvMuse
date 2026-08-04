@@ -27,18 +27,35 @@ final class EEGStateScorer {
     private(set) var dreamyCredibility: Double = 0.0
     private(set) var dreamySupport: Double = 0.0
 
+    private(set) var focusBroadEnough: Double = 0.0
+    private(set) var focusHoldingSteady: Double = 0.0
+    private(set) var focusFastCentroid: Double = 0.0
+    private(set) var focusCalmCentroid: Double = 0.0
+    private(set) var focusActiveNotQuiet: Double = 1.0
+    private(set) var meditationAlphaLeadDb: Double = 0.0
+    private(set) var meditationAlphaCentroid: Double = 0.0
+    private(set) var meditationOrganized: Double = 0.0
+    private(set) var meditationHoldingSteady: Double = 0.0
+    private(set) var dreamyThetaLeadDb: Double = 0.0
+    private(set) var dreamySmoothedThetaLeadDb: Double = 0.0
+    private(set) var dreamyThetaVsFastDb: Double = 0.0
+    private(set) var dreamyClearOfFastBands: Double = 0.0
+    private(set) var dreamyStillnessPresent: Double = 0.0
+    private(set) var dreamyThetaVsDeltaDb: Double = 0.0
+    private(set) var dreamyCalmLowEnd: Double = 0.0
+
     //MARK: - Tunables
 
-    /* Measured from recorded sessions: the coding centroid sits around 12.9 Hz, quiet mind and
-     drowsiness around 11.9, eyes-closed meditation around 10.4. The old 12.0-16.5 range only
-     reached full scale at a frequency the data never actually visits, so an entire coding session
-     scored in the bottom fifth of the gate. */
+    /* Focus has two valid shapes:
+       - fast focus: higher beta/detail-window centroid
+       - calm focus: a steady, broad, organized lower centroid, common for a meditator doing
+         engaged reading/coding without much high-beta strain. */
     var focusCentroidLowHz: Double = 11.5
     var focusCentroidHighHz: Double = 14.5
-
-    //how far alpha sits below theta before it counts as fully suppressed
-    var alphaSuppressionLowDb: Double = -6.0
-    var alphaSuppressionHighDb: Double = 0.0
+    var calmFocusCentroidHz: Double = 10.6
+    var calmFocusCentroidRadiusHz: Double = 1.4
+    var calmFocusQuietLow: Double = 55.0
+    var calmFocusQuietHigh: Double = 85.0
 
     /* How long theta has to keep leading before dreamy believes it. At the 0.25s publish cadence
      0.04 works out to roughly a 6 second memory — long enough to reject isolated blips, short
@@ -66,6 +83,22 @@ final class EEGStateScorer {
         dreamyGate = 0.0
         dreamyCredibility = 0.0
         dreamySupport = 0.0
+        focusBroadEnough = 0.0
+        focusHoldingSteady = 0.0
+        focusFastCentroid = 0.0
+        focusCalmCentroid = 0.0
+        focusActiveNotQuiet = 1.0
+        meditationAlphaLeadDb = 0.0
+        meditationAlphaCentroid = 0.0
+        meditationOrganized = 0.0
+        meditationHoldingSteady = 0.0
+        dreamyThetaLeadDb = 0.0
+        dreamySmoothedThetaLeadDb = 0.0
+        dreamyThetaVsFastDb = 0.0
+        dreamyClearOfFastBands = 0.0
+        dreamyStillnessPresent = 0.0
+        dreamyThetaVsDeltaDb = 0.0
+        dreamyCalmLowEnd = 0.0
         smoothedThetaLead = 0.0
     }
 
@@ -139,40 +172,35 @@ final class EEGStateScorer {
     ) -> Double {
 
         let fastCentroid = ramp(centroidHz, low: focusCentroidLowHz, high: focusCentroidHighHz)
+        let calmCentroid = centered(
+            centroidHz,
+            center: calmFocusCentroidHz,
+            radius: calmFocusCentroidRadiusHz
+        )
         let broadEnough = ramp(spreadHz, low: broadSpreadLowHz, high: broadSpreadHighHz)
         let holdingSteady = clamp01(stability)
+        let activeNotQuiet = bands.map {
+            invRamp($0.quiet, low: calmFocusQuietLow, high: calmFocusQuietHigh)
+        } ?? 1.0
 
-        /* Alpha suppression replaces the old beta-dominance term, which could never fire.
+        /* The calm path only opens when the detail spectrum is broad/active enough. That lets a
+         relaxed reader/coder register as focused without turning quiet eyes-closed alpha into
+         focus. The fast path remains available for classic higher-beta focus. */
+        let calmFocus = calmCentroid * broadEnough * activeNotQuiet
+        let focusShape = max(fastCentroid, calmFocus)
 
-         Organic signals follow a 1/f slope — big and slow, small and fast — so beta sits 5 to 30 dB
-         below delta at all times and is never the loudest band. Checking whether it leads was
-         asking a question whose answer is always no, and it was dragging a quarter of the support
-         weight to zero on every single frame.
+        //Keep focus detail-first. Low full-spectrum theta is too noisy to use as support here.
+        let support = (0.55 * broadEnough) + (0.45 * holdingSteady)
 
-         What engagement actually looks like is the opposite: alpha COLLAPSING. In the coding
-         recording alpha ran about 6.6 dB below theta, and frequently went negative outright; in
-         eyes-closed meditation it ran 3 dB above. That is classic alpha blocking, and unlike beta
-         dominance it is something this hardware can genuinely see.
-
-         It stays in support rather than becoming the gate, because a quiet mind also suppresses
-         alpha — the raised centroid is what makes it focus rather than idling. */
-        let alphaSuppressed: Double
-        if let bands {
-            alphaSuppressed = invRamp(
-                bands.alpha - bands.theta,
-                low: alphaSuppressionLowDb,
-                high: alphaSuppressionHighDb
-            )
-        } else {
-            alphaSuppressed = 0.5
-        }
-
-        let support = (0.40 * broadEnough) + (0.35 * holdingSteady) + (0.25 * alphaSuppressed)
-
-        focusGate = fastCentroid
+        focusGate = focusShape
         focusSupport = support
+        focusBroadEnough = broadEnough
+        focusHoldingSteady = holdingSteady
+        focusFastCentroid = fastCentroid
+        focusCalmCentroid = calmCentroid
+        focusActiveNotQuiet = activeNotQuiet
 
-        return clamp01(fastCentroid * (0.45 + (0.55 * support)))
+        return clamp01(focusShape * (0.45 + (0.55 * support)))
     }
 
     /* Meditation: alpha-led, organized, still activity in the detail window. */
@@ -190,7 +218,8 @@ final class EEGStateScorer {
         }
 
         let strongestRival = max(max(bands.delta, bands.theta), max(bands.beta, bands.gamma))
-        let alphaLeads = ramp(bands.alpha - strongestRival, low: -2.0, high: 1.0)
+        let alphaLeadDb = bands.alpha - strongestRival
+        let alphaLeads = ramp(alphaLeadDb, low: -2.0, high: 1.0)
 
         let alphaCentroid = centered(
             centroidHz,
@@ -204,11 +233,16 @@ final class EEGStateScorer {
 
         medGate = alphaLeads
         medSupport = support
+        meditationAlphaLeadDb = alphaLeadDb
+        meditationAlphaCentroid = alphaCentroid
+        meditationOrganized = organized
+        meditationHoldingSteady = holdingSteady
 
         return clamp01(alphaLeads * (0.40 + (0.60 * support)))
     }
 
-    /* Dreamy: theta-led, quiet, slow activity read from the full spectrum. */
+    /* Dreamy: theta-led, quiet, slow activity. Theta remains full-spectrum upstream, but is
+     delayed and artifact-screened so blink/tension pre-roll frames do not count. */
     private func scoreDreamy(_ bands: BandBalance) -> Double {
 
         /* Theta has to lead for a WHILE, not for an instant.
@@ -227,21 +261,31 @@ final class EEGStateScorer {
          meant to add skepticism was instead granting full credibility to the one state it cannot
          tell apart from drowsiness. Persistence is what actually separates them. */
         let strongestRival = max(max(bands.delta, bands.alpha), max(bands.beta, bands.gamma))
-        smoothedThetaLead += thetaLeadSmoothing * ((bands.theta - strongestRival) - smoothedThetaLead)
+        let thetaLeadDb = bands.theta - strongestRival
+        smoothedThetaLead += thetaLeadSmoothing * (thetaLeadDb - smoothedThetaLead)
         let thetaLeads = ramp(smoothedThetaLead, low: -2.0, high: 1.0)
 
         //Broadband noise raises beta/gamma too, so theta needs to stand clear of fast bands.
-        let clearOfFastBands = ramp(bands.theta - max(bands.beta, bands.gamma), low: -1.0, high: 3.0)
+        let thetaVsFastDb = bands.theta - max(bands.beta, bands.gamma)
+        let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 3.0)
 
         //Stillness separates real drowsy drift from active cognitive theta.
         let stillnessPresent = ramp(bands.quiet, low: 20.0, high: 50.0)
 
         //A calm low end. A blink drives delta up and pulls this down.
-        let calmLowEnd = ramp(bands.theta - bands.delta, low: -2.0, high: 2.0)
+        let thetaVsDeltaDb = bands.theta - bands.delta
+        let calmLowEnd = ramp(thetaVsDeltaDb, low: -2.0, high: 2.0)
 
         dreamyGate = thetaLeads
         dreamyCredibility = min(clearOfFastBands, stillnessPresent)
         dreamySupport = calmLowEnd
+        dreamyThetaLeadDb = thetaLeadDb
+        dreamySmoothedThetaLeadDb = smoothedThetaLead
+        dreamyThetaVsFastDb = thetaVsFastDb
+        dreamyClearOfFastBands = clearOfFastBands
+        dreamyStillnessPresent = stillnessPresent
+        dreamyThetaVsDeltaDb = thetaVsDeltaDb
+        dreamyCalmLowEnd = calmLowEnd
 
         return clamp01(
             thetaLeads * clearOfFastBands * stillnessPresent * (0.50 + (0.50 * calmLowEnd))

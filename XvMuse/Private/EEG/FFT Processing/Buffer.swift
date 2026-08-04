@@ -56,6 +56,14 @@ class Buffer {
     private var _dataStream:DataStream // object which holds the samples and timestamps arrays
     private var _samplesMax:Int //max size of the samples array
     private var _timestampsMax:Int //max size of timestampls array
+
+    internal var samplesCount:Int {
+        min(_dataStream.samples.count, _samplesMax)
+    }
+
+    internal var samplesMax:Int {
+        _samplesMax
+    }
     
     init(sensor:Int) {
         
@@ -99,4 +107,3 @@ class Buffer {
         }
     }
 }
-
