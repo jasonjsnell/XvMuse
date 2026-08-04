@@ -13,7 +13,6 @@ protocol EEGStateAnalyzerDelegate: AnyObject {
         intensity: Double,
         spreadHz: Double,
         confidence: Double,
-        rhythmicityDb: Double,
         alphaPaceHz: Double
     )
 }
@@ -49,10 +48,6 @@ final class EEGStateAnalyzer {
     //detail-window power range used for the 0...1 intensity dimension
     private let intensityLowLogPower: Double = 0.0
     private let intensityHighLogPower: Double = 3.0
-
-    //rhythmicity is measured as peak-over-mean after removing the 1/f spectral slope
-    private let rhythmicityLowDb: Double = 1.0
-    private let rhythmicityHighDb: Double = 8.0
 
     //ignore bins the filter has pushed below half amplitude; correcting them amplifies noise
     private let minimumFilterResponse: Double = 0.5
@@ -108,7 +103,6 @@ final class EEGStateAnalyzer {
     private var lastIntensity: Double = 0.0
     private var lastSpreadHz: Double = 0.0
     private var lastConfidence: Double = 0.0
-    private var lastRhythmicityDb: Double = 0.0
     private var lastAlphaPaceHz: Double = 0.0
 
     //MARK: - Init
@@ -281,7 +275,6 @@ final class EEGStateAnalyzer {
                 liveTiltHz: features.centroidHz,
                 liveIntensity: intensity(from: features),
                 liveSpreadHz: features.spreadHz,
-                liveRhythmicityDb: features.rhythmicityDb,
                 liveAlphaPaceHz: features.alphaPaceHz,
                 fadeFocus: shouldFadeFocusDuringCleanBlock
             )
@@ -308,7 +301,6 @@ final class EEGStateAnalyzer {
         lastIntensity = 0
         lastSpreadHz = 0
         lastConfidence = 0
-        lastRhythmicityDb = 0
         lastAlphaPaceHz = 0
         scorer.reset()
     }
@@ -350,21 +342,9 @@ final class EEGStateAnalyzer {
             centroidHz: centroid,
             spreadHz: spread,
             logPower: log10(total + 1e-12),
-            rhythmicityDb: rhythmicityDb(fromDetailSpectrum: spectrum),
             alphaPaceHz: alphaPaceHz(fromDetailSpectrum: spectrum) ?? lastAlphaPaceHz,
             timestamp: now
         )
-    }
-
-    private func rhythmicityDb(fromDetailSpectrum spectrum: [Double]) -> Double {
-        let points = usableBins.enumerated().compactMap { index, bin -> (hz: Double, power: Double)? in
-            guard bin < spectrum.count else { return nil }
-            let power = max(0.0, spectrum[bin]) * compensation[index]
-            guard power > 1e-12 else { return nil }
-            return (hz: usableFreqs[index], power: power)
-        }
-
-        return peakOverMeanDb(afterFlattening: points)
     }
 
     private func alphaPaceHz(fromDetailSpectrum spectrum: [Double]) -> Double? {
@@ -383,16 +363,6 @@ final class EEGStateAnalyzer {
 
         let flattened = flattenedDbValues(points)
         return flattened.max { $0.db < $1.db }?.hz
-    }
-
-    private func peakOverMeanDb(afterFlattening points: [(hz: Double, power: Double)]) -> Double {
-        let flattened = flattenedDbValues(points)
-        guard !flattened.isEmpty else { return 0.0 }
-
-        let values = flattened.map { $0.db }
-        let peak = values.max() ?? 0.0
-        let mean = values.reduce(0.0, +) / Double(values.count)
-        return max(0.0, peak - mean)
     }
 
     private func flattenedDbValues(_ points: [(hz: Double, power: Double)]) -> [(hz: Double, db: Double)] {
@@ -475,7 +445,6 @@ final class EEGStateAnalyzer {
         lastIntensity = intensity
         lastSpreadHz = features.spreadHz
         lastConfidence = cleanConfidence01
-        lastRhythmicityDb = features.rhythmicityDb
         lastAlphaPaceHz = features.alphaPaceHz
 
         delegate?.didReceiveBrainwaveState(
@@ -490,7 +459,6 @@ final class EEGStateAnalyzer {
             intensity: intensity,
             spreadHz: features.spreadHz,
             confidence: lastConfidence,
-            rhythmicityDb: features.rhythmicityDb,
             alphaPaceHz: features.alphaPaceHz
         )
 
@@ -502,7 +470,6 @@ final class EEGStateAnalyzer {
         liveTiltHz: Double? = nil,
         liveIntensity: Double? = nil,
         liveSpreadHz: Double? = nil,
-        liveRhythmicityDb: Double? = nil,
         liveAlphaPaceHz: Double? = nil,
         fadeFocus: Bool = true
     ) {
@@ -519,9 +486,6 @@ final class EEGStateAnalyzer {
         }
         if let liveSpreadHz {
             lastSpreadHz = liveSpreadHz
-        }
-        if let liveRhythmicityDb {
-            lastRhythmicityDb = liveRhythmicityDb
         }
         if let liveAlphaPaceHz {
             lastAlphaPaceHz = liveAlphaPaceHz
@@ -542,7 +506,6 @@ final class EEGStateAnalyzer {
             intensity: lastIntensity,
             spreadHz: lastSpreadHz,
             confidence: lastConfidence,
-            rhythmicityDb: lastRhythmicityDb,
             alphaPaceHz: lastAlphaPaceHz
         )
 
@@ -575,13 +538,11 @@ final class EEGStateAnalyzer {
 
         let loggedQuiet: Double = latestBands?.quiet ?? -1.0
         print(String(
-            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz spread:%5.2fHz alphaPace:%5.2fHz rhythmicity:%4.1fdB/%4.2f power:%5.2f steadiness:%4.2f quiet:%3.0f",
+            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz spread:%5.2fHz alphaPace:%5.2fHz power:%5.2f steadiness:%4.2f quiet:%3.0f",
             elapsed,
             features.centroidHz,
             features.spreadHz,
             features.alphaPaceHz,
-            features.rhythmicityDb,
-            rhythmicity01(fromDb: features.rhythmicityDb),
             features.logPower,
             centroidStability,
             loggedQuiet
@@ -682,10 +643,6 @@ final class EEGStateAnalyzer {
 
     private var cleanConfidence01: Double {
         ramp(latestEffectiveCleanPct, low: cleanThreshold, high: 95.0)
-    }
-
-    private func rhythmicity01(fromDb rhythmicityDb: Double) -> Double {
-        ramp(rhythmicityDb, low: rhythmicityLowDb, high: rhythmicityHighDb)
     }
 
     private func clamp01(_ x: Double) -> Double {

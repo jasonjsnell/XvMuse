@@ -59,7 +59,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double)
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
     
@@ -92,7 +92,7 @@ public protocol XvMuseDelegate:AnyObject {
 
 public extension XvMuseDelegate {
     func didReceive(detailLinearSpectrum:[Double]) {}
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double) {}
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
@@ -874,14 +874,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
     }
 
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmicityDb: Double, alphaPaceHz: Double) {
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double) {
         delegate?.didReceiveBrainwaveDimensions(
             tiltHz: tiltHz,
             steadiness: steadiness,
             intensity: intensity,
             spreadHz: spreadHz,
             confidence: confidence,
-            rhythmicityDb: rhythmicityDb,
             alphaPaceHz: alphaPaceHz
         )
     }

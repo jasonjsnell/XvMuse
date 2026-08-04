@@ -13,7 +13,6 @@ import Foundation
    centroidHz - the balance point. Where the energy sits on the slow-to-fast scale.
    spreadHz   - the width. Is it one organized peak, or smeared across the whole band?
    logPower   - the total mass that got divided out. How much energy there is.
-   rhythmicityDb - how much the strongest flattened peak rises above the local mean.
    alphaPaceHz - the strongest 7-13 Hz alpha peak available inside the detail spectrum.
 
  Centroid and spread describe shape and ignore volume; logPower describes volume and ignores
@@ -24,7 +23,6 @@ struct DetailFeatures {
     let centroidHz: Double
     let spreadHz: Double
     let logPower: Double
-    let rhythmicityDb: Double
     let alphaPaceHz: Double
     let timestamp: Date
 }
