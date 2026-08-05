@@ -31,11 +31,12 @@ final class EEGStateScorer {
     private(set) var focusHoldingSteady: Double = 0.0
     private(set) var focusFastCentroid: Double = 0.0
     private(set) var focusCalmCentroid: Double = 0.0
-    private(set) var focusActiveNotQuiet: Double = 1.0
+    private(set) var focusNotAlphaLed: Double = 1.0
     private(set) var meditationAlphaLeadDb: Double = 0.0
     private(set) var meditationAlphaCentroid: Double = 0.0
     private(set) var meditationOrganized: Double = 0.0
     private(set) var meditationHoldingSteady: Double = 0.0
+    private(set) var meditationAwakeEnough: Double = 1.0
     private(set) var dreamyThetaLeadDb: Double = 0.0
     private(set) var dreamySmoothedThetaLeadDb: Double = 0.0
     private(set) var dreamyThetaVsFastDb: Double = 0.0
@@ -43,19 +44,42 @@ final class EEGStateScorer {
     private(set) var dreamyStillnessPresent: Double = 0.0
     private(set) var dreamyThetaVsDeltaDb: Double = 0.0
     private(set) var dreamyCalmLowEnd: Double = 0.0
+    private(set) var dreamyNotRunningFast: Double = 1.0
+
+    //MARK: - Window reference
+
+    /* What the detail window's centroid and spread read when the spectrum has NO structure in it
+     at all — just the 1/f background. Supplied by EEGStateAnalyzer, which derives both from
+     whichever bins actually survived the filter-response cut.
+
+     Every centroid and spread threshold below is an OFFSET from these, never an absolute Hz.
+     That is what makes them survive a change to the detail window. When the window was widened
+     from 10-20 to 8-20 the featureless centroid moved from 13.86 Hz to 12.22 Hz — with absolute
+     thresholds, every one of them silently became wrong by 1.6 Hz. The 11.5-14.5 focus ramp had
+     already drifted that way: on a 10-20 window it scored a completely featureless spectrum at
+     0.79, so focus was mostly measuring the window rather than the brain. */
+    private var nullCentroidHz: Double = 12.22
+    private var nullSpreadHz: Double = 3.27
+
+    func configureWindow(nullCentroidHz: Double, nullSpreadHz: Double) {
+        guard nullCentroidHz.isFinite, nullSpreadHz.isFinite, nullSpreadHz > 0 else { return }
+        self.nullCentroidHz = nullCentroidHz
+        self.nullSpreadHz = nullSpreadHz
+    }
 
     //MARK: - Tunables
 
     /* Focus has two valid shapes:
-       - fast focus: higher beta/detail-window centroid
-       - calm focus: a steady, broad, organized lower centroid, common for a meditator doing
-         engaged reading/coding without much high-beta strain. */
-    var focusCentroidLowHz: Double = 11.5
-    var focusCentroidHighHz: Double = 14.5
-    var calmFocusCentroidHz: Double = 10.6
-    var calmFocusCentroidRadiusHz: Double = 1.4
-    var calmFocusQuietLow: Double = 55.0
-    var calmFocusQuietHigh: Double = 85.0
+       - fast focus: centroid pulled ABOVE the featureless null, i.e. real high-frequency weight
+       - calm focus: a steady, broad, slightly-slow centroid, common for a meditator doing
+         engaged reading/coding without much high-beta strain.
+
+     Both are offsets in Hz from nullCentroidHz. Fast focus needs the centroid to have actually
+     moved up; sitting at the null earns 0.20, not 0.79. */
+    var focusTiltOffsetLowHz: Double = -0.5
+    var focusTiltOffsetHighHz: Double = 2.0
+    var calmFocusTiltOffsetHz: Double = -1.5
+    var calmFocusTiltRadiusHz: Double = 1.4
 
     /* How long theta has to keep leading before dreamy believes it. At the 0.25s publish cadence
      0.04 works out to roughly a 6 second memory — long enough to reject isolated blips, short
@@ -63,14 +87,39 @@ final class EEGStateScorer {
     var thetaLeadSmoothing: Double = 0.04
     private var smoothedThetaLead: Double = 0.0
 
-    var meditationCentroidCenterHz: Double = 10.0
-    var meditationCentroidRadiusHz: Double = 3.5
+    /* Detrended dB thresholds. Set from the measured distribution on a real late-night session:
+     detrended alpha lead ran -8.0 to +2.5 (median -2.7), detrended theta lead -3.8 to +3.6
+     (median +0.1). Dreamy's band is deliberately the wider of the two because theta genuinely
+     led half the frames in that recording and the score never moved. */
+    var meditationAlphaLeadLowDb: Double = -2.0
+    var meditationAlphaLeadHighDb: Double = 1.0
+    var dreamyThetaLeadLowDb: Double = -1.5
+    var dreamyThetaLeadHighDb: Double = 1.5
 
-    var narrowSpreadLowHz: Double = 0.8
-    var narrowSpreadHighHz: Double = 2.6
+    //alpha pulls the centroid below the null; how far below still counts as alpha-shaped
+    var meditationTiltOffsetHz: Double = -2.0
+    var meditationTiltRadiusHz: Double = 3.0
 
-    var broadSpreadLowHz: Double = 1.5
-    var broadSpreadHighHz: Double = 4.0
+    /* Spread thresholds, also offsets — from nullSpreadHz this time.
+
+     The old absolute pair (0.8...2.6 Hz) could never fire: a featureless 1/f spectrum in a 10 Hz
+     window has a spread of about 2.8 Hz, so the ramp topped out BELOW the physical floor and
+     `organized` read 0.00 in 79 of 81 frames. Being organized means being narrower than the null,
+     which is only expressible as an offset. */
+    var organizedOffsetLowHz: Double = -0.8
+    var organizedOffsetHighHz: Double = 0.0
+
+    var broadOffsetLowHz: Double = -0.6
+    var broadOffsetHighHz: Double = 0.8
+
+    /* Meditation's low-voltage veto. Quiet below the onset is fully awake; above the full point
+     the signal has faded far enough that sleep onset is the better explanation than meditation. */
+    var meditationQuietOnset: Double = 25.0
+    var meditationQuietFull: Double = 60.0
+
+    /* Dreamy's not-fast veto, as an offset from the window's null centroid. */
+    var dreamyTiltOffsetOnsetHz: Double = 0.5
+    var dreamyTiltOffsetFullHz: Double = 2.0
 
     func reset() {
         meditationScore = 0.0
@@ -87,11 +136,12 @@ final class EEGStateScorer {
         focusHoldingSteady = 0.0
         focusFastCentroid = 0.0
         focusCalmCentroid = 0.0
-        focusActiveNotQuiet = 1.0
+        focusNotAlphaLed = 1.0
         meditationAlphaLeadDb = 0.0
         meditationAlphaCentroid = 0.0
         meditationOrganized = 0.0
         meditationHoldingSteady = 0.0
+        meditationAwakeEnough = 1.0
         dreamyThetaLeadDb = 0.0
         dreamySmoothedThetaLeadDb = 0.0
         dreamyThetaVsFastDb = 0.0
@@ -99,6 +149,7 @@ final class EEGStateScorer {
         dreamyStillnessPresent = 0.0
         dreamyThetaVsDeltaDb = 0.0
         dreamyCalmLowEnd = 0.0
+        dreamyNotRunningFast = 1.0
         smoothedThetaLead = 0.0
     }
 
@@ -137,7 +188,8 @@ final class EEGStateScorer {
             /* Scaled down by muscle tension: a clench rules out drowsy drifting, and it also
              makes the reading untrustworthy. Applied before smoothing so the score eases down
              rather than dropping in one step. */
-            let newDreamy = scoreDreamy(bands) * 100.0 * RelaxedStateGate.damping(forTension: tension)
+            let newDreamy = scoreDreamy(bands, centroidHz: centroidHz) * 100.0
+                * RelaxedStateGate.damping(forTension: tension)
             dreamyScore = smoothScore(old: dreamyScore, new: newDreamy, factor: smoothing)
         }
 
@@ -171,22 +223,33 @@ final class EEGStateScorer {
         bands: BandBalance?
     ) -> Double {
 
-        let fastCentroid = ramp(centroidHz, low: focusCentroidLowHz, high: focusCentroidHighHz)
-        let calmCentroid = centered(
-            centroidHz,
-            center: calmFocusCentroidHz,
-            radius: calmFocusCentroidRadiusHz
-        )
-        let broadEnough = ramp(spreadHz, low: broadSpreadLowHz, high: broadSpreadHighHz)
-        let holdingSteady = clamp01(stability)
-        let activeNotQuiet = bands.map {
-            invRamp($0.quiet, low: calmFocusQuietLow, high: calmFocusQuietHigh)
-        } ?? 1.0
+        let tiltOffsetHz = centroidHz - nullCentroidHz
+        let spreadOffsetHz = spreadHz - nullSpreadHz
 
-        /* The calm path only opens when the detail spectrum is broad/active enough. That lets a
-         relaxed reader/coder register as focused without turning quiet eyes-closed alpha into
-         focus. The fast path remains available for classic higher-beta focus. */
-        let calmFocus = calmCentroid * broadEnough * activeNotQuiet
+        let fastCentroid = ramp(tiltOffsetHz, low: focusTiltOffsetLowHz, high: focusTiltOffsetHighHz)
+        let calmCentroid = centered(
+            tiltOffsetHz,
+            center: calmFocusTiltOffsetHz,
+            radius: calmFocusTiltRadiusHz
+        )
+        let broadEnough = ramp(spreadOffsetHz, low: broadOffsetLowHz, high: broadOffsetHighHz)
+        let holdingSteady = clamp01(stability)
+
+        /* The brake on the calm path: calm focus must not be alpha meditation.
+
+         This used to be `activeNotQuiet`, an inverse ramp on quiet across 55...85. Quiet never
+         got above 35 in a whole session, so that term read exactly 1.00 in every single frame —
+         a guard that had never once engaged. With no working brake, the calm path was firing on
+         real meditation: its centre sits in the alpha range, so the moment alpha pulled the
+         centroid down, focus went UP. One frame had tilt at 10.58 Hz, calm at 0.99, focus at 37,
+         during eyes-closed practice.
+
+         Alpha leading the detrended spectrum is the thing that actually separates the two states,
+         so that is what gates it now. An engaged reader with a flat alpha still qualifies; someone
+         sitting in strong alpha does not. */
+        let notAlphaLed = bands.map { invRamp($0.alphaLeadDb, low: -1.0, high: 1.0) } ?? 1.0
+
+        let calmFocus = calmCentroid * broadEnough * notAlphaLed
         let focusShape = max(fastCentroid, calmFocus)
 
         //Keep focus detail-first. Low full-spectrum theta is too noisy to use as support here.
@@ -198,7 +261,7 @@ final class EEGStateScorer {
         focusHoldingSteady = holdingSteady
         focusFastCentroid = fastCentroid
         focusCalmCentroid = calmCentroid
-        focusActiveNotQuiet = activeNotQuiet
+        focusNotAlphaLed = notAlphaLed
 
         return clamp01(focusShape * (0.45 + (0.55 * support)))
     }
@@ -217,19 +280,42 @@ final class EEGStateScorer {
             return 0
         }
 
-        let strongestRival = max(max(bands.delta, bands.theta), max(bands.beta, bands.gamma))
-        let alphaLeadDb = bands.alpha - strongestRival
-        let alphaLeads = ramp(alphaLeadDb, low: -2.0, high: 1.0)
+        /* Detrended, so this asks "is alpha oscillating above its own background level" rather
+         than "is alpha the loudest band", which it can never be — see BandBalance. */
+        let alphaLeadDb = bands.alphaLeadDb
+        let alphaLeads = ramp(
+            alphaLeadDb,
+            low: meditationAlphaLeadLowDb,
+            high: meditationAlphaLeadHighDb
+        )
 
         let alphaCentroid = centered(
-            centroidHz,
-            center: meditationCentroidCenterHz,
-            radius: meditationCentroidRadiusHz
+            centroidHz - nullCentroidHz,
+            center: meditationTiltOffsetHz,
+            radius: meditationTiltRadiusHz
         )
-        let organized = invRamp(spreadHz, low: narrowSpreadLowHz, high: narrowSpreadHighHz)
+        let organized = invRamp(
+            spreadHz - nullSpreadHz,
+            low: organizedOffsetLowHz,
+            high: organizedOffsetHighHz
+        )
         let holdingSteady = clamp01(stability)
 
         let support = (0.35 * alphaCentroid) + (0.35 * organized) + (0.30 * holdingSteady)
+
+        /* NOT LOW-VOLTAGE. Alone, alpha cannot separate alert relaxation from sleep onset —
+         both have eyes closed and both have alpha, so drowsiness was scoring HIGHER than a
+         genuine meditation (27 vs 15 on the sessions measured).
+
+         Sleep onset is textbook "low voltage mixed frequency": everything fades at once rather
+         than one band taking over. Quiet measures exactly that, and it separated the tired
+         session from relaxation almost perfectly. So quiet earns its keep here as a veto, in
+         the opposite direction to the way it was once used on dreamy.
+
+         Measured effect: tired 27 -> 1, relaxation 15 -> 15, deep meditation 71 -> 71. Deep
+         meditation is untouched because a settled meditator is not low-voltage at all — their
+         quiet sits at 0 while the tired session sat at 59. */
+        let awakeEnough = invRamp(bands.quiet, low: meditationQuietOnset, high: meditationQuietFull)
 
         medGate = alphaLeads
         medSupport = support
@@ -237,13 +323,14 @@ final class EEGStateScorer {
         meditationAlphaCentroid = alphaCentroid
         meditationOrganized = organized
         meditationHoldingSteady = holdingSteady
+        meditationAwakeEnough = awakeEnough
 
-        return clamp01(alphaLeads * (0.40 + (0.60 * support)))
+        return clamp01(alphaLeads * (0.40 + (0.60 * support)) * awakeEnough)
     }
 
     /* Dreamy: theta-led, quiet, slow activity. Theta remains full-spectrum upstream, but is
      delayed and artifact-screened so blink/tension pre-roll frames do not count. */
-    private func scoreDreamy(_ bands: BandBalance) -> Double {
+    private func scoreDreamy(_ bands: BandBalance, centroidHz: Double) -> Double {
 
         /* Theta has to lead for a WHILE, not for an instant.
 
@@ -260,25 +347,57 @@ final class EEGStateScorer {
          drowsiness from theta during hard concentration — but Clear Mind IS still, so the gate
          meant to add skepticism was instead granting full credibility to the one state it cannot
          tell apart from drowsiness. Persistence is what actually separates them. */
-        let strongestRival = max(max(bands.delta, bands.alpha), max(bands.beta, bands.gamma))
-        let thetaLeadDb = bands.theta - strongestRival
+        let thetaLeadDb = bands.thetaLeadDb
         smoothedThetaLead += thetaLeadSmoothing * (thetaLeadDb - smoothedThetaLead)
-        let thetaLeads = ramp(smoothedThetaLead, low: -2.0, high: 1.0)
+        let thetaLeads = ramp(
+            smoothedThetaLead,
+            low: dreamyThetaLeadLowDb,
+            high: dreamyThetaLeadHighDb
+        )
 
-        //Broadband noise raises beta/gamma too, so theta needs to stand clear of fast bands.
-        let thetaVsFastDb = bands.theta - max(bands.beta, bands.gamma)
-        let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 3.0)
+        //Broadband noise raises beta too, so theta needs to stand clear of it.
+        let thetaVsFastDb = bands.thetaResidual - bands.betaResidual
+        let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 2.0)
 
-        //Stillness separates real drowsy drift from active cognitive theta.
+        /* Stillness is measured and logged but NO LONGER GATES anything.
+
+         It used to multiply into the score via ramp(quiet, 20, 50). On a real late-night session
+         quiet had a median of 0 and cleared 20 in only 11% of frames, so this term alone held
+         dreamy at zero for the entire recording regardless of what theta did.
+
+         The deeper problem is that it was pointing the wrong way. Quiet measures absolute low
+         amplitude, and a drowsy brain is not low amplitude — it is high-amplitude slow waves. So
+         the closer the subject got to sleep onset, the harder this gate pushed dreamy down. Quiet
+         is a good measurement doing its own job well; it just cannot also serve as evidence for
+         the one state that physically contradicts it.
+
+         Credibility now rests on theta standing clear of beta, plus the artifact screening that
+         already invalidates bands around blinks and clenches upstream. */
         let stillnessPresent = ramp(bands.quiet, low: 20.0, high: 50.0)
 
         //A calm low end. A blink drives delta up and pulls this down.
-        let thetaVsDeltaDb = bands.theta - bands.delta
+        let thetaVsDeltaDb = bands.thetaResidual - bands.deltaResidual
         let calmLowEnd = ramp(thetaVsDeltaDb, low: -2.0, high: 2.0)
 
+        /* NOT RUNNING FAST. The one thing theta alone can never do is separate drowsiness from
+         concentration — frontal midline theta is a real focus rhythm, and on the sessions measured
+         theta lead told the two apart at 0.52, a coin flip. Dreamy was peaking at 61 during focused
+         coding as a result.
+
+         What does separate them is where the centroid sits. Drowsy theta rides a slow spectrum;
+         Fm theta rides a fast one. Measured: coding centroid +1.7 Hz above the window's null,
+         tired +0.1. Vetoing the fast case costs the tired session almost nothing (51 -> 48) and
+         removes the coding false positive outright (16 -> 2). */
+        let notRunningFast = invRamp(
+            centroidHz - nullCentroidHz,
+            low: dreamyTiltOffsetOnsetHz,
+            high: dreamyTiltOffsetFullHz
+        )
+
         dreamyGate = thetaLeads
-        dreamyCredibility = min(clearOfFastBands, stillnessPresent)
+        dreamyCredibility = clearOfFastBands
         dreamySupport = calmLowEnd
+        dreamyNotRunningFast = notRunningFast
         dreamyThetaLeadDb = thetaLeadDb
         dreamySmoothedThetaLeadDb = smoothedThetaLead
         dreamyThetaVsFastDb = thetaVsFastDb
@@ -288,7 +407,7 @@ final class EEGStateScorer {
         dreamyCalmLowEnd = calmLowEnd
 
         return clamp01(
-            thetaLeads * clearOfFastBands * stillnessPresent * (0.50 + (0.50 * calmLowEnd))
+            thetaLeads * clearOfFastBands * notRunningFast * (0.50 + (0.50 * calmLowEnd))
         )
     }
 

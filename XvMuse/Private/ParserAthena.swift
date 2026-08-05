@@ -146,6 +146,9 @@ class ParserAthena {
         
         // scales
         static let eegScale: Double = 1450.0 / 16383.0
+
+        //14-bit samples are unsigned 0...16383, so zero volts sits at the midpoint, not at 0
+        static let eegMidpoint: Double = 8192.0
         static let accScale: Float  = 0.0000610352
         static let gyroScale: Float = -0.0074768
         static let opticsScale: Double = 1.0 / 32768.0
@@ -444,8 +447,20 @@ class ParserAthena {
                 let bitStart = valueIndex * 14
                 let intValue = athenaExtractPackedInt(bits: bits, bitStart: bitStart, bitWidth: 14)
                 
-                // Decode and rescale to roughly match the legacy 0.48828125 factor
-                let scaled = Double(intValue) * Athena.eegScale
+                /* Centre on the 14-bit midpoint before scaling, exactly as the legacy parser
+                 centres on 2048 for its 12-bit samples.
+
+                 This was missing, and it mattered more than it looks. An uncentred sample sits
+                 around 8192 counts, which after scaling is roughly 725 units of constant offset
+                 riding on every epoch. The FFT path never removes a mean either, so the Hamming
+                 window smeared that DC term into the lowest bins on every frame.
+
+                 It also made the two devices incomparable. Measured on the 21 recorded Muse 2
+                 sets, the broadband level that `quiet` is calibrated against sits about 9.5 dB
+                 above the same measurement on Athena — and the fixed 2.5...6.0 calibration that
+                 works on Athena reads 0 on 100% of Muse 2 frames. Some of that gap is this. */
+                let centred = Double(intValue) - Athena.eegMidpoint
+                let scaled = centred * Athena.eegScale
                 rows[sampleIdx][chIdx] = Float(scaled)
             }
         }

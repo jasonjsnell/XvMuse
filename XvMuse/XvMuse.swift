@@ -337,9 +337,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             }
             if (majorVersion == "Muse") {
                 deviceName = .muse1
+                XvEEGAnalysis.quietCalibration = .legacy
                 _ppg.set(deviceName: .muse1)
             } else if (majorVersion == "MuseS") {
                 deviceName = .museS
+                XvEEGAnalysis.quietCalibration = .legacy
                 _ppg.set(deviceName: .museS)
             }
             print("XvMuse: Major version =", majorVersion ?? "unknown", "| Device may be", deviceName ?? .unknown)
@@ -357,6 +359,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         if (majorVersion == "Muse"){
             minorVersion = "2"
             deviceName = .muse2
+            XvEEGAnalysis.quietCalibration = .legacy
             _ppg.set(deviceName: .muse2)
         }
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
@@ -364,6 +367,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     func discoveredAthena() {
         minorVersion = "Athena"
         deviceName = .museAthena
+        XvEEGAnalysis.quietCalibration = .athena
         _ppg.set(deviceName: .museAthena)
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
     }
@@ -852,11 +856,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             quiet = min(quiet, 30.0)
         }
 
-        /* Muscle tension scales it down on the same ramp dreamy uses, so both relaxed states
-         respond to a clench identically. Replaces an all-or-nothing cut at 70, which meant the
-         score sat untouched through a moderate clench and then dropped by 40% in one frame. */
-        let tensionDamping = RelaxedStateGate.damping(forTension: latestTensionPct)
-        quiet *= tensionDamping
+        /* Muscle tension is NOT damped here any more — it was being counted twice.
+
+         Quiet is a wideband 2-47 Hz loudness measure, and 20-35 Hz of that range IS the muscle
+         band the tension detector reads. A clench already pushes the raw quiet value down on its
+         own; multiplying by the tension ramp on top of that applied the same evidence a second
+         time and drove quiet toward zero far faster than the signal warranted.
+
+         The blink and noise guards above stay, because those bands are screened rather than
+         measured — a blink is a transient the wideband average barely notices. */
 
         let target = min(max(quiet, 0.0), 100.0)
         let smoothing = target < latestPublishedQuietPct ? quietFallSmoothing : quietRecoverSmoothing

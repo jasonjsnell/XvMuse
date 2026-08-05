@@ -93,6 +93,11 @@ final class EEGStateAnalyzer {
     private let usableFreqs: [Double]   //centre frequency of each, in Hz
     private let compensation: [Double]  //1 / |H(f)|^2, undoes the band-pass filter's own shape
     private let binWidthHz: Double
+
+    /* What this window reads for a featureless 1/f spectrum. Derived in init; the scorer treats
+     every centroid/spread threshold as an offset from these. */
+    private let nullCentroidHz: Double
+    private let nullSpreadHz: Double
     //MARK: - Stability
 
     private var recentCentroids: [(value: Double, timestamp: Date)] = []
@@ -104,6 +109,16 @@ final class EEGStateAnalyzer {
     private var lastSpreadHz: Double = 0.0
     private var lastConfidence: Double = 0.0
     private var lastAlphaPaceHz: Double = 0.0
+
+    //MARK: - Alpha pace tracking
+    private var smoothedAlphaPaceHz: Double = 0.0
+    private var alphaPaceSampleCount: Int = 0
+
+    //peak must clear the band's own average by this much before it counts as a rhythm
+    private let alphaPaceMinProminenceDb: Double = 3.0
+
+    //~2 minutes at the 4 Hz publish rate
+    private let alphaPaceSmoothing: Double = 0.002
 
     //MARK: - Init
 
@@ -155,7 +170,48 @@ final class EEGStateAnalyzer {
         usableFreqs = freqs
         compensation = comp
 
-        print("EEGStateAnalyzer: detail window \(lowHz)-\(highHz) Hz, \(bins.count) usable bins")
+        /* THE WINDOW'S OWN NULL.
+
+         What centroid and spread read for a spectrum with no structure in it at all — just the 1/f
+         background, power falling as f^-2. This is the reading a dead-flat brain produces, and
+         every centroid/spread threshold in the scorer is expressed as an offset from it.
+
+         Computed from the surviving bins rather than from lowHz/highHz analytically, so it tracks
+         whatever the filter-response cut actually left behind. Widening the window from 10-20 to
+         8-20 moves this from 13.86 Hz to about 12.22 Hz; because the thresholds are offsets, the
+         scorer re-tunes itself and nothing downstream needs touching. */
+        var weight = 0.0
+        var weightedFreq = 0.0
+        for hz in freqs {
+            let power = pow(max(hz, 1e-6), -2.0)
+            weight += power
+            weightedFreq += power * hz
+        }
+
+        var nullCentroid = 0.0
+        var nullSpread = 0.0
+        if weight > 1e-12 {
+            nullCentroid = weightedFreq / weight
+            var variance = 0.0
+            for hz in freqs {
+                let power = pow(max(hz, 1e-6), -2.0)
+                let offset = hz - nullCentroid
+                variance += power * offset * offset
+            }
+            nullSpread = (variance / weight).squareRoot()
+        }
+
+        nullCentroidHz = nullCentroid
+        nullSpreadHz = nullSpread
+
+        if nullCentroid.isFinite, nullSpread.isFinite, nullSpread > 0 {
+            scorer.configureWindow(nullCentroidHz: nullCentroid, nullSpreadHz: nullSpread)
+        }
+
+        print(String(
+            format: "EEGStateAnalyzer: detail window %.1f-%.1f Hz, %d usable bins, 1/f null centroid %.2f Hz spread %.2f Hz",
+            lowHz, highHz, bins.count, nullCentroid, nullSpread
+        ))
     }
 
     //MARK: - Input
@@ -302,6 +358,9 @@ final class EEGStateAnalyzer {
         lastSpreadHz = 0
         lastConfidence = 0
         lastAlphaPaceHz = 0
+        //each test set is a different person-session; identity must not carry over
+        smoothedAlphaPaceHz = 0
+        alphaPaceSampleCount = 0
         scorer.reset()
     }
 
@@ -347,6 +406,25 @@ final class EEGStateAnalyzer {
         )
     }
 
+    /* Which frequency this person's alpha rhythm runs at.
+
+     IDENTITY, NOT CONTROL. It barely moves within a session and cannot be changed deliberately,
+     so it is tracked over minutes and only accepted from frames where a peak genuinely exists.
+
+     Three guards, all of which were missing and all of which mattered. Without them this reported
+     the raw argmax bin every frame: integers only, jumping the full 8-13 Hz range frame to frame
+     and repeatedly landing on both boundaries. A uniform spread across the search range is the
+     signature of tracking noise, not of a rhythm — a flat band still has a maximum bin.
+
+       1. PROMINENCE. Require the peak to stand clear of the band's own average before believing
+          it at all. Measured on the detrended residual, so the 1/f slope cannot supply the peak.
+       2. SUB-BIN INTERPOLATION. Bins are 1 Hz apart and 10 vs 11 Hz is a real personal difference,
+          so a parabola through the peak and its neighbours recovers the true maximum between bin
+          centres. This is also why the value stops being an integer.
+       3. SLOW TRACKING. An EWMA over roughly two minutes, seeded on the first accepted frame.
+          Identity should settle, not chase.
+
+     Returns nil when this frame has nothing worth accepting; the caller holds the last value. */
     private func alphaPaceHz(fromDetailSpectrum spectrum: [Double]) -> Double? {
         guard !spectrum.isEmpty else { return nil }
 
@@ -362,7 +440,40 @@ final class EEGStateAnalyzer {
         }
 
         let flattened = flattenedDbValues(points)
-        return flattened.max { $0.db < $1.db }?.hz
+        guard flattened.count >= 3 else { return nil }
+
+        var peakIndex = 0
+        for (i, point) in flattened.enumerated() where point.db > flattened[peakIndex].db {
+            peakIndex = i
+        }
+
+        //1. is it actually a peak? least squares puts the mean residual at 0, so this is the excess
+        guard flattened[peakIndex].db >= alphaPaceMinProminenceDb else { return nil }
+
+        //2. sub-bin location
+        var estimateHz = flattened[peakIndex].hz
+        if peakIndex > 0, peakIndex < flattened.count - 1 {
+            let a = flattened[peakIndex - 1].db
+            let b = flattened[peakIndex].db
+            let c = flattened[peakIndex + 1].db
+            let denominator = a - (2.0 * b) + c
+            if abs(denominator) > 1e-9 {
+                let offset = max(-0.5, min(0.5, 0.5 * (a - c) / denominator))
+                estimateHz += offset * binWidthHz
+            }
+        }
+
+        guard estimateHz.isFinite else { return nil }
+
+        //3. settle rather than chase
+        if alphaPaceSampleCount == 0 {
+            smoothedAlphaPaceHz = estimateHz
+        } else {
+            smoothedAlphaPaceHz += alphaPaceSmoothing * (estimateHz - smoothedAlphaPaceHz)
+        }
+        alphaPaceSampleCount += 1
+
+        return smoothedAlphaPaceHz
     }
 
     private func flattenedDbValues(_ points: [(hz: Double, power: Double)]) -> [(hz: Double, db: Double)] {
@@ -538,10 +649,13 @@ final class EEGStateAnalyzer {
 
         let loggedQuiet: Double = latestBands?.quiet ?? -1.0
         print(String(
-            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz spread:%5.2fHz alphaPace:%5.2fHz power:%5.2f steadiness:%4.2f quiet:%3.0f",
+            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz (%+5.2f vs null %5.2f) spread:%5.2fHz (%+5.2f) alphaPace:%5.2fHz power:%5.2f steadiness:%4.2f quiet:%3.0f",
             elapsed,
             features.centroidHz,
+            features.centroidHz - nullCentroidHz,
+            nullCentroidHz,
             features.spreadHz,
+            features.spreadHz - nullSpreadHz,
             features.alphaPaceHz,
             features.logPower,
             centroidStability,
@@ -549,33 +663,35 @@ final class EEGStateAnalyzer {
         ))
 
         print(String(
-            format: "FOCUS INPUTS | t:%6.1f | gate:%4.2f fast:%4.2f calm:%4.2f active:%4.2f broad:%4.2f steady:%4.2f support:%4.2f",
+            format: "FOCUS INPUTS | t:%6.1f | gate:%4.2f fast:%4.2f calm:%4.2f notAlpha:%4.2f broad:%4.2f steady:%4.2f support:%4.2f",
             elapsed,
             scorer.focusGate,
             scorer.focusFastCentroid,
             scorer.focusCalmCentroid,
-            scorer.focusActiveNotQuiet,
+            scorer.focusNotAlphaLed,
             scorer.focusBroadEnough,
             scorer.focusHoldingSteady,
             scorer.focusSupport
         ))
 
         print(String(
-            format: "MEDITATION INPUTS | t:%6.1f | alphaLead:%+5.1fdB gate:%4.2f alphaCentroid:%4.2f organized:%4.2f steady:%4.2f support:%4.2f",
+            format: "MEDITATION INPUTS | t:%6.1f | alphaLead(detrend):%+5.1fdB gate:%4.2f alphaCentroid:%4.2f organized:%4.2f steady:%4.2f support:%4.2f awake:%4.2f",
             elapsed,
             scorer.meditationAlphaLeadDb,
             scorer.medGate,
             scorer.meditationAlphaCentroid,
             scorer.meditationOrganized,
             scorer.meditationHoldingSteady,
-            scorer.medSupport
+            scorer.medSupport,
+            scorer.meditationAwakeEnough
         ))
 
         if let bands = latestBands {
             print(String(
-                format: "DREAMY INPUTS | t:%6.1f | D:%5.1f T:%5.1f A:%5.1f B:%5.1f G:%5.1f | thetaLead:%+5.1f sm:%+5.1f gate:%4.2f | thetaFast:%+5.1f gate:%4.2f | quiet:%3.0f gate:%4.2f | thetaDelta:%+5.1f gate:%4.2f | tensionDamp:%4.2f",
+                format: "DREAMY INPUTS | t:%6.1f | raw D:%5.1f T:%5.1f A:%5.1f B:%5.1f G:%5.1f | resid D:%+5.1f T:%+5.1f A:%+5.1f B:%+5.1f | thetaLead:%+5.1f sm:%+5.1f gate:%4.2f | thetaFast:%+5.1f gate:%4.2f | quiet:%3.0f (unused:%4.2f) | thetaDelta:%+5.1f gate:%4.2f | notFast:%4.2f | tensionDamp:%4.2f",
                 elapsed,
                 bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
+                bands.deltaResidual, bands.thetaResidual, bands.alphaResidual, bands.betaResidual,
                 scorer.dreamyThetaLeadDb,
                 scorer.dreamySmoothedThetaLeadDb,
                 scorer.dreamyGate,
@@ -585,6 +701,7 @@ final class EEGStateAnalyzer {
                 scorer.dreamyStillnessPresent,
                 scorer.dreamyThetaVsDeltaDb,
                 scorer.dreamyCalmLowEnd,
+                scorer.dreamyNotRunningFast,
                 RelaxedStateGate.damping(forTension: latestTensionPct)
             ))
         }
