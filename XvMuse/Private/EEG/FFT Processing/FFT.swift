@@ -25,6 +25,7 @@ class FFT {
     private var fftSetup:FFTSetup
     
     private var N:Int
+    private var W:Int   //real samples per epoch; N - W is zero-padding
     private var N2:UInt
     private var LOG_N:UInt
     
@@ -38,10 +39,17 @@ class FFT {
     
     //MARK: - Init
     
-    init(bins:Int){
+    /* `bins` is the FFT length; `windowLength` is how many real samples arrive.
+
+     When windowLength < bins the incoming epoch is windowed at its own length and the remainder
+     zero-padded, which interpolates the spectrum onto a finer frequency grid without changing
+     how much time each estimate covers. Passing neither, or equal values, is the classic
+     un-padded behaviour. */
+    init(bins:Int, windowLength:Int? = nil){
         
         //size of the sample buffer that is being analyzed
         N = bins
+        W = min(windowLength ?? bins, bins)
         
         //half of N, 128
         N2 = vDSP_Length(N/2)
@@ -75,9 +83,9 @@ class FFT {
         //validate incoming samples
         var samples:[Double] = validate(samples: samples)
         
-        //validate length
-        if (samples.count != N){
-            print("FFT: Error: incoming epoch array does not have", N, "samples")
+        //validate length — the epoch is W long, not N; the padding is added below
+        if (samples.count != W){
+            print("FFT: Error: incoming epoch array does not have", W, "samples")
             return nil
         }
         
@@ -87,20 +95,27 @@ class FFT {
         //init if empty
         if hammingWindow.isEmpty {
             
-            //init empty container
-            hammingWindow = [Double](repeating: 0.0, count: N)
+            //sized to the REAL samples, not the padded length — a window stretched across the
+            //zeros would taper the actual data with the rising half of a longer curve
+            hammingWindow = [Double](repeating: 0.0, count: W)
             
             //apply window
-            vDSP_hamm_windowD(&hammingWindow, UInt(N), 0)
+            vDSP_hamm_windowD(&hammingWindow, UInt(W), 0)
             
             // Precompute coherent gain and ENBW for the current window
-            coherentGain = vDSP.sum(hammingWindow) / Double(N)
+            coherentGain = vDSP.sum(hammingWindow) / Double(W)
             let sumW2 = vDSP.sum(vDSP.multiply(hammingWindow, hammingWindow))
-            enbwBins = (sumW2 / (coherentGain * coherentGain)) / Double(N) // ≈1.36 for Hamming
+            enbwBins = (sumW2 / (coherentGain * coherentGain)) / Double(W) // ≈1.36 for Hamming
         }
         
         // Apply the window to incoming samples
         vDSP_vmulD(samples, 1, hammingWindow, 1, &samples, 1, UInt(samples.count))
+
+        //zero-pad out to the FFT length. Zeros carry no energy, so the amplitude calibration
+        //below stays anchored to the window rather than to N.
+        if W < N {
+            samples.append(contentsOf: [Double](repeating: 0.0, count: N - W))
+        }
         
         
         // MARK: Create the split complex buffer
@@ -147,7 +162,9 @@ class FFT {
             vDSP_zvmagsD(&splitComplex!, 1, &power, 1, N2)
             
             // 2) Normalize for FFT length (vDSP is unnormalized) and window coherent gain
-            let nSquared = Double(N * N)
+            //scale against the WINDOW length, so a padded and an un-padded transform of the
+            //same epoch report the same amplitude
+            let nSquared = Double(W * W)
             let windowPow = coherentGain * coherentGain
             let baseScale = 1.0 / (nSquared * windowPow)
             vDSP.multiply(baseScale, power, result: &power)

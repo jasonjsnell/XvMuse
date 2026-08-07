@@ -38,7 +38,8 @@ final class EEGMLManager {
     }
 
     func process(linearSpectrum: [Double]) {
-        guard linearSpectrum.count == 128 else { return }
+        let linearSpectrum = Self.oneHzSpectrum(from: linearSpectrum)
+        guard linearSpectrum.count >= 48 else { return }
 
         mlCounter += 1
         guard mlCounter % mlEveryN == 0 else { return }
@@ -81,7 +82,8 @@ final class EEGMLManager {
     /// unsmoothed. Used for per-sensor noise localization when device-level noise is high — each
     /// sensor is judged on its own. Does NOT touch the device-level smoothing/delegate path.
     func noiseProbability(forSpectrum spectrum: [Double]) -> Double? {
-        guard spectrum.count == 128, let model else { return nil }
+        let spectrum = Self.oneHzSpectrum(from: spectrum)
+        guard spectrum.count >= 48, let model else { return nil }
         do {
             let usable = usableBins(from: spectrum)
             var dict: [String: MLFeatureValue] = [:]
@@ -102,6 +104,19 @@ final class EEGMLManager {
             print("❌ EEGMLManager: per-sensor prediction failed:", error)
             return nil
         }
+    }
+
+    /* The classifier was trained on 46 features at one-hertz spacing, so it must keep being fed
+     exactly that regardless of how finely the spectrum is now sampled.
+
+     Decimating is exact rather than approximate: zero-padding evaluates the same transform on a
+     finer grid, so every second bin of the padded spectrum IS the corresponding bin of the
+     unpadded one. Taking every other value reconstructs the original 128-bin spectrum bit for
+     bit, which is why the model's behaviour is unchanged by the padding. */
+    private static func oneHzSpectrum(from spectrum: [Double]) -> [Double] {
+        let binsPerHz = Int((Double(MuseConstants.EEG_FFT_BINS) / MuseConstants.SAMPLING_RATE).rounded())
+        guard binsPerHz > 1 else { return spectrum }
+        return stride(from: 0, to: spectrum.count, by: binsPerHz).map { spectrum[$0] }
     }
 
     private func usableBins(from spectrum: [Double]) -> [Double] {

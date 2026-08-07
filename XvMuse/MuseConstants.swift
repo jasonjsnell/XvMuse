@@ -199,7 +199,21 @@ public class MuseConstants {
     //Muse 2, S, and Athena are all 256Hz 
     public static let SAMPLING_RATE:Double = 256.0 //256.0 Muse 2
     public static let FREQUENCY_SLICE_MAX:Int = 128 //half the sampling rate
-    public static let EEG_FFT_BINS:Int = 256
+    /* How many samples one epoch covers. 256 at 256 Hz is a 1-second window, and that stays
+     fixed — it is the time resolution, and widening it would make every score slower AND roughly
+     double the share of windows containing a blink. */
+    public static let EEG_EPOCH_SAMPLES:Int = 256
+
+    /* How long the FFT is. Larger than the epoch, with the difference zero-padded.
+
+     Zero-padding does not add real resolution — it cannot separate two rhythms that the 1-second
+     window genuinely blurs together — but it does interpolate the spectrum onto a finer grid, so
+     peaks land closer to where they actually are and the charts stop looking blocky. 512 gives
+     0.5 Hz bin spacing while keeping the 1-second time window intact.
+
+     NOTE: bin index no longer equals Hz. Anything converting between the two must go through
+     FrequencyManager or multiply by SAMPLING_RATE / EEG_FFT_BINS. */
+    public static let EEG_FFT_BINS:Int = 512
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
     /* Detail window: the clean slice of spectrum the brainwave states are measured from.
      Low edge sits at 8 on Penijean's recommendation: it takes in the whole alpha band, including

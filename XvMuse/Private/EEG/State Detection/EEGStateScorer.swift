@@ -45,6 +45,8 @@ final class EEGStateScorer {
     private(set) var dreamyThetaVsDeltaDb: Double = 0.0
     private(set) var dreamyCalmLowEnd: Double = 0.0
     private(set) var dreamyNotRunningFast: Double = 1.0
+    private(set) var dreamyLooksLikeRhythm: Double = 1.0
+    private(set) var dreamyThetaProminenceDb: Double = 0.0
 
     //MARK: - Window reference
 
@@ -112,10 +114,16 @@ final class EEGStateScorer {
     var broadOffsetLowHz: Double = -0.6
     var broadOffsetHighHz: Double = 0.8
 
-    /* Meditation's low-voltage veto. Quiet below the onset is fully awake; above the full point
-     the signal has faded far enough that sleep onset is the better explanation than meditation. */
+    /* Was meditation's low-voltage veto; now observation only, logged as `awake` but not
+     multiplied into the score. Relaxed states do not gate each other — see scoreMeditation. */
     var meditationQuietOnset: Double = 25.0
     var meditationQuietFull: Double = 60.0
+
+    /* Theta prominence veto. Below the low value the 4-7 Hz peak is flat enough to be genuine
+     diffuse slowing; above the high value it is a discrete ring and almost certainly a loose
+     electrode. Derived from 46 bad-fit against 103 good frames — see scoreDreamy. */
+    var dreamyProminenceLowDb: Double = 4.0
+    var dreamyProminenceHighDb: Double = 7.0
 
     /* Dreamy's not-fast veto, as an offset from the window's null centroid. */
     var dreamyTiltOffsetOnsetHz: Double = 0.5
@@ -150,6 +158,8 @@ final class EEGStateScorer {
         dreamyThetaVsDeltaDb = 0.0
         dreamyCalmLowEnd = 0.0
         dreamyNotRunningFast = 1.0
+        dreamyLooksLikeRhythm = 1.0
+        dreamyThetaProminenceDb = 0.0
         smoothedThetaLead = 0.0
     }
 
@@ -160,6 +170,7 @@ final class EEGStateScorer {
         stability: Double,
         bands: BandBalance?,
         tension: Double,
+        thetaProminenceDb: Double,
         smoothing: Double
     ) -> (meditation: Double, focus: Double, dreamy: Double) {
 
@@ -188,8 +199,11 @@ final class EEGStateScorer {
             /* Scaled down by muscle tension: a clench rules out drowsy drifting, and it also
              makes the reading untrustworthy. Applied before smoothing so the score eases down
              rather than dropping in one step. */
-            let newDreamy = scoreDreamy(bands, centroidHz: centroidHz) * 100.0
-                * RelaxedStateGate.damping(forTension: tension)
+            let newDreamy = scoreDreamy(
+                bands,
+                centroidHz: centroidHz,
+                thetaProminenceDb: thetaProminenceDb
+            ) * 100.0 * RelaxedStateGate.damping(forTension: tension)
             dreamyScore = smoothScore(old: dreamyScore, new: newDreamy, factor: smoothing)
         }
 
@@ -303,18 +317,23 @@ final class EEGStateScorer {
 
         let support = (0.35 * alphaCentroid) + (0.35 * organized) + (0.30 * holdingSteady)
 
-        /* NOT LOW-VOLTAGE. Alone, alpha cannot separate alert relaxation from sleep onset —
-         both have eyes closed and both have alpha, so drowsiness was scoring HIGHER than a
-         genuine meditation (27 vs 15 on the sessions measured).
+        /* QUIET NO LONGER VETOES THIS. Measured but not multiplied in — same arrangement as
+         stillness on dreamy, and for a related reason.
 
-         Sleep onset is textbook "low voltage mixed frequency": everything fades at once rather
-         than one band taking over. Quiet measures exactly that, and it separated the tired
-         session from relaxation almost perfectly. So quiet earns its keep here as a veto, in
-         the opposite direction to the way it was once used on dreamy.
+         It was added as a low-voltage veto, to stop sleep onset from reading as meditation. On
+         the morning Athena session it zeroed all ~130 frames: quiet published 100 throughout, and
+         invRamp(100, 25, 60) is 0, so every score was multiplied by zero. Frames with clear alpha
+         lead and strong support — ones that would have scored 63, 73, 88, 90 — all published 0.
 
-         Measured effect: tired 27 -> 1, relaxation 15 -> 15, deep meditation 71 -> 71. Deep
-         meditation is untouched because a settled meditator is not low-voltage at all — their
-         quiet sits at 0 while the tired session sat at 59. */
+         The immediate cause was the calibration being far off (see quietLevelDb), but the design
+         is wrong independently of that. Meditation, quiet and dreamy are not competing hypotheses
+         about one underlying state; they are separate descriptions that genuinely co-occur and
+         trade off through a real session. A relaxed state must not gate another relaxed state,
+         because "both at once" is the common case, not a contradiction to be resolved.
+
+         The cost is accepted deliberately: meditation can now score during drowsiness. Dreamy
+         will generally be scoring at the same time, and telling those two apart is the consumer's
+         job with both numbers in hand — not something to force here by suppressing one of them. */
         let awakeEnough = invRamp(bands.quiet, low: meditationQuietOnset, high: meditationQuietFull)
 
         medGate = alphaLeads
@@ -325,12 +344,16 @@ final class EEGStateScorer {
         meditationHoldingSteady = holdingSteady
         meditationAwakeEnough = awakeEnough
 
-        return clamp01(alphaLeads * (0.40 + (0.60 * support)) * awakeEnough)
+        return clamp01(alphaLeads * (0.40 + (0.60 * support)))
     }
 
     /* Dreamy: theta-led, quiet, slow activity. Theta remains full-spectrum upstream, but is
      delayed and artifact-screened so blink/tension pre-roll frames do not count. */
-    private func scoreDreamy(_ bands: BandBalance, centroidHz: Double) -> Double {
+    private func scoreDreamy(
+        _ bands: BandBalance,
+        centroidHz: Double,
+        thetaProminenceDb: Double
+    ) -> Double {
 
         /* Theta has to lead for a WHILE, not for an instant.
 
@@ -394,10 +417,50 @@ final class EEGStateScorer {
             high: dreamyTiltOffsetFullHz
         )
 
+        /* NOT A DISCRETE PEAK. The guard that finally catches a badly-seated headset.
+
+         Every other term here compares theta's LEVEL against another band, and a loose electrode
+         defeats all of them at once by raising theta harder than anything else. Measured against a
+         well-seated session on the same headset: theta +17.5 dB, delta +8.4, alpha +5.7, beta
+         +2.0. So `clearOfFastBands` (theta minus beta) and `calmLowEnd` (theta minus delta) both
+         open WIDER during the artifact, and blink gating never fires because the worst frames
+         score 0-2 on blink.
+
+         Shape separates them where level cannot, and in the opposite direction to intuition: the
+         ARTIFACT is the sharp peak, and real drowsy theta is the flat one. Sleep onset is textbook
+         low-voltage mixed frequency — everything slows and fades together, so theta rises relative
+         to its neighbours without ever forming a bump. A loose electrode rubbing against skin is a
+         mechanical system with a characteristic timescale, so it rings.
+
+         Measured across four recordings, 46 bad-fit frames against 103 good, AUC 0.987:
+
+             Muse 2, just put on      median 14.46 dB      dreamy median 64, peaking at 78
+             Muse 2, settled           median  2.79 dB      dreamy median 20
+             Muse S, just put on       median  7.44 dB
+             Muse 2, genuinely tired   median  1.43 dB      dreamy peaking at 87, correctly
+
+         The Muse 2 numbers are the ones that matter: same headset, same person, same recording,
+         an 11.7 dB step as the fit settled. That rules out the device and leaves only the fit.
+
+         The peak's LOCATION says the same thing twice over — during bad fit it pins to exactly
+         6.00 Hz on both headsets and essentially never moves (stdev 0.19 Hz), while real drowsy
+         theta wanders the whole 4-7 Hz band (stdev 1.06 Hz). A rhythm that never changes frequency
+         is not a rhythm.
+
+         Ramped 4->7 dB rather than switched: keeps 99% of the genuinely tired frames while
+         suppressing 87% of the bad-fit ones. */
+        let looksLikeRhythm = invRamp(
+            thetaProminenceDb,
+            low: dreamyProminenceLowDb,
+            high: dreamyProminenceHighDb
+        )
+
         dreamyGate = thetaLeads
         dreamyCredibility = clearOfFastBands
         dreamySupport = calmLowEnd
         dreamyNotRunningFast = notRunningFast
+        dreamyLooksLikeRhythm = looksLikeRhythm
+        dreamyThetaProminenceDb = thetaProminenceDb
         dreamyThetaLeadDb = thetaLeadDb
         dreamySmoothedThetaLeadDb = smoothedThetaLead
         dreamyThetaVsFastDb = thetaVsFastDb
@@ -407,7 +470,8 @@ final class EEGStateScorer {
         dreamyCalmLowEnd = calmLowEnd
 
         return clamp01(
-            thetaLeads * clearOfFastBands * notRunningFast * (0.50 + (0.50 * calmLowEnd))
+            thetaLeads * clearOfFastBands * notRunningFast * looksLikeRhythm
+                * (0.50 + (0.50 * calmLowEnd))
         )
     }
 

@@ -59,7 +59,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
     func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double)
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
     
@@ -92,7 +92,7 @@ public protocol XvMuseDelegate:AnyObject {
 
 public extension XvMuseDelegate {
     func didReceive(detailLinearSpectrum:[Double]) {}
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double) {}
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
@@ -340,8 +340,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 XvEEGAnalysis.quietCalibration = .legacy
                 _ppg.set(deviceName: .muse1)
             } else if (majorVersion == "MuseS") {
+                /* Both the Muse S and the Athena advertise as "MuseS" — same sleep-band housing.
+                 This is the provisional guess; if the Athena main characteristic turns up during
+                 discovery, discoveredAthena() overwrites both the device and the calibration. */
                 deviceName = .museS
-                XvEEGAnalysis.quietCalibration = .legacy
+                XvEEGAnalysis.quietCalibration = .museS
                 _ppg.set(deviceName: .museS)
             }
             print("XvMuse: Major version =", majorVersion ?? "unknown", "| Device may be", deviceName ?? .unknown)
@@ -359,7 +362,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         if (majorVersion == "Muse"){
             minorVersion = "2"
             deviceName = .muse2
-            XvEEGAnalysis.quietCalibration = .legacy
+            XvEEGAnalysis.quietCalibration = .muse2
             _ppg.set(deviceName: .muse2)
         }
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
@@ -728,8 +731,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             gamma: eeg.gamma.decibel,
             //raw, not gated — the gated value already carries tension damping, which dreamy
             //applies separately, and double-counting it would suppress dreamy twice over
-            quiet: eeg.analysis.quiet
+            quiet: eeg.analysis.quiet,
+            quietDb: eeg.analysis.quietLevelDb
         )
+        _stateAnalyzer.processFullSpectrum(eeg.linearSpectrum)
         _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
         delegate?.didReceiveBrainwave(
             delta: eeg.delta.decibel,
@@ -882,14 +887,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceiveBrainwaveState(meditation: meditation, focus: focus, dreamy: dreamy)
     }
 
-    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, alphaPaceHz: Double) {
+    func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {
         delegate?.didReceiveBrainwaveDimensions(
             tiltHz: tiltHz,
             steadiness: steadiness,
             intensity: intensity,
             spreadHz: spreadHz,
             confidence: confidence,
-            alphaPaceHz: alphaPaceHz
+            rhythmHz: rhythmHz,
+            rhythmSlowHz: rhythmSlowHz
         )
     }
 

@@ -13,7 +13,6 @@ import Foundation
    centroidHz - the balance point. Where the energy sits on the slow-to-fast scale.
    spreadHz   - the width. Is it one organized peak, or smeared across the whole band?
    logPower   - the total mass that got divided out. How much energy there is.
-   alphaPaceHz - the strongest 7-13 Hz alpha peak available inside the detail spectrum.
 
  Centroid and spread describe shape and ignore volume; logPower describes volume and ignores
  shape. That independence is the point: three genuinely separate axes, unlike relative band
@@ -23,7 +22,6 @@ struct DetailFeatures {
     let centroidHz: Double
     let spreadHz: Double
     let logPower: Double
-    let alphaPaceHz: Double
     let timestamp: Date
 }
 
@@ -46,6 +44,11 @@ struct BandBalance {
      longer a gate on anything — see the note on dreamy in EEGStateScorer. Kept because it is
      still published and still useful to read in the diagnostic log. */
     let quiet: Double
+
+    /* The unscaled trimmed-mean dB behind `quiet`, carried through so the log can show it next to
+     the percentage it produced. Scores nothing — it exists to make the calibration measurable
+     rather than guessable, since `quiet` itself clips at both ends. */
+    let quietDb: Double
 
     //MARK: - 1/f detrended residuals
 
@@ -87,13 +90,14 @@ struct BandBalance {
     private static let alphaCentreHz = (8.0 * 12.0).squareRoot()
     private static let betaCentreHz  = (14.0 * 30.0).squareRoot()
 
-    init(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double, quiet: Double) {
+    init(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double, quiet: Double, quietDb: Double) {
         self.delta = delta
         self.theta = theta
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
         self.quiet = quiet
+        self.quietDb = quietDb
 
         let levels = [delta, theta, alpha, beta]
         let logFreqs = [

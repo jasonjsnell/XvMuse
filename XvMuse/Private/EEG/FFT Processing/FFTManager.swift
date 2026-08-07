@@ -81,8 +81,14 @@ public class FFTManager {
     
     private var _buffers:[Buffer] = []
     private var _epochGenerator:EpochGenerator = EpochGenerator()
-    private lazy var _fullFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
-    private lazy var _detailFFT: FFT = FFT(bins: MuseConstants.EEG_FFT_BINS)
+    private lazy var _fullFFT: FFT = FFT(
+        bins: MuseConstants.EEG_FFT_BINS,
+        windowLength: MuseConstants.EEG_EPOCH_SAMPLES
+    )
+    private lazy var _detailFFT: FFT = FFT(
+        bins: MuseConstants.EEG_FFT_BINS,
+        windowLength: MuseConstants.EEG_EPOCH_SAMPLES
+    )
     private var _detailFilters:[FFTFilter] = []
     internal weak var delegate:FFTManagerDelegate?
     private var _lastPublishedBufferSamples:Int = -1

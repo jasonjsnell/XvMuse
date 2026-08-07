@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import XvEEG //for the quiet calibration anchors printed alongside the raw dB in logState
 
 protocol EEGStateAnalyzerDelegate: AnyObject {
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
@@ -13,7 +14,8 @@ protocol EEGStateAnalyzerDelegate: AnyObject {
         intensity: Double,
         spreadHz: Double,
         confidence: Double,
-        alphaPaceHz: Double
+        rhythmHz: Double,
+        rhythmSlowHz: Double
     )
 }
 
@@ -108,17 +110,75 @@ final class EEGStateAnalyzer {
     private var lastIntensity: Double = 0.0
     private var lastSpreadHz: Double = 0.0
     private var lastConfidence: Double = 0.0
-    private var lastAlphaPaceHz: Double = 0.0
+    private var lastRhythmHz: Double = 0.0
+    private var lastRhythmSlowHz: Double = 0.0
 
-    //MARK: - Alpha pace tracking
-    private var smoothedAlphaPaceHz: Double = 0.0
-    private var alphaPaceSampleCount: Int = 0
+    //MARK: - Dominant rhythm tracking
 
-    //peak must clear the band's own average by this much before it counts as a rhythm
-    private let alphaPaceMinProminenceDb: Double = 3.0
+    private var fastDominantHz: Double = 0.0
+    private var slowDominantHz: Double = 0.0
+    private var dominantSampleCount: Int = 0
+    private var lastDominantUpdate: Date? = nil
+    //accepted estimates held during warm-up so slow seeds from their median, not from sample one
+    private var dominantWarmup: [Double] = []
+    private var dominantWarmupStart: Date? = nil
+    private var dominantWarmupComplete: Bool = false
 
-    //~2 minutes at the 4 Hz publish rate
-    private let alphaPaceSmoothing: Double = 0.002
+    //full-spectrum search span. 5 Hz reaches drowsy theta; 20 matches the detail window's top.
+    /* Theta prominence: fit the background across 2-12 Hz, find the peak inside 4-7 Hz. The fit
+     window has to be wide enough that a narrow bump cannot drag the line it is being measured
+     against, and the peak window is the theta band itself. */
+    private let thetaShapeLowHz: Double = 2.0
+    private let thetaShapeHighHz: Double = 12.0
+    private let thetaPeakLowHz: Double = 4.0
+    private let thetaPeakHighHz: Double = 7.0
+
+    private let dominantLowHz: Double = 5.0
+    private let dominantHighHz: Double = 20.0
+    private var dominantBins: [Int] = []
+    private var dominantFreqs: [Double] = []
+
+    /* THETA PROMINENCE — DIAGNOSTIC ONLY, scores nothing yet.
+
+     Dreamy currently asks how LOUD theta is relative to a fitted background. Measured on a
+     loose-fit Muse S session, that question has a bad answer: against a well-seated session on the
+     same headset, theta rose +17.5 dB while delta rose +8.4, alpha +5.7 and beta +2.0. The
+     contamination is theta-weighted, so every guard dreamy owns points the wrong way — both
+     `clearOfFastBands` (theta minus beta) and `calmLowEnd` (theta minus delta) open WIDER during
+     the artifact, and blink gating never fires because the worst frames scored 0-2 on blink.
+
+     The question that should separate them is not how loud theta is but whether theta is a PEAK.
+     A real theta rhythm is a localised bump; loose-electrode and movement artifact is a smear that
+     lifts a whole region at once. Fitting the 1/f line across 2-12 Hz and taking the largest
+     residual inside 4-7 Hz distinguishes exactly that: a uniform lift is absorbed by the fit and
+     leaves almost no residual, while a genuine bump survives it.
+
+     Logged first, wired into scoring second, and only once the recordings show the two cases
+     actually separating. */
+    private var thetaShapeBins: [Int] = []
+    private var thetaShapeFreqs: [Double] = []
+    private var latestThetaProminenceDb: Double = 0.0
+    private var latestThetaPeakHz: Double = 0.0
+
+    //peak must clear the fitted 1/f background by this much before it counts as a rhythm
+    private let dominantMinProminenceDb: Double = 3.0
+
+    /* Artifact gates. Stricter than elsewhere because the bottom of this search sits right where
+     blink energy lives — a blink would otherwise read as a big slow "rhythm". */
+    private let dominantBlinkGatePct: Double = 35.0
+    private let dominantTensionGatePct: Double = 50.0
+
+    /* Time constants in SECONDS, not per-call weights. This runs on the EEG packet cadence
+     rather than the publish cadence, so a fixed per-call weight would mean different real-world
+     smoothing on different devices and packet rates. */
+    private let dominantFastSeconds: Double = 7.0
+    private let dominantSlowSeconds: Double = 120.0
+    /* Warm-up for the slow tracker — see updateDominantRhythm. Duration, not sample count: this
+     runs on packet cadence (~21/sec), so a count-based window closes in a fraction of a second and
+     samples one instant many times over rather than sampling real variation. */
+    private let dominantWarmupSeconds: Double = 20.0
+    private let dominantWarmupMinSamples: Int = 24
+    private let dominantWarmupMaxSamples: Int = 600
 
     //MARK: - Init
 
@@ -208,6 +268,22 @@ final class EEGStateAnalyzer {
             scorer.configureWindow(nullCentroidHz: nullCentroid, nullSpreadHz: nullSpread)
         }
 
+        //full-spectrum search table for the dominant-rhythm tracker
+        for bin in 0..<(fftBins / 2) {
+            let hz = Double(bin) * binWidthHz
+            guard hz >= dominantLowHz, hz <= dominantHighHz else { continue }
+            dominantBins.append(bin)
+            dominantFreqs.append(hz)
+        }
+
+        //shape window for the theta prominence diagnostic
+        for bin in 0..<(fftBins / 2) {
+            let hz = Double(bin) * binWidthHz
+            guard hz >= thetaShapeLowHz, hz <= thetaShapeHighHz else { continue }
+            thetaShapeBins.append(bin)
+            thetaShapeFreqs.append(hz)
+        }
+
         print(String(
             format: "EEGStateAnalyzer: detail window %.1f-%.1f Hz, %d usable bins, 1/f null centroid %.2f Hz spread %.2f Hz",
             lowHz, highHz, bins.count, nullCentroid, nullSpread
@@ -272,8 +348,23 @@ final class EEGStateAnalyzer {
         alpha: Double,
         beta: Double,
         gamma: Double,
-        quiet: Double
+        quiet: Double,
+        quietDb: Double
     ) {
+        /* REJECT THE UNINITIALISED FRAME.
+
+         On the first publish after the 256-sample buffer fills, the band levels can arrive as five
+         exact zeros. That is not a silent brain, it is no measurement at all — but the detrending
+         happily fits a flat line through it and returns five zero residuals, so alphaLead comes out
+         at exactly 0.0 dB, which sits two thirds of the way up meditation's ramp. Observed live:
+         `raw D: 0.0 T: 0.0 A: 0.0 B: 0.0 G: 0.0` with `gate:0.67` on no data whatsoever.
+
+         Any real dB spectrum has some spread between bands; five identical values means the frame
+         never got filled. Cheap to test, and it keeps a garbage frame from reaching the scorers at
+         the one moment the user is most likely to be looking at the display. */
+        let levels = [delta, theta, alpha, beta, gamma]
+        guard levels.allSatisfy({ $0.isFinite }) else { return }
+        guard let lo = levels.min(), let hi = levels.max(), hi - lo > 1e-9 else { return }
         /* Quiet is fed through a smoother before it reaches the scorer. The raw value is close to
          bimodal — it swings between 0 and 100 from one reading to the next, because the absolute
          scale it maps through saturates at both ends. Used raw as a gate it made dreamy flicker
@@ -292,7 +383,8 @@ final class EEGStateAnalyzer {
             alpha: alpha,
             beta: beta,
             gamma: gamma,
-            quiet: smoothedQuiet
+            quiet: smoothedQuiet,
+            quietDb: quietDb.isFinite ? quietDb : 0.0
         )
 
         pendingBands.append(TimedBands(
@@ -307,6 +399,43 @@ final class EEGStateAnalyzer {
 
         prunePendingBands(now: now)
         latestBands = latestArtifactScreenedBands(now: now)
+    }
+
+    /* The dominant-rhythm tracker needs the FULL spectrum, not the band-passed detail one — its
+     search reaches down to 5 Hz, below the detail window's floor. Call before
+     processDetailSpectrum so the published rhythm belongs to the same frame as the scores. */
+    func processFullSpectrum(_ spectrum: [Double]) {
+        guard !spectrum.isEmpty, !dominantBins.isEmpty else { return }
+        updateDominantRhythm(fullSpectrum: spectrum, now: Date())
+        updateThetaProminence(fullSpectrum: spectrum)
+    }
+
+    /* How far the strongest 4-7 Hz bin stands above the 1/f line fitted across 2-12 Hz.
+
+     Deliberately NOT gated on blink or tension, unlike the rhythm tracker. The whole point is to
+     see what this reads during contaminated frames, so screening those out would remove the
+     measurement of interest. */
+    private func updateThetaProminence(fullSpectrum spectrum: [Double]) {
+        guard !thetaShapeBins.isEmpty else { return }
+
+        let points = thetaShapeBins.enumerated().compactMap { i, bin -> (hz: Double, power: Double)? in
+            guard bin < spectrum.count else { return nil }
+            let power = max(0.0, spectrum[bin])
+            guard power > 1e-12 else { return nil }
+            return (hz: thetaShapeFreqs[i], power: power)
+        }
+
+        let flattened = flattenedDbValues(points)
+        guard flattened.count >= 3 else { return }
+
+        var best: (hz: Double, db: Double)? = nil
+        for point in flattened where point.hz >= thetaPeakLowHz && point.hz <= thetaPeakHighHz {
+            if best == nil || point.db > best!.db { best = point }
+        }
+
+        guard let peak = best, peak.db.isFinite else { return }
+        latestThetaProminenceDb = peak.db
+        latestThetaPeakHz = peak.hz
     }
 
     func processDetailSpectrum(_ spectrum: [Double]) {
@@ -331,7 +460,6 @@ final class EEGStateAnalyzer {
                 liveTiltHz: features.centroidHz,
                 liveIntensity: intensity(from: features),
                 liveSpreadHz: features.spreadHz,
-                liveAlphaPaceHz: features.alphaPaceHz,
                 fadeFocus: shouldFadeFocusDuringCleanBlock
             )
             return
@@ -357,10 +485,16 @@ final class EEGStateAnalyzer {
         lastIntensity = 0
         lastSpreadHz = 0
         lastConfidence = 0
-        lastAlphaPaceHz = 0
+        lastRhythmHz = 0
+        lastRhythmSlowHz = 0
         //each test set is a different person-session; identity must not carry over
-        smoothedAlphaPaceHz = 0
-        alphaPaceSampleCount = 0
+        fastDominantHz = 0
+        slowDominantHz = 0
+        dominantWarmup.removeAll()
+        dominantWarmupStart = nil
+        dominantWarmupComplete = false
+        dominantSampleCount = 0
+        lastDominantUpdate = nil
         scorer.reset()
     }
 
@@ -401,56 +535,57 @@ final class EEGStateAnalyzer {
             centroidHz: centroid,
             spreadHz: spread,
             logPower: log10(total + 1e-12),
-            alphaPaceHz: alphaPaceHz(fromDetailSpectrum: spectrum) ?? lastAlphaPaceHz,
             timestamp: now
         )
     }
 
-    /* Which frequency this person's alpha rhythm runs at.
+    /* WHERE THE DOMINANT RHYTHM SITS, RIGHT NOW.
 
-     IDENTITY, NOT CONTROL. It barely moves within a session and cannot be changed deliberately,
-     so it is tracked over minutes and only accepted from frames where a peak genuinely exists.
+     This replaces the old alpha-pace finder, which searched only 7-13 Hz inside the band-passed
+     detail spectrum. Two problems with that: a drowsy brain's strongest rhythm is theta at 4-7 Hz,
+     which is below the search floor AND below the detail window, so on a tired recording it was
+     reporting whichever weak bump happened to exist in a range where nothing was happening. That
+     is why "tired" came back at 10.95 Hz — higher than deep meditation — which is backwards.
 
-     Three guards, all of which were missing and all of which mattered. Without them this reported
-     the raw argmax bin every frame: integers only, jumping the full 8-13 Hz range frame to frame
-     and repeatedly landing on both boundaries. A uniform spread across the search range is the
-     signature of tracking noise, not of a rhythm — a flat band still has a maximum bin.
+     So it now reads the FULL spectrum across 5-20 Hz. Measured on the recorded sets, opening the
+     search down to 5 Hz moves falling-asleep from 14.69 Hz to 10.88 and sleeping from 13.90 to
+     11.88, while coding stays put at 15.5 — the deep drowsy states become visible without
+     disturbing anything else. The ordering across the corpus then runs meditation 9.6, tired 10.3,
+     falling asleep 10.9, sleeping 11.9, reading 13.4, typing 14.1, coding 15.5.
 
-       1. PROMINENCE. Require the peak to stand clear of the band's own average before believing
-          it at all. Measured on the detrended residual, so the 1/f slope cannot supply the peak.
-       2. SUB-BIN INTERPOLATION. Bins are 1 Hz apart and 10 vs 11 Hz is a real personal difference,
-          so a parabola through the peak and its neighbours recovers the true maximum between bin
-          centres. This is also why the value stops being an integer.
-       3. SLOW TRACKING. An EWMA over roughly two minutes, seeded on the first accepted frame.
-          Identity should settle, not chase.
+     The detail window itself stays at 8-20. Widening THAT made tilt worse (focus-vs-rest fell
+     from 0.67 to 0.53), because its cleanliness is exactly what gives the centroid its power.
+     Two measurements, two windows, on purpose.
 
-     Returns nil when this frame has nothing worth accepting; the caller holds the last value. */
-    private func alphaPaceHz(fromDetailSpectrum spectrum: [Double]) -> Double? {
-        guard !spectrum.isEmpty else { return nil }
+     WHITENED FIRST. Without removing the 1/f slope the lowest bin in the range wins almost every
+     frame, because power falls off as roughly 1/f^2 regardless of what the brain is doing. */
+    private func updateDominantRhythm(fullSpectrum spectrum: [Double], now: Date) {
 
-        let alphaLowHz = 7.0
-        let alphaHighHz = 13.0
-        let points = usableBins.enumerated().compactMap { index, bin -> (hz: Double, power: Double)? in
+        //a blink is a large slow transient sitting right on top of the 5-7 Hz end of the search
+        guard latestBlinkPct < dominantBlinkGatePct else { return }
+        guard latestTensionPct < dominantTensionGatePct else { return }
+
+        let points = dominantBins.enumerated().compactMap { i, bin -> (hz: Double, power: Double)? in
             guard bin < spectrum.count else { return nil }
-            let hz = usableFreqs[index]
-            guard hz >= alphaLowHz, hz <= alphaHighHz else { return nil }
-            let power = max(0.0, spectrum[bin]) * compensation[index]
+            let power = max(0.0, spectrum[bin])
             guard power > 1e-12 else { return nil }
-            return (hz: hz, power: power)
+            return (hz: dominantFreqs[i], power: power)
         }
 
         let flattened = flattenedDbValues(points)
-        guard flattened.count >= 3 else { return nil }
+        guard flattened.count >= 3 else { return }
 
         var peakIndex = 0
         for (i, point) in flattened.enumerated() where point.db > flattened[peakIndex].db {
             peakIndex = i
         }
 
-        //1. is it actually a peak? least squares puts the mean residual at 0, so this is the excess
-        guard flattened[peakIndex].db >= alphaPaceMinProminenceDb else { return nil }
+        /* Least squares puts the mean residual at zero, so the peak's own residual IS its
+         prominence above the fitted background. A flat band still has a maximum bin; without
+         this guard the tracker would follow noise. */
+        guard flattened[peakIndex].db >= dominantMinProminenceDb else { return }
 
-        //2. sub-bin location
+        //sub-bin location, so the value is not quantised to the bin grid
         var estimateHz = flattened[peakIndex].hz
         if peakIndex > 0, peakIndex < flattened.count - 1 {
             let a = flattened[peakIndex - 1].db
@@ -462,18 +597,69 @@ final class EEGStateAnalyzer {
                 estimateHz += offset * binWidthHz
             }
         }
+        guard estimateHz.isFinite else { return }
 
-        guard estimateHz.isFinite else { return nil }
+        /* TWO TIMESCALES OFF ONE MEASUREMENT.
 
-        //3. settle rather than chase
-        if alphaPaceSampleCount == 0 {
-            smoothedAlphaPaceHz = estimateHz
+         Fast is a state signal — it should follow you from meditation into work within a few
+         seconds, and it is what sonification should listen to. Slow is identity: where your
+         rhythm lives across a whole session, changing rarely enough to set up an instrument
+         rather than play one. */
+
+        //clamped so a long gap (headset dropout, app backgrounded) cannot snap either value
+        let dt = min(max(now.timeIntervalSince(lastDominantUpdate ?? now), 0.0), 1.0)
+
+        /* Fast needs no warm-up. Its 7-second constant washes out any starting value within a
+         handful of seconds, and pinning it during warm-up would only stop it doing its job. */
+        if lastDominantUpdate == nil {
+            fastDominantHz = estimateHz
         } else {
-            smoothedAlphaPaceHz += alphaPaceSmoothing * (estimateHz - smoothedAlphaPaceHz)
+            fastDominantHz += (1 - exp(-dt / dominantFastSeconds)) * (estimateHz - fastDominantHz)
         }
-        alphaPaceSampleCount += 1
 
-        return smoothedAlphaPaceHz
+        /* SLOW IS SEEDED FROM A MEDIAN OVER REAL TIME, NOT OVER A SAMPLE COUNT.
+
+         The original seeded from whatever the first accepted estimate happened to be. With a
+         120-second constant that one moment then takes four to six minutes to decay out — most of
+         a session, and precisely the window in which an identity value is supposed to be usable.
+         Measured: the Athena opened at 6.98 Hz while its fast value was already at 12.26.
+
+         The first repair — median of the first 12 samples — was the right idea measured against
+         the wrong clock. This runs on packet cadence, roughly 21 packets a second, so 12 samples
+         is about half a second. Twelve looks at the same instant is not twelve independent looks,
+         and the Muse S duly seeded at 14.18 Hz against a fast value of 12.12 and spent the next
+         ninety seconds decaying toward the 8-10 Hz the session actually lived at.
+
+         So the window is now a DURATION. Twenty seconds of accepted estimates spans real
+         variation, and the sample floor stops a heavily-gated stretch from ending warm-up early on
+         a handful of readings. The running median publishes throughout, so the value is usable
+         from the first second and cannot be dragged by one outlier. */
+        if dominantWarmupComplete {
+            slowDominantHz += (1 - exp(-dt / dominantSlowSeconds)) * (estimateHz - slowDominantHz)
+        } else {
+            let started = dominantWarmupStart ?? now
+            if dominantWarmupStart == nil { dominantWarmupStart = started }
+            if dominantWarmup.count < dominantWarmupMaxSamples {
+                dominantWarmup.append(estimateHz)
+            }
+            slowDominantHz = Self.median(of: dominantWarmup)
+
+            if now.timeIntervalSince(started) >= dominantWarmupSeconds,
+               dominantWarmup.count >= dominantWarmupMinSamples {
+                dominantWarmupComplete = true
+                dominantWarmup.removeAll(keepingCapacity: false)
+            }
+        }
+
+        dominantSampleCount += 1
+        lastDominantUpdate = now
+    }
+
+    private static func median(of values: [Double]) -> Double {
+        guard !values.isEmpty else { return 0.0 }
+        let s = values.sorted()
+        let mid = s.count / 2
+        return s.count % 2 == 0 ? (s[mid - 1] + s[mid]) / 2.0 : s[mid]
     }
 
     private func flattenedDbValues(_ points: [(hz: Double, power: Double)]) -> [(hz: Double, db: Double)] {
@@ -548,6 +734,7 @@ final class EEGStateAnalyzer {
             stability: steadiness,
             bands: latestBands,
             tension: latestTensionPct,
+            thetaProminenceDb: latestThetaProminenceDb,
             smoothing: scoreSmoothing
         )
 
@@ -556,7 +743,8 @@ final class EEGStateAnalyzer {
         lastIntensity = intensity
         lastSpreadHz = features.spreadHz
         lastConfidence = cleanConfidence01
-        lastAlphaPaceHz = features.alphaPaceHz
+        lastRhythmHz = fastDominantHz
+        lastRhythmSlowHz = slowDominantHz
 
         delegate?.didReceiveBrainwaveState(
             meditation: scores.meditation,
@@ -570,7 +758,8 @@ final class EEGStateAnalyzer {
             intensity: intensity,
             spreadHz: features.spreadHz,
             confidence: lastConfidence,
-            alphaPaceHz: features.alphaPaceHz
+            rhythmHz: fastDominantHz,
+            rhythmSlowHz: slowDominantHz
         )
 
         logState(features: features, scores: scores, now: now)
@@ -581,7 +770,6 @@ final class EEGStateAnalyzer {
         liveTiltHz: Double? = nil,
         liveIntensity: Double? = nil,
         liveSpreadHz: Double? = nil,
-        liveAlphaPaceHz: Double? = nil,
         fadeFocus: Bool = true
     ) {
 
@@ -597,9 +785,6 @@ final class EEGStateAnalyzer {
         }
         if let liveSpreadHz {
             lastSpreadHz = liveSpreadHz
-        }
-        if let liveAlphaPaceHz {
-            lastAlphaPaceHz = liveAlphaPaceHz
         }
         lastConfidence = cleanConfidence01
 
@@ -617,7 +802,8 @@ final class EEGStateAnalyzer {
             intensity: lastIntensity,
             spreadHz: lastSpreadHz,
             confidence: lastConfidence,
-            alphaPaceHz: lastAlphaPaceHz
+            rhythmHz: lastRhythmHz,
+            rhythmSlowHz: lastRhythmSlowHz
         )
 
         // STATE BLOCKED logs are intentionally muted during live state tuning.
@@ -648,18 +834,23 @@ final class EEGStateAnalyzer {
         ))
 
         let loggedQuiet: Double = latestBands?.quiet ?? -1.0
+        let loggedQuietDb: Double = latestBands?.quietDb ?? 0.0
         print(String(
-            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz (%+5.2f vs null %5.2f) spread:%5.2fHz (%+5.2f) alphaPace:%5.2fHz power:%5.2f steadiness:%4.2f quiet:%3.0f",
+            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz (%+5.2f vs null %5.2f) spread:%5.2fHz (%+5.2f) rhythm:%5.2fHz(slow %5.2f) power:%5.2f steadiness:%4.2f quiet:%3.0f (%+6.2fdB vs %.1f/%.1f)",
             elapsed,
             features.centroidHz,
             features.centroidHz - nullCentroidHz,
             nullCentroidHz,
             features.spreadHz,
             features.spreadHz - nullSpreadHz,
-            features.alphaPaceHz,
+            fastDominantHz,
+            slowDominantHz,
             features.logPower,
             centroidStability,
-            loggedQuiet
+            loggedQuiet,
+            loggedQuietDb,
+            XvEEGAnalysis.quietCalibration.quietDb,
+            XvEEGAnalysis.quietCalibration.loudDb
         ))
 
         print(String(
@@ -703,6 +894,24 @@ final class EEGStateAnalyzer {
                 scorer.dreamyCalmLowEnd,
                 scorer.dreamyNotRunningFast,
                 RelaxedStateGate.damping(forTension: latestTensionPct)
+            ))
+
+            /* The shape question, alongside the loudness question above. `peak` is where in 4-7 Hz
+             the strongest bin sits and `prom` is how far it stands above the 2-12 Hz background —
+             a real rhythm should show several dB, a smear close to zero. Tension and blink are
+             printed again here so the two can be read against each other in one line. */
+            print(String(
+                format: "THETA SHAPE  | t:%6.1f | peak:%5.2fHz prom:%+5.2fdB rhythm:%4.2f | rawTheta:%5.1f thetaLead:%+5.1f | tension:%3.0f blink:%3.0f clean:%3.0f | dreamy:%3.0f",
+                elapsed,
+                latestThetaPeakHz,
+                latestThetaProminenceDb,
+                scorer.dreamyLooksLikeRhythm,
+                bands.theta,
+                scorer.dreamyThetaLeadDb,
+                latestTensionPct,
+                latestBlinkPct,
+                latestEffectiveCleanPct,
+                scores.dreamy
             ))
         }
     }
