@@ -822,97 +822,69 @@ final class EEGStateAnalyzer {
 
         let elapsed = now.timeIntervalSince(launchTime)
 
-        print(String(
-            format: "STATE SCORE | t:%6.1f | focus:%3.0f meditation:%3.0f dreamy:%3.0f | clean:%3.0f effClean:%3.0f tension:%3.0f blink:%3.0f conf:%4.2f",
-            elapsed,
-            scores.focus, scores.meditation, scores.dreamy,
-            latestCleanPct,
-            latestEffectiveCleanPct,
-            latestTensionPct,
-            latestBlinkPct,
-            lastConfidence
-        ))
+//        print(String(
+//            format: "FOCUS INPUTS | t:%6.1f | gate:%4.2f fast:%4.2f calm:%4.2f notAlpha:%4.2f broad:%4.2f steady:%4.2f support:%4.2f",
+//            elapsed,
+//            scorer.focusGate,
+//            scorer.focusFastCentroid,
+//            scorer.focusCalmCentroid,
+//            scorer.focusNotAlphaLed,
+//            scorer.focusBroadEnough,
+//            scorer.focusHoldingSteady,
+//            scorer.focusSupport
+//        ))
 
-        let loggedQuiet: Double = latestBands?.quiet ?? -1.0
-        let loggedQuietDb: Double = latestBands?.quietDb ?? 0.0
-        print(String(
-            format: "STATE INPUTS | t:%6.1f | tilt:%5.2fHz (%+5.2f vs null %5.2f) spread:%5.2fHz (%+5.2f) rhythm:%5.2fHz(slow %5.2f) power:%5.2f steadiness:%4.2f quiet:%3.0f (%+6.2fdB vs %.1f/%.1f)",
-            elapsed,
-            features.centroidHz,
-            features.centroidHz - nullCentroidHz,
-            nullCentroidHz,
-            features.spreadHz,
-            features.spreadHz - nullSpreadHz,
-            fastDominantHz,
-            slowDominantHz,
-            features.logPower,
-            centroidStability,
-            loggedQuiet,
-            loggedQuietDb,
-            XvEEGAnalysis.quietCalibration.quietDb,
-            XvEEGAnalysis.quietCalibration.loudDb
-        ))
+//        print(String(
+//            format: "MEDITATION INPUTS | t:%6.1f | alphaLead(detrend):%+5.1fdB gate:%4.2f alphaCentroid:%4.2f organized:%4.2f steady:%4.2f support:%4.2f awake:%4.2f",
+//            elapsed,
+//            scorer.meditationAlphaLeadDb,
+//            scorer.medGate,
+//            scorer.meditationAlphaCentroid,
+//            scorer.meditationOrganized,
+//            scorer.meditationHoldingSteady,
+//            scorer.medSupport,
+//            scorer.meditationAwakeEnough
+//        ))
 
-        print(String(
-            format: "FOCUS INPUTS | t:%6.1f | gate:%4.2f fast:%4.2f calm:%4.2f notAlpha:%4.2f broad:%4.2f steady:%4.2f support:%4.2f",
-            elapsed,
-            scorer.focusGate,
-            scorer.focusFastCentroid,
-            scorer.focusCalmCentroid,
-            scorer.focusNotAlphaLed,
-            scorer.focusBroadEnough,
-            scorer.focusHoldingSteady,
-            scorer.focusSupport
-        ))
-
-        print(String(
-            format: "MEDITATION INPUTS | t:%6.1f | alphaLead(detrend):%+5.1fdB gate:%4.2f alphaCentroid:%4.2f organized:%4.2f steady:%4.2f support:%4.2f awake:%4.2f",
-            elapsed,
-            scorer.meditationAlphaLeadDb,
-            scorer.medGate,
-            scorer.meditationAlphaCentroid,
-            scorer.meditationOrganized,
-            scorer.meditationHoldingSteady,
-            scorer.medSupport,
-            scorer.meditationAwakeEnough
-        ))
-
-        if let bands = latestBands {
-            print(String(
-                format: "DREAMY INPUTS | t:%6.1f | raw D:%5.1f T:%5.1f A:%5.1f B:%5.1f G:%5.1f | resid D:%+5.1f T:%+5.1f A:%+5.1f B:%+5.1f | thetaLead:%+5.1f sm:%+5.1f gate:%4.2f | thetaFast:%+5.1f gate:%4.2f | quiet:%3.0f (unused:%4.2f) | thetaDelta:%+5.1f gate:%4.2f | notFast:%4.2f | tensionDamp:%4.2f",
-                elapsed,
-                bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
-                bands.deltaResidual, bands.thetaResidual, bands.alphaResidual, bands.betaResidual,
-                scorer.dreamyThetaLeadDb,
-                scorer.dreamySmoothedThetaLeadDb,
-                scorer.dreamyGate,
-                scorer.dreamyThetaVsFastDb,
-                scorer.dreamyClearOfFastBands,
-                bands.quiet,
-                scorer.dreamyStillnessPresent,
-                scorer.dreamyThetaVsDeltaDb,
-                scorer.dreamyCalmLowEnd,
-                scorer.dreamyNotRunningFast,
-                RelaxedStateGate.damping(forTension: latestTensionPct)
-            ))
+        /* All per-state dumps are silenced while the particle field is being diagnosed — the
+         renderer logs need a quiet console to read against. Uncomment `if let bands` together
+         with whichever block below you want back. */
+        if false, let bands = latestBands {
+//            print(String(
+//                format: "DREAMY INPUTS | t:%6.1f | raw D:%5.1f T:%5.1f A:%5.1f B:%5.1f G:%5.1f | resid D:%+5.1f T:%+5.1f A:%+5.1f B:%+5.1f | thetaLead:%+5.1f sm:%+5.1f gate:%4.2f | thetaFast:%+5.1f gate:%4.2f | quiet:%3.0f (unused:%4.2f) | thetaDelta:%+5.1f gate:%4.2f | notFast:%4.2f | tensionDamp:%4.2f",
+//                elapsed,
+//                bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
+//                bands.deltaResidual, bands.thetaResidual, bands.alphaResidual, bands.betaResidual,
+//                scorer.dreamyThetaLeadDb,
+//                scorer.dreamySmoothedThetaLeadDb,
+//                scorer.dreamyGate,
+//                scorer.dreamyThetaVsFastDb,
+//                scorer.dreamyClearOfFastBands,
+//                bands.quiet,
+//                scorer.dreamyStillnessPresent,
+//                scorer.dreamyThetaVsDeltaDb,
+//                scorer.dreamyCalmLowEnd,
+//                scorer.dreamyNotRunningFast,
+//                RelaxedStateGate.damping(forTension: latestTensionPct)
+//            ))
 
             /* The shape question, alongside the loudness question above. `peak` is where in 4-7 Hz
              the strongest bin sits and `prom` is how far it stands above the 2-12 Hz background —
              a real rhythm should show several dB, a smear close to zero. Tension and blink are
              printed again here so the two can be read against each other in one line. */
-            print(String(
-                format: "THETA SHAPE  | t:%6.1f | peak:%5.2fHz prom:%+5.2fdB rhythm:%4.2f | rawTheta:%5.1f thetaLead:%+5.1f | tension:%3.0f blink:%3.0f clean:%3.0f | dreamy:%3.0f",
-                elapsed,
-                latestThetaPeakHz,
-                latestThetaProminenceDb,
-                scorer.dreamyLooksLikeRhythm,
-                bands.theta,
-                scorer.dreamyThetaLeadDb,
-                latestTensionPct,
-                latestBlinkPct,
-                latestEffectiveCleanPct,
-                scores.dreamy
-            ))
+//            print(String(
+//                format: "THETA SHAPE  | t:%6.1f | peak:%5.2fHz prom:%+5.2fdB rhythm:%4.2f | rawTheta:%5.1f thetaLead:%+5.1f | tension:%3.0f blink:%3.0f clean:%3.0f | dreamy:%3.0f",
+//                elapsed,
+//                latestThetaPeakHz,
+//                latestThetaProminenceDb,
+//                scorer.dreamyLooksLikeRhythm,
+//                bands.theta,
+//                scorer.dreamyThetaLeadDb,
+//                latestTensionPct,
+//                latestBlinkPct,
+//                latestEffectiveCleanPct,
+//                scores.dreamy
+//            ))
         }
     }
 
