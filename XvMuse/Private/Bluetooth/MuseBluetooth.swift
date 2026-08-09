@@ -179,26 +179,51 @@ public class MuseBluetooth:XvBluetoothDelegate {
     private var connectionStartTime:Date = Date()
     private let timeFormatter:DateComponentsFormatter
     private let RECONNECTION_SIGNAL_INTERVAL:Int = 500
+    private var lastStatusPollTime:Date = Date()
+    private let STATUS_POLL_INTERVAL:TimeInterval = 12.0
+
+    //set when XvMuse routes an Athena through athenaInitializeAndStart; decides which
+    //keep-alive command the poll above sends
+    private var isAthena:Bool = false
+
+    /* Timestamp of the last control write, exposed so a diagnostic can test whether EEG noise
+     spikes are phase-locked to our own BLE chatter. Reading the reply is not good enough for that:
+     the reply lands an unknown interval after the write, and its log line interleaves with prints
+     from other queues, so relative print order says nothing about actual timing. */
+    public internal(set) static var lastControlCommandSentTime: TimeInterval = 0
     
     public func received(valueFromCharacteristic: CBCharacteristic, fromDevice: CBPeripheral) {
         //print("XvMuse: Received value:", valueFromCharacteristic)
         
         delegate?.parse(bluetoothCharacteristic: valueFromCharacteristic)
-        
-        //up the counter
-        connectionCounter += 1
-        if (connectionCounter > RECONNECTION_SIGNAL_INTERVAL){
-            /* Status rather than plain keep-alive, because its reply carries "bp" — the battery
-             percentage. Any command resets the connection timeout, so this keeps the link alive
-             exactly as keepAlive() did while also refreshing battery roughly every 12 seconds.
 
-             Needed because Athena firmware 3.1.29 dropped the 0x98 battery subpacket that used to
-             stream continuously. Without this, battery arrives only at connect and never updates. */
-            controlStatus()
-            //print("Connection time:", timeFormatter.string(from: connectionStartTime, to: Date())!)
-            connectionCounter = 0
+        /* Keep-alive, timed rather than counted (the old per-500-notifications counter fired
+         every ~3 s at real streaming rates, not the ~12 s it claimed).
+
+         WHICH COMMAND depends on the device, and the difference is measured, not theoretical:
+
+         Athena gets controlStatus(), because its firmware (3.1.29) dropped the streamed battery
+         subpacket — the status reply's "bp" field is the only battery source it has. Its radio
+         handles the chatter fine.
+
+         Legacy Muse 2 / Muse S get keepAlive(). They stream battery on CHAR_BATTERY unprompted,
+         so they never needed the status poll at all — and on the Muse 2 the poll was actively
+         harmful. The status reply is a long JSON split across many notification packets, and an
+         onboarding diagnostic showed EEG noise spikes phase-locked to the write (0.43 s after it,
+         sd 0.07 s, at exactly the poll interval) with PPG dropouts in the same window: the reply
+         burst congests the older radio and corrupts sensor packets in flight. keepAlive's reply
+         is a single tiny packet.
+
+         If streaming ever stalls after this change, shorten this interval first. */
+        let now = Date()
+        if now.timeIntervalSince(lastStatusPollTime) >= STATUS_POLL_INTERVAL {
+            lastStatusPollTime = now
+            if isAthena {
+                controlStatus()
+            } else {
+                keepAlive()
+            }
         }
-        
     }
     
     public func isAttemptingConnection() {
@@ -357,6 +382,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
      */
     
     public func athenaInitializeAndStart(preset: String = "p1035") {
+        isAthena = true
         
         func enqueueToken(_ token: String, delay: TimeInterval) {
             athenaCommandQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -438,9 +464,11 @@ public class MuseBluetooth:XvBluetoothDelegate {
     
     //MARK: send control command
     private func sendControlCommand(data:Data) {
-        
+
         if (deviceID != nil) {
-            
+
+            MuseBluetooth.lastControlCommandSentTime = Date().timeIntervalSinceReferenceDate
+
             bluetooth.write(
                 data:data,
                 toDeviceWithID: deviceID!,
