@@ -58,8 +58,9 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveQuiet(_ quiet: Double)
     func didReceiveML(noise: Double, tension: Double, blink: Double, clean: Double)
     func didReceiveSensorNoise(tp9: Double, af7: Double, af8: Double, tp10: Double)
-    func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double)
+    func didReceiveEEGPosition(deltaPan: Double, thetaPan: Double, alphaPan: Double, betaPan: Double, gammaPan: Double, deltaX: Double, deltaY: Double, thetaX: Double, thetaY: Double, alphaX: Double, alphaY: Double, betaX: Double, betaY: Double, gammaX: Double, gammaY: Double)
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
+    func didReceiveGammaFocus(_ score: Double)
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double)
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
@@ -92,6 +93,7 @@ public protocol XvMuseDelegate:AnyObject {
 }
 
 public extension XvMuseDelegate {
+    func didReceiveGammaFocus(_ score: Double) {}
     func didReceive(frontLinearSpectrum:[Double]) {}
     func didReceive(detailLinearSpectrum:[Double]) {}
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {}
@@ -701,6 +703,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             thetaPan: eeg.position.panTheta,
             alphaPan: eeg.position.panAlpha,
             betaPan: eeg.position.panBeta,
+            gammaPan: eeg.position.panGamma,
             deltaX: eeg.position.delta.x,
             deltaY: eeg.position.delta.y,
             thetaX: eeg.position.theta.x,
@@ -708,7 +711,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             alphaX: eeg.position.alpha.x,
             alphaY: eeg.position.alpha.y,
             betaX: eeg.position.beta.x,
-            betaY: eeg.position.beta.y
+            betaY: eeg.position.beta.y,
+            gammaX: eeg.position.gamma.x,
+            gammaY: eeg.position.gamma.y
         )
 
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
@@ -790,6 +795,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //the dominant-rhythm tracker stays on the broadband, where it was tuned
         _stateAnalyzer.processFullSpectrum(eeg.linearSpectrum)
         _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
+
+        publishGammaFocus(gammaDb: eeg.gamma.decibel)
         delegate?.didReceiveBrainwave(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
@@ -956,6 +963,40 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             _quietFadedFrames = 0
             _quietCappedFrames = 0
         }
+    }
+
+    /* GAMMA FOCUS — the positive reading of the same evidence dreamy uses as a veto.
+
+     High broadband gamma with a relaxed face is fast cortical activity: hard engagement, the
+     coding-style concentration that the labeled corpus showed at gamma median +4.1 dB while every
+     restful state sat at or below +1.3. Published as its own 0-100 state so it can be sonified
+     independently of the detail-window focus score; the two will often overlap, by design.
+
+     THE TENSION GATE IS NOT OPTIONAL. The tension EMG band (20-35 Hz) and the gamma band
+     (31-44 Hz) physically overlap, so a jaw clench floods this measure with muscle, not brain.
+     Tension therefore fades the score toward zero from 30% and fully by 70% — same shape as the
+     RelaxedStateGate but with no floor, because a fake gamma reading has no display value.
+
+     Anchors (1.5..4.5 dB) were measured on the Muse 2 corpus. Gamma on the Athena runs several
+     dB lower at rest (-3.9 median vs the Muse 2's -1.7), so if this pins at 0 on the Athena
+     during genuine hard focus, per-device anchors are the fix — same story as quiet's. */
+    private var latestPublishedGammaPct: Double = 0.0
+    private let gammaFocusSmoothing: Double = 0.10
+    private let gammaFocusLowDb: Double = 1.5
+    private let gammaFocusHighDb: Double = 4.5
+
+    private func publishGammaFocus(gammaDb: Double) {
+        guard gammaDb.isFinite else { return }
+
+        let span = max(gammaFocusHighDb - gammaFocusLowDb, 1e-6)
+        let raw = min(max((gammaDb - gammaFocusLowDb) / span, 0.0), 1.0)
+
+        let tensionGateSpan = 70.0 - 30.0
+        let tensionAmount = min(max((latestTensionPct - 30.0) / tensionGateSpan, 0.0), 1.0)
+        let target = raw * (1.0 - tensionAmount) * 100.0
+
+        latestPublishedGammaPct += gammaFocusSmoothing * (target - latestPublishedGammaPct)
+        delegate?.didReceiveGammaFocus(min(max(latestPublishedGammaPct, 0.0), 100.0))
     }
 
     private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {

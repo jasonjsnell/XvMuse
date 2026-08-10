@@ -162,7 +162,12 @@ struct BandBalance {
      extrapolated down to theta's centre, and theta's height above that line is the lead. Alert
      spectra put theta 2.5-4 dB BELOW the line, so the sign flips cleanly between states. A
      two-point extrapolation is noisier frame to frame than the fitted version — the scorer's
-     multi-second smoothing is what makes it usable, and matters more now, not less. */
+     multi-second smoothing is what makes it usable, and matters more now, not less.
+
+     ALPHA IS IN THE TREND ON PURPOSE, unlike delta. Strong alpha lifts the line and suppresses
+     this lead, so alpha-rich (early, eyes-closed) drowsiness reads as meditation rather than
+     dreamy. That is the intended division of labour, not a side effect — see the note above
+     scoreDreamy in EEGStateScorer for the evidence and the decision. */
     var thetaLeadDb: Double {
         let logThetaF = log10(Self.thetaCentreHz)
         let logAlphaF = log10(Self.alphaCentreHz)

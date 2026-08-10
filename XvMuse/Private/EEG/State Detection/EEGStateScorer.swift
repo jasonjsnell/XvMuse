@@ -94,6 +94,18 @@ final class EEGStateScorer {
     var thetaLeadSmoothing: Double = 0.04
     private var smoothedThetaLead: Double = 0.0
 
+    /* The same lead, over a much shorter memory — roughly 1.5 s at the 0.25 s publish cadence,
+     against 6 s for the persistence gate above.
+
+     Not instantaneous, which is what it used to be. Since thetaLeadDb became a two-point
+     extrapolation it swings +-9 dB frame to frame, and feeding that straight into a ramp turned
+     the gate into a coin flip: measured on the labeled corpus it slammed fully shut on 36% of
+     Clear Mind frames and 30% of the Athena drift frames, zeroing dreamy each time. At 1.5 s
+     those drop to about 10-15% while the gate still reacts fast enough to catch a one-second
+     noise burst that the 6 s persistence gate would ride straight through. */
+    var vsFastSmoothing: Double = 0.15
+    private var smoothedVsFast: Double = 0.0
+
     /* Detrended dB thresholds. Set from the measured distribution on a real late-night session:
      detrended alpha lead ran -8.0 to +2.5 (median -2.7), detrended theta lead -3.8 to +3.6
      (median +0.1). Dreamy's band is deliberately the wider of the two because theta genuinely
@@ -187,6 +199,7 @@ final class EEGStateScorer {
         dreamyCalmGamma = 1.0
         dreamyGammaDb = 0.0
         smoothedThetaLead = 0.0
+        smoothedVsFast = 0.0
     }
 
     func applyStateScores(
@@ -375,6 +388,24 @@ final class EEGStateScorer {
 
     /* Dreamy: theta-led, quiet, slow activity. Theta remains full-spectrum upstream, but is
      delayed and artifact-screened so blink/tension pre-roll frames do not count. */
+    /* WHICH STATE OWNS WHICH RHYTHM — settled 9 Aug 2026, do not "fix" this back.
+
+     Alpha belongs to meditation. Theta belongs to dreamy. That division is deliberate, and it
+     means DREAMY DOES NOT FIRE ON ALPHA-RICH DROWSINESS — the early, eyes-closed, relaxed-but-not-
+     gone stage where alpha is still strong. Meditation covers that stage, correctly.
+
+     This looks like a bug in one specific place, which is why it is written down here. On the
+     labeled Muse 2 "Tired" recording, dreamy sits near 0 for most of the run while meditation
+     reads 25-49. An earlier version of thetaLeadDb scored that same recording as high as 87, so
+     the natural reading is that something regressed. It did not. That recording is alpha-rich:
+     measuring theta against the alpha/beta trend line (see BandBalance.thetaLeadDb) means strong
+     alpha lifts the line and theta correctly reads as NOT leading. Dreamy is reserved for the
+     deeper stage, where alpha has faded and theta genuinely dominates — which is exactly what the
+     live Athena drift session showed, and what dreamy scores 40-60 on.
+
+     So the two recordings are not a measure that works on one and fails on the other. They are two
+     different states, and each is being reported under the right name. Jason's call, and the
+     states remain free to overlap — no relaxed state gates another. */
     private func scoreDreamy(
         _ bands: BandBalance,
         centroidHz: Double,
@@ -404,12 +435,19 @@ final class EEGStateScorer {
             high: dreamyThetaLeadHighDb
         )
 
-        /* Broadband noise raises beta too, so theta needs to stand clear of it. Same estimator as
-         the gate above but UNSMOOTHED — this is the instant-by-instant check. It used to be the
+        /* Broadband noise raises beta too, so theta needs to stand clear of it. It used to be the
          residual difference (thetaResidual - betaResidual), but a delta surge rotated the shared
          fit and sent that to -6 dB in the same frame it corrupted everything else; the trend-based
-         lead is delta-blind by construction. */
-        let thetaVsFastDb = thetaLeadDb
+         lead is delta-blind by construction.
+
+         TWO VIEWS OF ONE NUMBER, not two pieces of evidence. Since the estimator changed this is
+         the same quantity as the gate above, read over ~1.5 s instead of ~6 s: has theta been
+         leading, AND is it still leading right now. Because they are correlated, this one is
+         deliberately the looser of the pair — its ramp sits a full dB lower at both ends, so it
+         only bites when theta drops genuinely below the alpha/beta line rather than adding a
+         second full-strength requirement on the same measurement. */
+        smoothedVsFast += vsFastSmoothing * (thetaLeadDb - smoothedVsFast)
+        let thetaVsFastDb = smoothedVsFast
         let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 2.0)
 
         /* Stillness is measured and logged but NO LONGER GATES anything.

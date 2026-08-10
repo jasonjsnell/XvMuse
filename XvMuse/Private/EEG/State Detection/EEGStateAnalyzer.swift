@@ -1145,7 +1145,7 @@ final class EEGStateAnalyzer {
         ))
 
         print(String(
-            format: "   why | lead %+5.2fdB sm %+5.2f (opens %+.1f..%+.1f) | vsFast %+5.2f (opens -1.0..2.0) | tilt %+5.2fHz (vetoes %.1f..%.1f) | prom %5.2fdB @%4.1fHz (vetoes %.1f..%.1f) | gamma %+5.2fdB (vetoes %.1f..%.1f) | T-D %+5.2f | tension %3.0f blink %3.0f clean %3.0f damp %4.2f",
+            format: "   why | lead %+5.2fdB sm %+5.2f (opens %+.1f..%+.1f) | vsFast sm %+5.2f (opens -1.0..2.0) | tilt %+5.2fHz (vetoes %.1f..%.1f) | prom %5.2fdB @%4.1fHz (vetoes %.1f..%.1f) | gamma %+5.2fdB (vetoes %.1f..%.1f) | T-D %+5.2f | tension %3.0f blink %3.0f clean %3.0f damp %4.2f",
             scorer.dreamyThetaLeadDb,
             scorer.dreamySmoothedThetaLeadDb,
             scorer.dreamyThetaLeadLowDb, scorer.dreamyThetaLeadHighDb,
