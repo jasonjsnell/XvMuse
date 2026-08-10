@@ -59,6 +59,56 @@ final class EEGStateAnalyzer {
     //set false to silence the per-second state log
     private let logStates: Bool = true
     private let logInterval: TimeInterval = 1.0
+
+    /* Detail is the per-second dump for each state; the summaries are one line per state per
+     window with the distribution. For a labeled calibration run (the pre-recorded Muse 2 state
+     sets) set logStateDetail to false — a handful of summary lines describe a session better
+     than 500 instantaneous ones, and can actually be pasted. */
+    private let logStateDetail: Bool = true
+    private let stateSummaryInterval: TimeInterval = 10.0
+    private var stateSummaryStart: Date? = nil
+    private var dreamySamples: [DreamySample] = []
+    private var focusSamples: [FocusSample] = []
+    private var medSamples: [MedSample] = []
+    private var dreamyRejectedFrames: Int = 0
+
+    private struct DreamySample {
+        let score: Double
+        let smoothedLead: Double
+        let leadGate: Double
+        let vsFast: Double
+        let notFast: Double
+        let rhythm: Double
+        let calmGamma: Double
+        let lowEnd: Double
+        let limitName: String
+        let tension: Double
+        let blink: Double
+        let clean: Double
+    }
+
+    private struct FocusSample {
+        let score: Double
+        let shape: Double
+        let fast: Double
+        let calm: Double
+        let notAlphaLed: Double
+        let broad: Double
+        let steady: Double
+        let support: Double
+        let limitName: String
+    }
+
+    private struct MedSample {
+        let score: Double
+        let alphaLeadDb: Double
+        let alphaLeads: Double
+        let centroid: Double
+        let organized: Double
+        let steady: Double
+        let support: Double
+        let limitName: String
+    }
     private var lastLogTime: Date? = nil
     private let launchTime = Date()
 
@@ -404,9 +454,17 @@ final class EEGStateAnalyzer {
     /* The dominant-rhythm tracker needs the FULL spectrum, not the band-passed detail one — its
      search reaches down to 5 Hz, below the detail window's floor. Call before
      processDetailSpectrum so the published rhythm belongs to the same frame as the scores. */
+    /* Broadband, four-sensor. Only the dominant-rhythm tracker reads this now — it was tuned
+     against the whole-head average and there is no evidence yet that moving it helps. */
     func processFullSpectrum(_ spectrum: [Double]) {
         guard !spectrum.isEmpty, !dominantBins.isEmpty else { return }
         updateDominantRhythm(fullSpectrum: spectrum, now: Date())
+    }
+
+    /* AF7 + AF8 only. Theta prominence must read the same spectrum theta's amplitude came from,
+     otherwise dreamy scores its size from the forehead and its shape from the whole head. */
+    func processFrontalSpectrum(_ spectrum: [Double]) {
+        guard !spectrum.isEmpty else { return }
         updateThetaProminence(fullSpectrum: spectrum)
     }
 
@@ -817,75 +875,299 @@ final class EEGStateAnalyzer {
         now: Date
     ) {
         guard logStates else { return }
+
+        //sampled on EVERY publish, ahead of the once-a-second throttle below, so the summaries
+        //describe the real distribution rather than a once-per-second slice of it
+        accumulateStateSamples(scores: scores)
+        emitStateSummariesIfDue(now: now)
+
         if let last = lastLogTime, now.timeIntervalSince(last) < logInterval { return }
         lastLogTime = now
+        guard logStateDetail else { return }
 
         let elapsed = now.timeIntervalSince(launchTime)
+        logFocus(scores: scores, elapsed: elapsed)
+        logMeditation(scores: scores, elapsed: elapsed)
+        logDreamy(scores: scores, elapsed: elapsed)
+    }
 
-//        print(String(
-//            format: "FOCUS INPUTS | t:%6.1f | gate:%4.2f fast:%4.2f calm:%4.2f notAlpha:%4.2f broad:%4.2f steady:%4.2f support:%4.2f",
-//            elapsed,
-//            scorer.focusGate,
-//            scorer.focusFastCentroid,
-//            scorer.focusCalmCentroid,
-//            scorer.focusNotAlphaLed,
-//            scorer.focusBroadEnough,
-//            scorer.focusHoldingSteady,
-//            scorer.focusSupport
-//        ))
-
-//        print(String(
-//            format: "MEDITATION INPUTS | t:%6.1f | alphaLead(detrend):%+5.1fdB gate:%4.2f alphaCentroid:%4.2f organized:%4.2f steady:%4.2f support:%4.2f awake:%4.2f",
-//            elapsed,
-//            scorer.meditationAlphaLeadDb,
-//            scorer.medGate,
-//            scorer.meditationAlphaCentroid,
-//            scorer.meditationOrganized,
-//            scorer.meditationHoldingSteady,
-//            scorer.medSupport,
-//            scorer.meditationAwakeEnough
-//        ))
-
-        /* All per-state dumps are silenced while the particle field is being diagnosed — the
-         renderer logs need a quiet console to read against. Uncomment `if let bands` together
-         with whichever block below you want back. */
-        if false, let bands = latestBands {
-//            print(String(
-//                format: "DREAMY INPUTS | t:%6.1f | raw D:%5.1f T:%5.1f A:%5.1f B:%5.1f G:%5.1f | resid D:%+5.1f T:%+5.1f A:%+5.1f B:%+5.1f | thetaLead:%+5.1f sm:%+5.1f gate:%4.2f | thetaFast:%+5.1f gate:%4.2f | quiet:%3.0f (unused:%4.2f) | thetaDelta:%+5.1f gate:%4.2f | notFast:%4.2f | tensionDamp:%4.2f",
-//                elapsed,
-//                bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
-//                bands.deltaResidual, bands.thetaResidual, bands.alphaResidual, bands.betaResidual,
-//                scorer.dreamyThetaLeadDb,
-//                scorer.dreamySmoothedThetaLeadDb,
-//                scorer.dreamyGate,
-//                scorer.dreamyThetaVsFastDb,
-//                scorer.dreamyClearOfFastBands,
-//                bands.quiet,
-//                scorer.dreamyStillnessPresent,
-//                scorer.dreamyThetaVsDeltaDb,
-//                scorer.dreamyCalmLowEnd,
-//                scorer.dreamyNotRunningFast,
-//                RelaxedStateGate.damping(forTension: latestTensionPct)
-//            ))
-
-            /* The shape question, alongside the loudness question above. `peak` is where in 4-7 Hz
-             the strongest bin sits and `prom` is how far it stands above the 2-12 Hz background —
-             a real rhythm should show several dB, a smear close to zero. Tension and blink are
-             printed again here so the two can be read against each other in one line. */
-//            print(String(
-//                format: "THETA SHAPE  | t:%6.1f | peak:%5.2fHz prom:%+5.2fdB rhythm:%4.2f | rawTheta:%5.1f thetaLead:%+5.1f | tension:%3.0f blink:%3.0f clean:%3.0f | dreamy:%3.0f",
-//                elapsed,
-//                latestThetaPeakHz,
-//                latestThetaProminenceDb,
-//                scorer.dreamyLooksLikeRhythm,
-//                bands.theta,
-//                scorer.dreamyThetaLeadDb,
-//                latestTensionPct,
-//                latestBlinkPct,
-//                latestEffectiveCleanPct,
-//                scores.dreamy
-//            ))
+    private func accumulateStateSamples(scores: (meditation: Double, focus: Double, dreamy: Double)) {
+        guard latestBands != nil else {
+            dreamyRejectedFrames += 1
+            return
         }
+
+        let lowEndTerm = 0.50 + (0.50 * scorer.dreamySupport)
+        let terms: [(name: String, value: Double)] = [
+            ("thetaLead", scorer.dreamyGate),
+            ("vsFast", scorer.dreamyCredibility),
+            ("notFast", scorer.dreamyNotRunningFast),
+            ("rhythm", scorer.dreamyLooksLikeRhythm),
+            ("calmGamma", scorer.dreamyCalmGamma),
+            ("lowEnd", lowEndTerm)
+        ]
+
+        dreamySamples.append(DreamySample(
+            score: scores.dreamy,
+            smoothedLead: scorer.dreamySmoothedThetaLeadDb,
+            leadGate: scorer.dreamyGate,
+            vsFast: scorer.dreamyCredibility,
+            notFast: scorer.dreamyNotRunningFast,
+            rhythm: scorer.dreamyLooksLikeRhythm,
+            calmGamma: scorer.dreamyCalmGamma,
+            lowEnd: lowEndTerm,
+            limitName: terms.min { $0.value < $1.value }.map(\.name) ?? "-",
+            tension: latestTensionPct,
+            blink: latestBlinkPct,
+            clean: latestEffectiveCleanPct
+        ))
+
+        /* Focus is shape × support, and shape is the better of two paths — so the binding
+         constraint is whichever half of the product is smaller, then the weak spot inside it. */
+        let focusSupportTerm = 0.45 + (0.55 * scorer.focusSupport)
+        let focusLimit: String
+        if scorer.focusGate < focusSupportTerm {
+            focusLimit = scorer.focusFastCentroid >= scorer.focusCalmCentroid ? "fastPath" : "calmPath"
+        } else {
+            focusLimit = scorer.focusBroadEnough < scorer.focusHoldingSteady ? "broad" : "steady"
+        }
+        focusSamples.append(FocusSample(
+            score: scores.focus,
+            shape: scorer.focusGate,
+            fast: scorer.focusFastCentroid,
+            calm: scorer.focusCalmCentroid,
+            notAlphaLed: scorer.focusNotAlphaLed,
+            broad: scorer.focusBroadEnough,
+            steady: scorer.focusHoldingSteady,
+            support: scorer.focusSupport,
+            limitName: focusLimit
+        ))
+
+        let medSupportTerm = 0.40 + (0.60 * scorer.medSupport)
+        let medLimit: String
+        if scorer.medGate < medSupportTerm {
+            medLimit = "alphaLead"
+        } else {
+            let parts: [(String, Double)] = [
+                ("centroid", scorer.meditationAlphaCentroid),
+                ("organized", scorer.meditationOrganized),
+                ("steady", scorer.meditationHoldingSteady)
+            ]
+            medLimit = parts.min { $0.1 < $1.1 }?.0 ?? "-"
+        }
+        medSamples.append(MedSample(
+            score: scores.meditation,
+            alphaLeadDb: scorer.meditationAlphaLeadDb,
+            alphaLeads: scorer.medGate,
+            centroid: scorer.meditationAlphaCentroid,
+            organized: scorer.meditationOrganized,
+            steady: scorer.meditationHoldingSteady,
+            support: scorer.medSupport,
+            limitName: medLimit
+        ))
+    }
+
+    private func percentile(_ values: [Double], _ p: Double) -> Double {
+        guard !values.isEmpty else { return 0 }
+        let sorted = values.sorted()
+        let index = Int((Double(sorted.count - 1) * p).rounded())
+        return sorted[min(max(index, 0), sorted.count - 1)]
+    }
+
+    private func topLimit(_ names: [String]) -> (name: String, share: Double) {
+        var counts: [String: Int] = [:]
+        for name in names { counts[name, default: 0] += 1 }
+        guard let top = counts.max(by: { $0.value < $1.value }), !names.isEmpty else { return ("-", 0) }
+        return (top.key, Double(top.value) / Double(names.count) * 100.0)
+    }
+
+    /* One line per state per window, carrying the DISTRIBUTION rather than an instant.
+
+     Calibration is a question about where a signal usually sits and how far it swings, which a
+     per-second snapshot cannot answer — and the thing most worth knowing is which gate is the
+     binding constraint most often, since a product is only ever as large as its smallest term. */
+    private func emitStateSummariesIfDue(now: Date) {
+        if stateSummaryStart == nil { stateSummaryStart = now }
+        guard let start = stateSummaryStart,
+              now.timeIntervalSince(start) >= stateSummaryInterval else { return }
+        stateSummaryStart = now
+
+        let elapsed = now.timeIntervalSince(launchTime)
+        let dreamy = dreamySamples
+        let focus = focusSamples
+        let med = medSamples
+        let rejected = dreamyRejectedFrames
+        dreamySamples.removeAll(keepingCapacity: true)
+        focusSamples.removeAll(keepingCapacity: true)
+        medSamples.removeAll(keepingCapacity: true)
+        dreamyRejectedFrames = 0
+
+        guard !dreamy.isEmpty else {
+            print(String(format: "STATE SUMMARY | t:%6.1f | NO USABLE FRAMES (%d rejected)",
+                         elapsed, rejected))
+            return
+        }
+
+        func med3(_ values: [Double]) -> Double { percentile(values, 0.5) }
+
+        let dreamyScores = dreamy.map(\.score)
+        let leads = dreamy.map(\.smoothedLead)
+        let dreamyLimit = topLimit(dreamy.map(\.limitName))
+
+        print(String(
+            format: "DREAMY SUMMARY | t:%6.1f | frames %3d (rejected %2d) | dreamy med %3.0f p10 %3.0f p90 %3.0f | lead sm med %+5.2f p10 %+5.2f p90 %+5.2f | gates med lead %4.2f vsFast %4.2f notFast %4.2f rhythm %4.2f calmGamma %4.2f lowEnd %4.2f | LIMIT %@ %2.0f%% | tension %3.0f blink %3.0f clean %3.0f",
+            elapsed,
+            dreamy.count, rejected,
+            med3(dreamyScores), percentile(dreamyScores, 0.1), percentile(dreamyScores, 0.9),
+            med3(leads), percentile(leads, 0.1), percentile(leads, 0.9),
+            med3(dreamy.map(\.leadGate)), med3(dreamy.map(\.vsFast)),
+            med3(dreamy.map(\.notFast)), med3(dreamy.map(\.rhythm)),
+            med3(dreamy.map(\.calmGamma)), med3(dreamy.map(\.lowEnd)),
+            dreamyLimit.name, dreamyLimit.share,
+            med3(dreamy.map(\.tension)), med3(dreamy.map(\.blink)), med3(dreamy.map(\.clean))
+        ))
+
+        let focusScores = focus.map(\.score)
+        let focusLimit = topLimit(focus.map(\.limitName))
+        print(String(
+            format: "FOCUS SUMMARY  | t:%6.1f | focus med %3.0f p10 %3.0f p90 %3.0f | shape med %4.2f (fast %4.2f calm %4.2f notAlpha %4.2f) | broad %4.2f steady %4.2f | LIMIT %@ %2.0f%%",
+            elapsed,
+            med3(focusScores), percentile(focusScores, 0.1), percentile(focusScores, 0.9),
+            med3(focus.map(\.shape)), med3(focus.map(\.fast)), med3(focus.map(\.calm)),
+            med3(focus.map(\.notAlphaLed)),
+            med3(focus.map(\.broad)), med3(focus.map(\.steady)),
+            focusLimit.name, focusLimit.share
+        ))
+
+        let medScores = med.map(\.score)
+        let medLimit = topLimit(med.map(\.limitName))
+        print(String(
+            format: "MED SUMMARY    | t:%6.1f | med %3.0f p10 %3.0f p90 %3.0f | alphaLead med %+5.2fdB gate %4.2f | centroid %4.2f organized %4.2f steady %4.2f | LIMIT %@ %2.0f%%",
+            elapsed,
+            med3(medScores), percentile(medScores, 0.1), percentile(medScores, 0.9),
+            med3(med.map(\.alphaLeadDb)), med3(med.map(\.alphaLeads)),
+            med3(med.map(\.centroid)), med3(med.map(\.organized)), med3(med.map(\.steady)),
+            medLimit.name, medLimit.share
+        ))
+    }
+
+    /* FOCUS DIAGNOSTIC — same design as dreamy's: every multiplier, then the binding one.
+
+     Focus is shape × support, where shape is the BETTER of two paths (fast tilt, or calm-but-broad
+     with alpha not leading), so unlike dreamy a single weak term does not necessarily matter —
+     only the weak term of the winning path does. */
+    private func logFocus(
+        scores: (meditation: Double, focus: Double, dreamy: Double),
+        elapsed: TimeInterval
+    ) {
+        print(String(
+            format: "FOCUS  %3.0f | shape x%4.2f (fast %4.2f | calm %4.2f = ctr %4.2f × broad %4.2f × notAlpha %4.2f) | support %4.2f (broad %4.2f steady %4.2f)",
+            scores.focus,
+            scorer.focusGate,
+            scorer.focusFastCentroid,
+            scorer.focusCalmCentroid * scorer.focusBroadEnough * scorer.focusNotAlphaLed,
+            scorer.focusCalmCentroid, scorer.focusBroadEnough, scorer.focusNotAlphaLed,
+            scorer.focusSupport,
+            scorer.focusBroadEnough, scorer.focusHoldingSteady
+        ))
+    }
+
+    /* MEDITATION DIAGNOSTIC. awake is measured but not multiplied in — printed so its absence
+     from the product can be verified rather than trusted. */
+    private func logMeditation(
+        scores: (meditation: Double, focus: Double, dreamy: Double),
+        elapsed: TimeInterval
+    ) {
+        print(String(
+            format: "MED    %3.0f | alphaLead %+5.2fdB gate x%4.2f (opens %+.1f..%+.1f) | support %4.2f (centroid %4.2f organized %4.2f steady %4.2f) | awake %4.2f (unused)",
+            scores.meditation,
+            scorer.meditationAlphaLeadDb,
+            scorer.medGate,
+            scorer.meditationAlphaLeadLowDb, scorer.meditationAlphaLeadHighDb,
+            scorer.medSupport,
+            scorer.meditationAlphaCentroid, scorer.meditationOrganized, scorer.meditationHoldingSteady,
+            scorer.meditationAwakeEnough
+        ))
+    }
+
+    /* DREAMY DIAGNOSTIC.
+
+     The score is a product of five terms, so it is only ever as large as its smallest one — and a
+     bare score says "low" without saying which term did it. This prints every multiplier, then
+     names the weakest, so the answer to "why isn't dreamy moving?" is on the line itself.
+
+     Reading it: `x1.00` means that term is fully open and contributing nothing to the problem.
+     LIMIT names the term to look at. The second line carries the raw evidence behind each gate,
+     with the threshold it has to clear, so a term sitting at 0 can be traced to a number.
+
+     Note theta and its prominence are now measured on the FRONTAL pair (AF7+AF8) rather than all
+     four sensors, so these numbers are not comparable with dreamy logs from before 9 Aug 2026. */
+    private func logDreamy(
+        scores: (meditation: Double, focus: Double, dreamy: Double),
+        elapsed: TimeInterval
+    ) {
+        guard let bands = latestBands else {
+            print(String(format: "DREAMY | t:%6.1f | NO BAND DATA — frames rejected upstream", elapsed))
+            return
+        }
+
+        //the low-end term enters the product scaled, not raw, so weigh it the way the score does
+        let lowEndTerm = 0.50 + (0.50 * scorer.dreamySupport)
+
+        let terms: [(name: String, value: Double)] = [
+            ("thetaLead", scorer.dreamyGate),
+            ("vsBeta", scorer.dreamyCredibility),
+            ("notFast", scorer.dreamyNotRunningFast),
+            ("rhythm", scorer.dreamyLooksLikeRhythm),
+            ("calmGamma", scorer.dreamyCalmGamma),
+            ("lowEnd", lowEndTerm)
+        ]
+        let limit = terms.min { $0.value < $1.value }.map { $0.name } ?? "-"
+        let weakest = terms.map(\.value).min() ?? 1.0
+
+        /* What the gates alone are asking for this instant, before tension damping and before the
+         score's own time smoothing. A large gap between this and the published score means the
+         gates have opened but the smoothing has not caught up yet — worth knowing when the reading
+         seems to lag what you are actually feeling. */
+        let gateProduct = terms.reduce(1.0) { $0 * $1.value } * 100.0
+
+        print(String(
+            format: "DREAMY %3.0f (gates want %3.0f) | thetaLead x%4.2f | vsBeta x%4.2f | notFast x%4.2f | rhythm x%4.2f | calmGamma x%4.2f | lowEnd x%4.2f |%@",
+            scores.dreamy,
+            gateProduct,
+            scorer.dreamyGate,
+            scorer.dreamyCredibility,
+            scorer.dreamyNotRunningFast,
+            scorer.dreamyLooksLikeRhythm,
+            scorer.dreamyCalmGamma,
+            lowEndTerm,
+            weakest > 0.85 ? " all open" : " LIMIT \(limit)"
+        ))
+
+        print(String(
+            format: "   why | lead %+5.2fdB sm %+5.2f (opens %+.1f..%+.1f) | vsFast %+5.2f (opens -1.0..2.0) | tilt %+5.2fHz (vetoes %.1f..%.1f) | prom %5.2fdB @%4.1fHz (vetoes %.1f..%.1f) | gamma %+5.2fdB (vetoes %.1f..%.1f) | T-D %+5.2f | tension %3.0f blink %3.0f clean %3.0f damp %4.2f",
+            scorer.dreamyThetaLeadDb,
+            scorer.dreamySmoothedThetaLeadDb,
+            scorer.dreamyThetaLeadLowDb, scorer.dreamyThetaLeadHighDb,
+            scorer.dreamyThetaVsFastDb,
+            scorer.dreamyTiltOffsetHz,
+            scorer.dreamyTiltOffsetOnsetHz, scorer.dreamyTiltOffsetFullHz,
+            latestThetaProminenceDb, latestThetaPeakHz,
+            scorer.dreamyProminenceLowDb, scorer.dreamyProminenceHighDb,
+            scorer.dreamyGammaDb,
+            scorer.dreamyGammaLowDb, scorer.dreamyGammaHighDb,
+            scorer.dreamyThetaVsDeltaDb,
+            latestTensionPct, latestBlinkPct, latestEffectiveCleanPct,
+            RelaxedStateGate.damping(forTension: latestTensionPct)
+        ))
+
+        //raw band levels last, for when the residuals look wrong and the source needs checking
+        print(String(
+            format: "   bands | raw D %5.1f T %5.1f A %5.1f B %5.1f G %5.1f | resid D %+5.1f T %+5.1f A %+5.1f B %+5.1f | quiet %3.0f",
+            bands.delta, bands.theta, bands.alpha, bands.beta, bands.gamma,
+            bands.deltaResidual, bands.thetaResidual, bands.alphaResidual, bands.betaResidual,
+            bands.quiet
+        ))
     }
 
     //MARK: - Helpers

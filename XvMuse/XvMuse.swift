@@ -51,6 +51,7 @@ public protocol XvMuseDelegate:AnyObject {
     
     //post FFT PSD
     func didReceive(linearSpectrum:[Double])
+    func didReceive(frontLinearSpectrum:[Double])
     func didReceive(detailLinearSpectrum:[Double])
     
     //ML and state detection
@@ -91,6 +92,7 @@ public protocol XvMuseDelegate:AnyObject {
 }
 
 public extension XvMuseDelegate {
+    func didReceive(frontLinearSpectrum:[Double]) {}
     func didReceive(detailLinearSpectrum:[Double]) {}
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
@@ -180,9 +182,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestTensionPct: Double = 0.0
     private var latestBlinkPct: Double = 0.0
     private var latestPublishedQuietPct: Double = 0.0
-    private let quietFallSmoothing: Double = 0.45
-    private let quietRecoverSmoothing: Double = 0.12
-    private let blinkArtifactThreshold: Double = 50.0
+    /* Per-frame blend weights at the ~21 Hz publish rate, so 0.45 is a time constant of about
+     0.08 s — a cliff, not a fade. That was deliberate when the gate could zero quiet on a blink
+     and wanted to react instantly, but it also meant every dip arrived as a hard edge that no
+     amount of downstream smoothing could fully round off. Now that only sustained tension can
+     pull quiet down, the fall can afford to glide: 0.15 is roughly 0.3 s, close to the recovery
+     side, so quiet moves at a similar speed in both directions.
+
+     This is the SOURCE smoothing, ahead of the split to music and visuals, so it is the one place
+     that fixes the shape of the signal for both. */
+    private let quietFallSmoothing: Double = 0.15
+    private let quietRecoverSmoothing: Double = 0.10
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -403,10 +413,24 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
         
         processingQ.async { [weak self] in
-            
+
             //safety checks
             guard let self = self else { return }
             guard let _data:Data = bluetoothCharacteristic.value else { return }
+
+            /* Mock data yields to the real thing. Test packets never come through here — they are
+             injected straight into processAndPublishEEGData — so any characteristic arriving in
+             this parser is proof of a live, connected headset. If a test set is still looping at
+             that moment, the two sources would interleave into one stream and every downstream
+             number would be a blend of recorded and live data. (This actually happened during a
+             quiet-calibration recording: the log was half test set, half headset.) */
+            if self.isTestDataRunning {
+                print("XvMuse: Live device data arrived — stopping test data set", self.testDataSet)
+                //flag drops here so this fires once; the timers themselves must be invalidated
+                //on the main thread, where they were scheduled
+                self.isTestDataRunning = false
+                DispatchQueue.main.async { self.stopTestData() }
+            }
             
             //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
             let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
@@ -715,25 +739,55 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             clean: latestCleanPct
         )
 
-        //Quiet: absolute low activity across the whole bandwidth
-        let rawQuiet = eeg.analysis.quiet
-        let quiet = gatedQuiet(fromRawQuiet: rawQuiet)
-        delegate?.didReceiveQuiet(quiet)
+        /* THE FRONTAL SPECTRUM: AF7 + AF8 only, averaged in parallel with the four-sensor
+         broadband. Per Penijean — EEG in the front, EMG in the back. The temporals sit over jaw
+         and neck muscle and are assumed to be contaminated for most wearers, so anything measuring
+         brain state reads from the forehead pair while the artifact detectors keep the broadband.
 
-        /* Focus and meditation are measured from the clean detail-window shape. Alpha/beta use
-         the detail-window bands; theta stays full-spectrum for drowsiness, and the state analyzer
-         delays/invalidates theta around blink and tension artifacts before scoring it. */
-        _stateAnalyzer.updateBands(
-            delta: eeg.delta.decibel,
-            theta: eeg.theta.decibel,
-            alpha: eeg.detailAlpha.decibel,
-            beta: eeg.detailBeta.decibel,
-            gamma: eeg.gamma.decibel,
-            //raw, not gated — the gated value already carries tension damping, which dreamy
-            //applies separately, and double-counting it would suppress dreamy twice over
-            quiet: eeg.analysis.quiet,
-            quietDb: eeg.analysis.quietLevelDb
-        )
+         `eeg.front` is a plain cached lookup — XvEEG invalidates region caches once per packet in
+         process(), so repeated reads within this cycle all hit the cache. The local is just for
+         readability. */
+        let frontal = eeg.front
+        let frontalSpectrum = frontal.linearSpectrum
+
+        /* The region drops sensors that have no valid spectrum, so if BOTH forehead pads are out
+         it hands back an empty array — and an empty spectrum reads as theta 0 / quiet 0, which is
+         a plausible-looking number rather than an obvious failure. Freezing the state values is
+         the honest response: there is no frontal EEG this frame, and the onboarding screens that
+         show these states already hide themselves on forehead noise.
+
+         Everything derived from the broadband — signal quality, tension, blink, the brainwave
+         history — is published above and below regardless, since it is unaffected. */
+        if !frontalSpectrum.isEmpty {
+            delegate?.didReceive(frontLinearSpectrum: frontalSpectrum)
+
+            //Quiet: absolute low activity across the bandwidth, now frontal-only
+            let rawQuiet = frontal.analysis.quiet
+            let quiet = gatedQuiet(fromRawQuiet: rawQuiet)
+            delegate?.didReceiveQuiet(quiet)
+
+            /* Focus and meditation are measured from the clean detail-window shape. Alpha/beta use
+             the detail-window bands, which are already forehead-only (DETAIL_EEG_SENSOR_IDS). Theta
+             and quiet now come from the frontal region for the same reason; delta and gamma stay
+             broadband because they serve as artifact context rather than as states themselves. */
+            _stateAnalyzer.updateBands(
+                delta: eeg.delta.decibel,
+                theta: frontal.theta.decibel,
+                alpha: eeg.detailAlpha.decibel,
+                beta: eeg.detailBeta.decibel,
+                gamma: eeg.gamma.decibel,
+                //raw, not gated — the gated value already carries tension damping, which dreamy
+                //applies separately, and double-counting it would suppress dreamy twice over
+                quiet: frontal.analysis.quiet,
+                quietDb: frontal.analysis.quietLevelDb
+            )
+
+            /* Theta PROMINENCE has to read the same spectrum theta's amplitude came from, or dreamy
+             would score its size from the forehead and its shape from the whole head. */
+            _stateAnalyzer.processFrontalSpectrum(frontalSpectrum)
+        }
+
+        //the dominant-rhythm tracker stays on the broadband, where it was tuned
         _stateAnalyzer.processFullSpectrum(eeg.linearSpectrum)
         _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
         delegate?.didReceiveBrainwave(
@@ -851,13 +905,68 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         return Int16(value.rounded())
     }
 
+    /* QUIET DIAGNOSTIC — the analyzer logs the scored states; quiet's gating and smoothing live
+     here, so its log does too. One line per second, one summary per 10 s window with the share of
+     frames each gate actually fired, matching the state summaries' cadence. */
+    private var _quietLogTime: TimeInterval = 0
+    private var _quietWindowStart: TimeInterval = 0
+    private var _quietRawSamples: [Double] = []
+    private var _quietPubSamples: [Double] = []
+    private var _quietFadedFrames: Int = 0
+    private var _quietCappedFrames: Int = 0
+
+    private func logQuiet(raw: Double, published: Double, faded: Bool, capped: Bool) {
+        let now = Date().timeIntervalSince1970
+
+        if _quietWindowStart == 0 { _quietWindowStart = now }
+        _quietRawSamples.append(raw)
+        _quietPubSamples.append(published)
+        if faded { _quietFadedFrames += 1 }
+        if capped { _quietCappedFrames += 1 }
+
+        if now - _quietLogTime >= 1.0 {
+            _quietLogTime = now
+            print(String(
+                format: "QUIET  %3.0f (raw %3.0f)%@%@ | tension %3.0f blink %3.0f clean %3.0f noise %3.0f",
+                published, raw,
+                faded ? " FADED (clean<60 or tension>60)" : "",
+                capped ? " CAPPED (noise>70)" : "",
+                latestTensionPct, latestBlinkPct, latestCleanPct, latestNoisePct
+            ))
+        }
+
+        if now - _quietWindowStart >= 10.0 {
+            let count = Double(max(_quietRawSamples.count, 1))
+            let sortedRaw = _quietRawSamples.sorted()
+            let sortedPub = _quietPubSamples.sorted()
+            func pct(_ sorted: [Double], _ p: Double) -> Double {
+                sorted.isEmpty ? 0 : sorted[min(Int((Double(sorted.count - 1) * p).rounded()), sorted.count - 1)]
+            }
+            print(String(
+                format: "QUIET SUMMARY  | frames %3d | raw med %3.0f p10 %3.0f p90 %3.0f | published med %3.0f p10 %3.0f p90 %3.0f | faded %2.0f%% capped %2.0f%%",
+                _quietRawSamples.count,
+                pct(sortedRaw, 0.5), pct(sortedRaw, 0.1), pct(sortedRaw, 0.9),
+                pct(sortedPub, 0.5), pct(sortedPub, 0.1), pct(sortedPub, 0.9),
+                Double(_quietFadedFrames) / count * 100.0,
+                Double(_quietCappedFrames) / count * 100.0
+            ))
+            _quietWindowStart = now
+            _quietRawSamples.removeAll(keepingCapacity: true)
+            _quietPubSamples.removeAll(keepingCapacity: true)
+            _quietFadedFrames = 0
+            _quietCappedFrames = 0
+        }
+    }
+
     private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
         var quiet = rawQuiet
 
         //an unusable signal can't be called quiet, whatever the numbers say
-        if shouldFadeCleanStateValues {
+        let faded = shouldFadeCleanStateValues
+        let capped = !faded && latestNoisePct > 70.0
+        if faded {
             quiet = 0.0
-        } else if latestNoisePct > 70.0 {
+        } else if capped {
             quiet = min(quiet, 30.0)
         }
 
@@ -874,13 +983,25 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let target = min(max(quiet, 0.0), 100.0)
         let smoothing = target < latestPublishedQuietPct ? quietFallSmoothing : quietRecoverSmoothing
         latestPublishedQuietPct = (smoothing * target) + ((1.0 - smoothing) * latestPublishedQuietPct)
-        return min(max(latestPublishedQuietPct, 0.0), 100.0)
+        let published = min(max(latestPublishedQuietPct, 0.0), 100.0)
+
+        logQuiet(raw: rawQuiet, published: published, faded: faded, capped: capped)
+        return published
     }
 
+    /* What is allowed to disqualify a quiet reading. Used only by gatedQuiet.
+
+     BLINK NO LONGER COUNTS. A blink is a sub-second transient, but this gate slams quiet to zero
+     outright, and blink crosses its threshold constantly during ordinary wear — so a value meant
+     to describe a settled mind was being knocked flat several times a minute by nothing more than
+     normal eye movement. Quiet is a wideband loudness average; a blink barely moves it. Screening
+     the frame out was doing far more damage to the reading than the artifact ever did.
+
+     Muscle tension stays, because a clench genuinely does fill the band being measured, and poor
+     signal quality stays because an unusable signal cannot be called quiet whatever it reads. */
     private var shouldFadeCleanStateValues: Bool {
         latestCleanPct < 60.0 ||
-        latestTensionPct > 60.0 ||
-        latestBlinkPct > blinkArtifactThreshold
+        latestTensionPct > 60.0
     }
 
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double) {
@@ -1170,9 +1291,16 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     fileprivate var eegTestDataLoop:Timer = Timer()
     fileprivate var ppgTestDataLoop:Timer = Timer() //PPG has its own timer interval
     fileprivate var testDataSet:Int = 0
+
+    /* Tracked with a flag rather than by asking the Timers: these are non-optional placeholders
+     before the first start, and the parse hot path checks this on every notification — a Bool
+     read is free. */
+    fileprivate var isTestDataRunning:Bool = false
+
     public func startTestData(set:Int){
         print("MuseHelper: startTestData: Set", set)
         testDataSet = set
+        isTestDataRunning = true
 
         eegTestDataLoop.invalidate()
         eegTestDataLoop = Timer.scheduledTimer(timeInterval: 0.05, target: self, selector: #selector(generateTestEEGData), userInfo: nil, repeats: true)
@@ -1194,6 +1322,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public func stopTestData(){
         eegTestDataLoop.invalidate()
         ppgTestDataLoop.invalidate()
+        isTestDataRunning = false
     }
 
     

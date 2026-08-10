@@ -47,6 +47,11 @@ final class EEGStateScorer {
     private(set) var dreamyNotRunningFast: Double = 1.0
     private(set) var dreamyLooksLikeRhythm: Double = 1.0
     private(set) var dreamyThetaProminenceDb: Double = 0.0
+    //how far the window centroid sits above its 1/f null, in Hz — the raw number behind
+    //dreamyNotRunningFast, and the one term that separates drowsy theta from concentration theta
+    private(set) var dreamyTiltOffsetHz: Double = 0.0
+    private(set) var dreamyCalmGamma: Double = 1.0
+    private(set) var dreamyGammaDb: Double = 0.0
 
     //MARK: - Window reference
 
@@ -95,8 +100,15 @@ final class EEGStateScorer {
      led half the frames in that recording and the score never moved. */
     var meditationAlphaLeadLowDb: Double = -2.0
     var meditationAlphaLeadHighDb: Double = 1.0
-    var dreamyThetaLeadLowDb: Double = -1.5
-    var dreamyThetaLeadHighDb: Double = 1.5
+
+    /* Re-anchored 9 Aug 2026 for the alpha-beta-trend version of thetaLeadDb, which reads on a
+     different scale from the old residual version. Measured on the drifting-asleep Athena session
+     that exposed the delta problem: smoothed lead held at +2.2 dB (old metric: -1.5, gate shut all
+     night). Alert-shaped spectra put theta 2.5-4 dB below the trend line, so 0 is the natural
+     onset. The alert end is anchored on synthetic frames only so far — worth one waking session to
+     confirm the floor holds. */
+    var dreamyThetaLeadLowDb: Double = 0.0
+    var dreamyThetaLeadHighDb: Double = 3.0
 
     //alpha pulls the centroid below the null; how far below still counts as alpha-shaped
     var meditationTiltOffsetHz: Double = -2.0
@@ -124,6 +136,17 @@ final class EEGStateScorer {
      electrode. Derived from 46 bad-fit against 103 good frames — see scoreDreamy. */
     var dreamyProminenceLowDb: Double = 4.0
     var dreamyProminenceHighDb: Double = 7.0
+
+    /* Dreamy's active-brain veto, on raw broadband gamma.
+
+     Measured 9 Aug 2026 across the labeled Muse 2 corpus plus a live Athena drift session:
+     coding ran gamma at median +4.1 dB (96% of frames above +2), while clear mind (-1.7),
+     tired (+0.2), meditation (+1.3) and real sleep drift (-3.9) all sat at or below +1.3.
+     Gamma is fast cortical activity plus EMG — the things drowsiness, by definition, lacks —
+     and it lives above the detail window, so the tilt veto cannot see it. This is what
+     actually separates concentration theta from drowsy theta when the tilt is ambiguous. */
+    var dreamyGammaLowDb: Double = 2.0
+    var dreamyGammaHighDb: Double = 4.0
 
     /* Dreamy's not-fast veto, as an offset from the window's null centroid. */
     var dreamyTiltOffsetOnsetHz: Double = 0.5
@@ -160,6 +183,9 @@ final class EEGStateScorer {
         dreamyNotRunningFast = 1.0
         dreamyLooksLikeRhythm = 1.0
         dreamyThetaProminenceDb = 0.0
+        dreamyTiltOffsetHz = 0.0
+        dreamyCalmGamma = 1.0
+        dreamyGammaDb = 0.0
         smoothedThetaLead = 0.0
     }
 
@@ -378,8 +404,12 @@ final class EEGStateScorer {
             high: dreamyThetaLeadHighDb
         )
 
-        //Broadband noise raises beta too, so theta needs to stand clear of it.
-        let thetaVsFastDb = bands.thetaResidual - bands.betaResidual
+        /* Broadband noise raises beta too, so theta needs to stand clear of it. Same estimator as
+         the gate above but UNSMOOTHED — this is the instant-by-instant check. It used to be the
+         residual difference (thetaResidual - betaResidual), but a delta surge rotated the shared
+         fit and sent that to -6 dB in the same frame it corrupted everything else; the trend-based
+         lead is delta-blind by construction. */
+        let thetaVsFastDb = thetaLeadDb
         let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 2.0)
 
         /* Stillness is measured and logged but NO LONGER GATES anything.
@@ -411,8 +441,9 @@ final class EEGStateScorer {
          Fm theta rides a fast one. Measured: coding centroid +1.7 Hz above the window's null,
          tired +0.1. Vetoing the fast case costs the tired session almost nothing (51 -> 48) and
          removes the coding false positive outright (16 -> 2). */
+        let tiltOffsetHz = centroidHz - nullCentroidHz
         let notRunningFast = invRamp(
-            centroidHz - nullCentroidHz,
+            tiltOffsetHz,
             low: dreamyTiltOffsetOnsetHz,
             high: dreamyTiltOffsetFullHz
         )
@@ -458,9 +489,15 @@ final class EEGStateScorer {
         dreamyGate = thetaLeads
         dreamyCredibility = clearOfFastBands
         dreamySupport = calmLowEnd
+        //calm gamma: an active, engaged brain runs its fast bands hot even when its tilt is slow
+        let calmGamma = invRamp(bands.gamma, low: dreamyGammaLowDb, high: dreamyGammaHighDb)
+
         dreamyNotRunningFast = notRunningFast
         dreamyLooksLikeRhythm = looksLikeRhythm
         dreamyThetaProminenceDb = thetaProminenceDb
+        dreamyTiltOffsetHz = tiltOffsetHz
+        dreamyCalmGamma = calmGamma
+        dreamyGammaDb = bands.gamma
         dreamyThetaLeadDb = thetaLeadDb
         dreamySmoothedThetaLeadDb = smoothedThetaLead
         dreamyThetaVsFastDb = thetaVsFastDb
@@ -470,7 +507,7 @@ final class EEGStateScorer {
         dreamyCalmLowEnd = calmLowEnd
 
         return clamp01(
-            thetaLeads * clearOfFastBands * notRunningFast * looksLikeRhythm
+            thetaLeads * clearOfFastBands * notRunningFast * looksLikeRhythm * calmGamma
                 * (0.50 + (0.50 * calmLowEnd))
         )
     }

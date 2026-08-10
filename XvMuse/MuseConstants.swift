@@ -219,14 +219,16 @@ public class MuseConstants {
      Low edge sits at 8 on Penijean's recommendation: it takes in the whole alpha band, including
      the slower 8-10 Hz peaks that a good share of people have. A 10 Hz edge cut those people off
      mid-alpha and flattened exactly the personal differences the detail window exists to measure.
-     High edge stays under 20 because 20-30 Hz is dominated by jaw/frontalis EMG.
+     High edge is 18 on Penijean's recommendation — she named 8-18 as the band that carries focus,
+     meditation, dreamy and clear-mind without needing task-engagement specificity. The old 20 sat
+     right on the EMG boundary she puts at 20-35, so trimming to 18 buys clearance from it.
      Everything outside this window still exists on the full spectrum for noise/tension detection.
 
      Nothing downstream hardcodes these numbers. EEGStateAnalyzer derives the window's 1/f null
      centroid and spread from whichever bins survive, and the scorer thresholds are offsets from
      that null — so moving these edges re-tunes the state scores automatically. */
     public static let DETAIL_BANDPASS_LOW_HZ:Double = 8.0
-    public static let DETAIL_BANDPASS_HIGH_HZ:Double = 20.0
+    public static let DETAIL_BANDPASS_HIGH_HZ:Double = 18.0
     public static let DETAIL_EEG_SENSOR_IDS:Set<Int> = [1, 3] //AF8 and AF7 forehead sensors
     
     //MARK: PPG

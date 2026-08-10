@@ -147,9 +147,29 @@ struct BandBalance {
         alphaResidual - max(max(deltaResidual, thetaResidual), betaResidual)
     }
 
-    /// Same idea for theta, which is what dreamy is built on.
+    /* Theta measured against the alpha-beta trend alone — NOT the same construction as alphaLead,
+     and delta's absence is the whole point.
+
+     The residual version required theta to out-shout delta, which is physically backwards for the
+     state dreamy detects: sleep onset is diffuse slowing, so delta rises WITH theta — and on the
+     frontal pair, slow eye rolls under closed lids land squarely in the delta band while sitting
+     below the blink detector's 2-4 Hz window. Worse, a delta surge rotated the shared 1/f fit,
+     crashing theta's residual and inflating beta's in the same frame — one artifact corrupted
+     every term of the score at once. Measured on a real drifting-asleep Athena session: the old
+     metric held at -1.5 dB (gate shut, dreamy 0) for the entire session; this one holds at +2.2.
+
+     So the fast side gets to define the trend: a line through alpha and beta (in log-frequency),
+     extrapolated down to theta's centre, and theta's height above that line is the lead. Alert
+     spectra put theta 2.5-4 dB BELOW the line, so the sign flips cleanly between states. A
+     two-point extrapolation is noisier frame to frame than the fitted version — the scorer's
+     multi-second smoothing is what makes it usable, and matters more now, not less. */
     var thetaLeadDb: Double {
-        thetaResidual - max(max(deltaResidual, alphaResidual), betaResidual)
+        let logThetaF = log10(Self.thetaCentreHz)
+        let logAlphaF = log10(Self.alphaCentreHz)
+        let logBetaF = log10(Self.betaCentreHz)
+        let slope = (beta - alpha) / (logBetaF - logAlphaF)
+        let predictedTheta = alpha + slope * (logThetaF - logAlphaF)
+        return theta - predictedTheta
     }
 }
 
