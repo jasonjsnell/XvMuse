@@ -829,14 +829,66 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         )
     }
 
+    /* SIGNAL QUALITY RELEASE — bad news instantly, good news slowly.
+
+     Taking the headset off drives noise straight up, correctly. But a headset lying on a table
+     picks up ambient electromagnetic interference that intermittently LOOKS like clean EEG, so the
+     raw value dips for a second or two before the noise returns. Every one of those dips reads
+     downstream as "the signal is fine again" — notes resume, gates reopen, and the music plays to
+     an empty room.
+
+     So noise can rise instantly but only falls with a 5 s time constant, and clean is the mirror
+     image: it can fall instantly but only rises over 5 s. Both express the same rule — a problem
+     is believed the moment it appears, a recovery has to be sustained before it is trusted.
+
+     Sized against the tightest consumer of these numbers, the note gate at noise >= 35: coming
+     down from a headset-off reading of 100, that threshold is not crossed until about 5.3 s of
+     continuously clean signal, so no realistic interference dip can restart the music. Both are
+     held HERE, at the source, so the note gate, the heart/resp gates, the quiet cap, the state
+     analyzer and the UI all agree on one number.
+
+     dt is capped at 1 s so that returning from the background releases by at most one second's
+     worth rather than a whole gap — erring toward keeping noise high, which is the safe side. */
+    private var heldNoisePct: Double = 0.0
+    private var heldCleanPct: Double = 0.0
+    private var lastSignalQualityTime: TimeInterval?
+    private let signalQualityReleaseSeconds: Double = 5.0
+
+    private func heldSignalQuality(noise: Double, clean: Double) -> (noise: Double, clean: Double) {
+        let now = Date().timeIntervalSinceReferenceDate
+
+        //adopt the first real reading rather than climbing to it from a default
+        guard let last = lastSignalQualityTime else {
+            lastSignalQualityTime = now
+            heldNoisePct = noise
+            heldCleanPct = clean
+            return (noise, clean)
+        }
+
+        let dt = min(max(now - last, 0.0), 1.0)
+        lastSignalQualityTime = now
+        let alpha = 1 - exp(-dt / signalQualityReleaseSeconds)
+
+        heldNoisePct = noise >= heldNoisePct ? noise : heldNoisePct + alpha * (noise - heldNoisePct)
+        heldCleanPct = clean <= heldCleanPct ? clean : heldCleanPct + alpha * (clean - heldCleanPct)
+
+        return (min(max(heldNoisePct, 0.0), 100.0), min(max(heldCleanPct, 0.0), 100.0))
+    }
+
     func didReceiveMLNoise(noise: Double, clean: Double) {
-        latestNoisePct = noise
-        latestCleanPct = clean
+        let held = heldSignalQuality(noise: noise, clean: clean)
+        latestNoisePct = held.noise
+        latestCleanPct = held.clean
 
         //the combined signal-quality update is published on the EEG cadence, not here
 
-        // Per-sensor noise localization: only when the device-level (averaged) noise is high, run each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each sensor judged independently (no peer comparison) so "all loose / headset off" → all high.
-        if noise > 10.0 {
+        /* Per-sensor noise localization: only when the device-level (averaged) noise is high, run
+         each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each
+         sensor judged independently (no peer comparison) so "all loose / headset off" -> all high.
+
+         Triggered on the HELD value so the signal-quality display keeps showing which electrode is
+         at fault for as long as the app is treating the signal as bad. */
+        if latestNoisePct > 10.0 {
             func sensorNoise(_ sensor: XvEEGSensor) -> Double {
                 guard sensor.hasValidSpectrum,
                       let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) else {
