@@ -190,11 +190,12 @@ struct BandBalance {
 
 enum RelaxedStateGate {
 
-    static let tensionOnset: Double = 30.0
-    static let tensionFull: Double = 80.0
+    //runtime-tunable via EEGStateAnalyzer.setTuning ("dreamy.tensionDamp*" keys)
+    static var tensionOnset: Double = 30.0
+    static var tensionFull: Double = 80.0
 
     //never quite zero, so the display keeps showing a live value rather than flatlining
-    static let floor: Double = 0.15
+    static var floor: Double = 0.15
 
     static func damping(forTension tension: Double) -> Double {
         let span = max(tensionFull - tensionOnset, 1e-6)

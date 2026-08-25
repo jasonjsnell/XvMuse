@@ -62,6 +62,7 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveBrainwaveState(meditation: Double, focus: Double, dreamy: Double)
     func didReceiveGammaFocus(_ score: Double)
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double)
+    func didReceiveStateTuningReadout(_ readout: [String: Double])
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
     
@@ -94,6 +95,7 @@ public protocol XvMuseDelegate:AnyObject {
 
 public extension XvMuseDelegate {
     func didReceiveGammaFocus(_ score: Double) {}
+    func didReceiveStateTuningReadout(_ readout: [String: Double]) {}
     func didReceive(frontLinearSpectrum:[Double]) {}
     func didReceive(detailLinearSpectrum:[Double]) {}
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {}
@@ -349,14 +351,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             }
             if (majorVersion == "Muse") {
                 deviceName = .muse1
-                XvEEGAnalysis.quietCalibration = .legacy
+                applyQuietCalibration(deviceDefault: .legacy)
                 _ppg.set(deviceName: .muse1)
             } else if (majorVersion == "MuseS") {
                 /* Both the Muse S and the Athena advertise as "MuseS" — same sleep-band housing.
                  This is the provisional guess; if the Athena main characteristic turns up during
                  discovery, discoveredAthena() overwrites both the device and the calibration. */
                 deviceName = .museS
-                XvEEGAnalysis.quietCalibration = .museS
+                applyQuietCalibration(deviceDefault: .museS)
                 _ppg.set(deviceName: .museS)
             }
             print("XvMuse: Major version =", majorVersion ?? "unknown", "| Device may be", deviceName ?? .unknown)
@@ -374,7 +376,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         if (majorVersion == "Muse"){
             minorVersion = "2"
             deviceName = .muse2
-            XvEEGAnalysis.quietCalibration = .muse2
+            applyQuietCalibration(deviceDefault: .muse2)
             _ppg.set(deviceName: .muse2)
         }
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
@@ -382,7 +384,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     func discoveredAthena() {
         minorVersion = "Athena"
         deviceName = .museAthena
-        XvEEGAnalysis.quietCalibration = .athena
+        applyQuietCalibration(deviceDefault: .athena)
         _ppg.set(deviceName: .museAthena)
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
     }
@@ -1032,10 +1034,74 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      Anchors (1.5..4.5 dB) were measured on the Muse 2 corpus. Gamma on the Athena runs several
      dB lower at rest (-3.9 median vs the Muse 2's -1.7), so if this pins at 0 on the Athena
      during genuine hard focus, per-device anchors are the fix — same story as quiet's. */
+    //MARK: - Runtime state tuning API
+
+    /* Live tuning for the state-detection pipeline. Keys, defaults and ranges are declared in
+     XvEEGStateTuningParameter.all (bottom of this file) — the app's tuning panel renders itself
+     from that list. Routing:
+       gamma.*                       -> the gammaFocus mapping below
+       quiet.*                       -> XvEEGAnalysis.quietCalibration (override survives device re-identification)
+       gates.* / med.* / focus.* / dreamy.* -> EEGStateAnalyzer / EEGStateScorer */
+    public func setStateTuning(key: String, value: Double) {
+        guard value.isFinite else { return }
+        switch key {
+        case "gamma.lowDb": gammaFocusLowDb = value
+        case "gamma.highDb": gammaFocusHighDb = value
+        case "gamma.smoothing": gammaFocusSmoothing = value
+        case "gamma.tensionGateOnset": gammaTensionGateOnset = value
+        case "gamma.tensionGateFull": gammaTensionGateFull = value
+        case "quiet.quietDb": quietDbOverride = value; refreshQuietCalibration()
+        case "quiet.loudDb": loudDbOverride = value; refreshQuietCalibration()
+        default: _stateAnalyzer.setTuning(key: key, value: value)
+        }
+    }
+
+    /* Return one parameter to its code default. For most keys the descriptor default IS the
+     code default, so a plain set suffices — but the quiet anchors are PER-DEVICE (muse2 0.5/13.0,
+     museS 1.5/10.5, athena -4.5/9.0), so resetting them must CLEAR the user override and restore
+     the identified device's own calibration, not install the descriptor (muse2) numbers. */
+    public func resetStateTuning(key: String) {
+        switch key {
+        case "quiet.quietDb":
+            quietDbOverride = nil
+            refreshQuietCalibration()
+        case "quiet.loudDb":
+            loudDbOverride = nil
+            refreshQuietCalibration()
+        default:
+            if let param = XvEEGStateTuningParameter.all.first(where: { $0.key == key }) {
+                setStateTuning(key: key, value: param.defaultValue)
+            }
+        }
+    }
+
+    /* Per-component user overrides of the quiet calibration anchors. Held separately from the
+     device default so (a) the device-identification sites don't stomp a user's live tuning if
+     the device re-identifies mid-session, and (b) resetting one component restores THAT device's
+     default for it while keeping the other component's override. */
+    private var quietDbOverride: Double?
+    private var loudDbOverride: Double?
+    private var deviceDefaultQuietCalibration: XvEEGAnalysis.QuietCalibration = .legacy
+
+    private func refreshQuietCalibration() {
+        XvEEGAnalysis.quietCalibration = XvEEGAnalysis.QuietCalibration(
+            quietDb: quietDbOverride ?? deviceDefaultQuietCalibration.quietDb,
+            loudDb: loudDbOverride ?? deviceDefaultQuietCalibration.loudDb
+        )
+    }
+
+    private func applyQuietCalibration(deviceDefault: XvEEGAnalysis.QuietCalibration) {
+        deviceDefaultQuietCalibration = deviceDefault
+        refreshQuietCalibration()
+    }
+
     private var latestPublishedGammaPct: Double = 0.0
-    private let gammaFocusSmoothing: Double = 0.10
-    private let gammaFocusLowDb: Double = 1.5
-    private let gammaFocusHighDb: Double = 4.5
+    //runtime-tunable via setStateTuning ("gamma.*" keys)
+    private var gammaFocusSmoothing: Double = 0.10
+    private var gammaFocusLowDb: Double = 1.5
+    private var gammaFocusHighDb: Double = 4.5
+    private var gammaTensionGateOnset: Double = 30.0
+    private var gammaTensionGateFull: Double = 70.0
 
     private func publishGammaFocus(gammaDb: Double) {
         guard gammaDb.isFinite else { return }
@@ -1043,8 +1109,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let span = max(gammaFocusHighDb - gammaFocusLowDb, 1e-6)
         let raw = min(max((gammaDb - gammaFocusLowDb) / span, 0.0), 1.0)
 
-        let tensionGateSpan = 70.0 - 30.0
-        let tensionAmount = min(max((latestTensionPct - 30.0) / tensionGateSpan, 0.0), 1.0)
+        let tensionGateSpan = max(gammaTensionGateFull - gammaTensionGateOnset, 1e-6)
+        let tensionAmount = min(max((latestTensionPct - gammaTensionGateOnset) / tensionGateSpan, 0.0), 1.0)
         let target = raw * (1.0 - tensionAmount) * 100.0
 
         latestPublishedGammaPct += gammaFocusSmoothing * (target - latestPublishedGammaPct)
@@ -1111,6 +1177,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             rhythmHz: rhythmHz,
             rhythmSlowHz: rhythmSlowHz
         )
+    }
+
+    func didReceiveStateTuningReadout(_ readout: [String: Double]) {
+        delegate?.didReceiveStateTuningReadout(readout)
     }
 
     public func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {
@@ -1482,3 +1552,105 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 }
 
 extension XvMuse: FFTManagerDelegate {}
+
+//MARK: - State tuning parameter descriptors
+
+/* Descriptor for one runtime-tunable state-detection parameter. The app's tuning panel
+ renders itself from `XvEEGStateTuningParameter.all`, so adding a parameter here (plus its
+ key in the matching setTuning switch) is all it takes to expose a new control.
+
+ `group` drives panel sections: "gates", "med", "focus", "dreamy", "gamma", "quiet".
+ Defaults MUST match the code defaults in EEGStateScorer / EEGStateAnalyzer / XvMuse —
+ the app treats an untouched parameter as "leave the framework at its code default". */
+public struct XvEEGStateTuningParameter {
+    public let key: String
+    public let label: String
+    public let group: String
+    public let defaultValue: Double
+    public let minValue: Double
+    public let maxValue: Double
+    public let step: Double
+
+    public init(_ key: String, _ label: String, _ group: String,
+                _ defaultValue: Double, _ minValue: Double, _ maxValue: Double, _ step: Double) {
+        self.key = key
+        self.label = label
+        self.group = group
+        self.defaultValue = defaultValue
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.step = step
+    }
+
+    public static let all: [XvEEGStateTuningParameter] = [
+
+        //MARK: gates (analyzer-level)
+        XvEEGStateTuningParameter("gates.cleanThreshold", "CLEAN GATE", "gates", 60.0, 0.0, 95.0, 5.0),
+        XvEEGStateTuningParameter("gates.scoreSmoothing", "SCORE SMOOTH", "gates", 0.18, 0.02, 0.9, 0.01),
+        XvEEGStateTuningParameter("gates.blockedFadeSmoothing", "BLOCKED FADE", "gates", 0.05, 0.01, 0.5, 0.01),
+        XvEEGStateTuningParameter("gates.stabilityLowSD", "STEADY SD LO", "gates", 0.25, 0.05, 2.0, 0.05),
+        XvEEGStateTuningParameter("gates.stabilityHighSD", "STEADY SD HI", "gates", 1.6, 0.3, 5.0, 0.05),
+
+        //MARK: meditation
+        XvEEGStateTuningParameter("med.alphaLeadLowDb", "αLEAD LO dB", "med", -2.0, -8.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("med.alphaLeadHighDb", "αLEAD HI dB", "med", 1.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("med.tiltOffsetHz", "TILT CTR Hz", "med", -2.0, -6.0, 2.0, 0.1),
+        XvEEGStateTuningParameter("med.tiltRadiusHz", "TILT RAD Hz", "med", 3.0, 0.5, 8.0, 0.1),
+        XvEEGStateTuningParameter("med.organizedLowHz", "ORG LO Hz", "med", -0.8, -4.0, 2.0, 0.1),
+        XvEEGStateTuningParameter("med.organizedHighHz", "ORG HI Hz", "med", 0.0, -2.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("med.supportCentroidWeight", "W CENTROID", "med", 0.35, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("med.supportOrganizedWeight", "W ORGANIZED", "med", 0.35, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("med.supportSteadyWeight", "W STEADY", "med", 0.30, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("med.baseOffset", "BASE", "med", 0.40, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("med.supportSpan", "SUPPORT SPAN", "med", 0.60, 0.0, 1.0, 0.05),
+
+        //MARK: focus
+        XvEEGStateTuningParameter("focus.tiltLowHz", "FAST TILT LO", "focus", -0.5, -4.0, 6.0, 0.1),
+        XvEEGStateTuningParameter("focus.tiltHighHz", "FAST TILT HI", "focus", 2.0, -2.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("focus.calmTiltOffsetHz", "CALM CTR Hz", "focus", -1.5, -5.0, 3.0, 0.1),
+        XvEEGStateTuningParameter("focus.calmTiltRadiusHz", "CALM RAD Hz", "focus", 1.4, 0.3, 6.0, 0.1),
+        XvEEGStateTuningParameter("focus.broadLowHz", "BROAD LO Hz", "focus", -0.6, -4.0, 2.0, 0.1),
+        XvEEGStateTuningParameter("focus.broadHighHz", "BROAD HI Hz", "focus", 0.8, -2.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("focus.notAlphaLedLowDb", "¬α LO dB", "focus", -1.0, -6.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("focus.notAlphaLedHighDb", "¬α HI dB", "focus", 1.0, -4.0, 6.0, 0.1),
+        XvEEGStateTuningParameter("focus.supportBroadWeight", "W BROAD", "focus", 0.55, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("focus.supportSteadyWeight", "W STEADY", "focus", 0.45, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("focus.baseOffset", "BASE", "focus", 0.45, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("focus.supportSpan", "SUPPORT SPAN", "focus", 0.55, 0.0, 1.0, 0.05),
+
+        //MARK: dreamy
+        XvEEGStateTuningParameter("dreamy.thetaLeadLowDb", "θLEAD LO dB", "dreamy", 0.0, -4.0, 6.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.thetaLeadHighDb", "θLEAD HI dB", "dreamy", 3.0, -2.0, 10.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.thetaLeadSmoothing", "θLEAD SMOOTH", "dreamy", 0.04, 0.01, 0.5, 0.01),
+        XvEEGStateTuningParameter("dreamy.vsFastSmoothing", "VSFAST SMOOTH", "dreamy", 0.15, 0.01, 0.9, 0.01),
+        XvEEGStateTuningParameter("dreamy.vsFastLowDb", "VSFAST LO dB", "dreamy", -1.0, -6.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.vsFastHighDb", "VSFAST HI dB", "dreamy", 2.0, -2.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.notFastOnsetHz", "¬FAST ON Hz", "dreamy", 0.5, -2.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.notFastFullHz", "¬FAST FULL Hz", "dreamy", 2.0, 0.0, 6.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.prominenceLowDb", "RHYTHM LO dB", "dreamy", 4.0, 0.0, 12.0, 0.5),
+        XvEEGStateTuningParameter("dreamy.prominenceHighDb", "RHYTHM HI dB", "dreamy", 7.0, 1.0, 16.0, 0.5),
+        XvEEGStateTuningParameter("dreamy.gammaLowDb", "γCALM LO dB", "dreamy", 2.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.gammaHighDb", "γCALM HI dB", "dreamy", 4.0, -2.0, 12.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.calmLowEndLowDb", "LOWEND LO dB", "dreamy", -2.0, -8.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.calmLowEndHighDb", "LOWEND HI dB", "dreamy", 2.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("dreamy.baseOffset", "BASE", "dreamy", 0.50, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("dreamy.supportSpan", "SUPPORT SPAN", "dreamy", 0.50, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("dreamy.tensionDampOnset", "TENS DAMP ON", "dreamy", 30.0, 0.0, 80.0, 5.0),
+        XvEEGStateTuningParameter("dreamy.tensionDampFull", "TENS DAMP FULL", "dreamy", 80.0, 20.0, 100.0, 5.0),
+        XvEEGStateTuningParameter("dreamy.tensionDampFloor", "TENS DAMP FLR", "dreamy", 0.15, 0.0, 1.0, 0.05),
+
+        //MARK: gamma focus
+        XvEEGStateTuningParameter("gamma.lowDb", "γ LO dB", "gamma", 1.5, -6.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("gamma.highDb", "γ HI dB", "gamma", 4.5, -2.0, 14.0, 0.1),
+        XvEEGStateTuningParameter("gamma.smoothing", "SMOOTH", "gamma", 0.10, 0.01, 0.9, 0.01),
+        XvEEGStateTuningParameter("gamma.tensionGateOnset", "TENS GATE ON", "gamma", 30.0, 0.0, 90.0, 5.0),
+        XvEEGStateTuningParameter("gamma.tensionGateFull", "TENS GATE FULL", "gamma", 70.0, 10.0, 100.0, 5.0),
+
+        //MARK: quiet calibration anchors
+        /* NOTE: code defaults are per-device (muse2 0.5/13.0, museS 1.5/10.5, athena -4.5/9.0).
+         The descriptor defaults below are the legacy/muse2 anchors; an untouched control leaves
+         the per-device calibration in place — it only overrides once the user adjusts it. */
+        XvEEGStateTuningParameter("quiet.quietDb", "QUIET dB", "quiet", 0.5, -15.0, 15.0, 0.5),
+        XvEEGStateTuningParameter("quiet.loudDb", "LOUD dB", "quiet", 13.0, -5.0, 30.0, 0.5),
+    ]
+}

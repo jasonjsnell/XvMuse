@@ -17,6 +17,8 @@ protocol EEGStateAnalyzerDelegate: AnyObject {
         rhythmHz: Double,
         rhythmSlowHz: Double
     )
+    //live per-term breakdown + gate values for the tuning panel, at the publish cadence
+    func didReceiveStateTuningReadout(_ readout: [String: Double])
 }
 
 /* Measures brainwave states from the live spectrum.
@@ -36,13 +38,17 @@ final class EEGStateAnalyzer {
 
     //MARK: - Tunables
 
-    //signal must be at least this clean before anything is measured
-    private let cleanThreshold: Double = 60.0
+    //signal must be at least this clean before anything is measured (runtime-tunable)
+    private var cleanThreshold: Double = 60.0
 
     //how often scores are published, and how hard they are smoothed
     private let publishInterval: TimeInterval = 0.25
-    private let scoreSmoothing: Double = 0.18
-    private let blockedFadeSmoothing: Double = 0.05
+    private var scoreSmoothing: Double = 0.18
+    private var blockedFadeSmoothing: Double = 0.05
+
+    //centroid-SD (Hz) bounds for the steadiness ramp (runtime-tunable)
+    private var stabilityLowSD: Double = 0.25
+    private var stabilityHighSD: Double = 1.6
 
     //how far back the "is the centroid parked or wandering" judgement looks
     private let stabilityWindow: TimeInterval = 8.0
@@ -772,7 +778,62 @@ final class EEGStateAnalyzer {
         let variance = values.reduce(0) { $0 + pow($1 - mean, 2) } / Double(values.count)
         let recentSD = sqrt(variance)
 
-        return invRamp(recentSD, low: 0.25, high: 1.6)
+        return invRamp(recentSD, low: stabilityLowSD, high: stabilityHighSD)
+    }
+
+    //MARK: - Runtime tuning
+
+    /* String-keyed runtime tuning for the app's tuning panel. Analyzer-level keys are handled
+     here; anything else is forwarded to the scorer. Keys match XvEEGStateTuningParameter.all
+     in XvMuse.swift — keep the lists in sync. Returns false for unknown keys. */
+    @discardableResult
+    func setTuning(key: String, value: Double) -> Bool {
+        guard value.isFinite else { return false }
+        switch key {
+        case "gates.cleanThreshold": cleanThreshold = value
+        case "gates.scoreSmoothing": scoreSmoothing = value
+        case "gates.blockedFadeSmoothing": blockedFadeSmoothing = value
+        case "gates.stabilityLowSD": stabilityLowSD = value
+        case "gates.stabilityHighSD": stabilityHighSD = value
+        case "dreamy.tensionDampOnset": RelaxedStateGate.tensionOnset = value
+        case "dreamy.tensionDampFull": RelaxedStateGate.tensionFull = value
+        case "dreamy.tensionDampFloor": RelaxedStateGate.floor = value
+        default: return scorer.setTuning(key: key, value: value)
+        }
+        return true
+    }
+
+    /* Live per-term breakdown for the tuning panel: every gate/support term of the three
+     scores plus the signal-quality gates, published at the score cadence so the panel can
+     show WHICH term is limiting a score in real time. */
+    private func buildTuningReadout(blocked: Bool) -> [String: Double] {
+        return [
+            "med.gate": scorer.medGate,
+            "med.centroid": scorer.meditationAlphaCentroid,
+            "med.organized": scorer.meditationOrganized,
+            "med.steady": scorer.meditationHoldingSteady,
+            "med.alphaLeadDb": scorer.meditationAlphaLeadDb,
+
+            "focus.fast": scorer.focusFastCentroid,
+            "focus.calm": scorer.focusCalmCentroid,
+            "focus.broad": scorer.focusBroadEnough,
+            "focus.steady": scorer.focusHoldingSteady,
+            "focus.notAlphaLed": scorer.focusNotAlphaLed,
+
+            "dreamy.thetaLeads": scorer.dreamyGate,
+            "dreamy.vsFast": scorer.dreamyClearOfFastBands,
+            "dreamy.notFast": scorer.dreamyNotRunningFast,
+            "dreamy.rhythm": scorer.dreamyLooksLikeRhythm,
+            "dreamy.calmGamma": scorer.dreamyCalmGamma,
+            "dreamy.lowEnd": scorer.dreamyCalmLowEnd,
+            "dreamy.thetaLeadDb": scorer.dreamySmoothedThetaLeadDb,
+
+            "gate.clean": latestCleanPct,
+            "gate.effectiveClean": latestEffectiveCleanPct,
+            "gate.tension": latestTensionPct,
+            "gate.blink": latestBlinkPct,
+            "gate.blocked": blocked ? 1.0 : 0.0,
+        ]
     }
 
     //MARK: - Output
@@ -820,6 +881,8 @@ final class EEGStateAnalyzer {
             rhythmSlowHz: slowDominantHz
         )
 
+        delegate?.didReceiveStateTuningReadout(buildTuningReadout(blocked: false))
+
         logState(features: features, scores: scores, now: now)
     }
 
@@ -864,6 +927,10 @@ final class EEGStateAnalyzer {
             rhythmSlowHz: lastRhythmSlowHz
         )
 
+        //keep the tuning panel's gate strip live while blocked — the whole point is seeing
+        //WHEN artifact gating (not the formulas) is what is suppressing the scores
+        delegate?.didReceiveStateTuningReadout(buildTuningReadout(blocked: true))
+
         // STATE BLOCKED logs are intentionally muted during live state tuning.
     }
 
@@ -897,7 +964,7 @@ final class EEGStateAnalyzer {
             return
         }
 
-        let lowEndTerm = 0.50 + (0.50 * scorer.dreamySupport)
+        let lowEndTerm = scorer.dreamyBaseOffset + (scorer.dreamySupportSpan * scorer.dreamySupport)
         let terms: [(name: String, value: Double)] = [
             ("thetaLead", scorer.dreamyGate),
             ("vsFast", scorer.dreamyCredibility),
@@ -924,7 +991,7 @@ final class EEGStateAnalyzer {
 
         /* Focus is shape × support, and shape is the better of two paths — so the binding
          constraint is whichever half of the product is smaller, then the weak spot inside it. */
-        let focusSupportTerm = 0.45 + (0.55 * scorer.focusSupport)
+        let focusSupportTerm = scorer.focusBaseOffset + (scorer.focusSupportSpan * scorer.focusSupport)
         let focusLimit: String
         if scorer.focusGate < focusSupportTerm {
             focusLimit = scorer.focusFastCentroid >= scorer.focusCalmCentroid ? "fastPath" : "calmPath"
@@ -943,7 +1010,7 @@ final class EEGStateAnalyzer {
             limitName: focusLimit
         ))
 
-        let medSupportTerm = 0.40 + (0.60 * scorer.medSupport)
+        let medSupportTerm = scorer.medBaseOffset + (scorer.medSupportSpan * scorer.medSupport)
         let medLimit: String
         if scorer.medGate < medSupportTerm {
             medLimit = "alphaLead"
@@ -1112,7 +1179,7 @@ final class EEGStateAnalyzer {
         }
 
         //the low-end term enters the product scaled, not raw, so weigh it the way the score does
-        let lowEndTerm = 0.50 + (0.50 * scorer.dreamySupport)
+        let lowEndTerm = scorer.dreamyBaseOffset + (scorer.dreamySupportSpan * scorer.dreamySupport)
 
         let terms: [(name: String, value: Double)] = [
             ("thetaLead", scorer.dreamyGate),

@@ -164,6 +164,87 @@ final class EEGStateScorer {
     var dreamyTiltOffsetOnsetHz: Double = 0.5
     var dreamyTiltOffsetFullHz: Double = 2.0
 
+    /* Formerly hardcoded score-shaping literals, promoted to tunables for the live tuning
+     panel. Defaults are the exact values that were inlined in the score functions. */
+
+    //focus: brake stopping calm-focus firing on alpha-led meditation (invRamp on alphaLeadDb)
+    var focusNotAlphaLedLowDb: Double = -1.0
+    var focusNotAlphaLedHighDb: Double = 1.0
+    //focus: support = broadWeight*broadEnough + steadyWeight*holdingSteady; score = shape*(base + span*support)
+    var focusSupportBroadWeight: Double = 0.55
+    var focusSupportSteadyWeight: Double = 0.45
+    var focusBaseOffset: Double = 0.45
+    var focusSupportSpan: Double = 0.55
+
+    //meditation: support = centroidW*alphaCentroid + organizedW*organized + steadyW*steady
+    var medSupportCentroidWeight: Double = 0.35
+    var medSupportOrganizedWeight: Double = 0.35
+    var medSupportSteadyWeight: Double = 0.30
+    var medBaseOffset: Double = 0.40
+    var medSupportSpan: Double = 0.60
+
+    //dreamy: short-memory theta-lead ramp (deliberately 1 dB looser than the 6 s gate)
+    var dreamyVsFastLowDb: Double = -1.0
+    var dreamyVsFastHighDb: Double = 2.0
+    //dreamy: theta-vs-delta soft term ramp; enters as (base + span*calmLowEnd)
+    var dreamyCalmLowEndLowDb: Double = -2.0
+    var dreamyCalmLowEndHighDb: Double = 2.0
+    var dreamyBaseOffset: Double = 0.50
+    var dreamySupportSpan: Double = 0.50
+
+    //MARK: - Keyed tuning access
+    /* String-keyed access for the runtime tuning panel. Keys match
+     XvEEGStateTuningParameter.all in XvMuse.swift — keep the two lists in sync. */
+    func setTuning(key: String, value: Double) -> Bool {
+        guard value.isFinite else { return false }
+        switch key {
+        case "focus.tiltLowHz": focusTiltOffsetLowHz = value
+        case "focus.tiltHighHz": focusTiltOffsetHighHz = value
+        case "focus.calmTiltOffsetHz": calmFocusTiltOffsetHz = value
+        case "focus.calmTiltRadiusHz": calmFocusTiltRadiusHz = value
+        case "focus.broadLowHz": broadOffsetLowHz = value
+        case "focus.broadHighHz": broadOffsetHighHz = value
+        case "focus.notAlphaLedLowDb": focusNotAlphaLedLowDb = value
+        case "focus.notAlphaLedHighDb": focusNotAlphaLedHighDb = value
+        case "focus.supportBroadWeight": focusSupportBroadWeight = value
+        case "focus.supportSteadyWeight": focusSupportSteadyWeight = value
+        case "focus.baseOffset": focusBaseOffset = value
+        case "focus.supportSpan": focusSupportSpan = value
+
+        case "med.alphaLeadLowDb": meditationAlphaLeadLowDb = value
+        case "med.alphaLeadHighDb": meditationAlphaLeadHighDb = value
+        case "med.tiltOffsetHz": meditationTiltOffsetHz = value
+        case "med.tiltRadiusHz": meditationTiltRadiusHz = value
+        case "med.organizedLowHz": organizedOffsetLowHz = value
+        case "med.organizedHighHz": organizedOffsetHighHz = value
+        case "med.supportCentroidWeight": medSupportCentroidWeight = value
+        case "med.supportOrganizedWeight": medSupportOrganizedWeight = value
+        case "med.supportSteadyWeight": medSupportSteadyWeight = value
+        case "med.baseOffset": medBaseOffset = value
+        case "med.supportSpan": medSupportSpan = value
+
+        case "dreamy.thetaLeadLowDb": dreamyThetaLeadLowDb = value
+        case "dreamy.thetaLeadHighDb": dreamyThetaLeadHighDb = value
+        case "dreamy.thetaLeadSmoothing": thetaLeadSmoothing = value
+        case "dreamy.vsFastSmoothing": vsFastSmoothing = value
+        case "dreamy.vsFastLowDb": dreamyVsFastLowDb = value
+        case "dreamy.vsFastHighDb": dreamyVsFastHighDb = value
+        case "dreamy.notFastOnsetHz": dreamyTiltOffsetOnsetHz = value
+        case "dreamy.notFastFullHz": dreamyTiltOffsetFullHz = value
+        case "dreamy.prominenceLowDb": dreamyProminenceLowDb = value
+        case "dreamy.prominenceHighDb": dreamyProminenceHighDb = value
+        case "dreamy.gammaLowDb": dreamyGammaLowDb = value
+        case "dreamy.gammaHighDb": dreamyGammaHighDb = value
+        case "dreamy.calmLowEndLowDb": dreamyCalmLowEndLowDb = value
+        case "dreamy.calmLowEndHighDb": dreamyCalmLowEndHighDb = value
+        case "dreamy.baseOffset": dreamyBaseOffset = value
+        case "dreamy.supportSpan": dreamySupportSpan = value
+
+        default: return false
+        }
+        return true
+    }
+
     func reset() {
         meditationScore = 0.0
         focusScore = 0.0
@@ -300,13 +381,13 @@ final class EEGStateScorer {
          Alpha leading the detrended spectrum is the thing that actually separates the two states,
          so that is what gates it now. An engaged reader with a flat alpha still qualifies; someone
          sitting in strong alpha does not. */
-        let notAlphaLed = bands.map { invRamp($0.alphaLeadDb, low: -1.0, high: 1.0) } ?? 1.0
+        let notAlphaLed = bands.map { invRamp($0.alphaLeadDb, low: focusNotAlphaLedLowDb, high: focusNotAlphaLedHighDb) } ?? 1.0
 
         let calmFocus = calmCentroid * broadEnough * notAlphaLed
         let focusShape = max(fastCentroid, calmFocus)
 
         //Keep focus detail-first. Low full-spectrum theta is too noisy to use as support here.
-        let support = (0.55 * broadEnough) + (0.45 * holdingSteady)
+        let support = (focusSupportBroadWeight * broadEnough) + (focusSupportSteadyWeight * holdingSteady)
 
         focusGate = focusShape
         focusSupport = support
@@ -316,7 +397,7 @@ final class EEGStateScorer {
         focusCalmCentroid = calmCentroid
         focusNotAlphaLed = notAlphaLed
 
-        return clamp01(focusShape * (0.45 + (0.55 * support)))
+        return clamp01(focusShape * (focusBaseOffset + (focusSupportSpan * support)))
     }
 
     /* Meditation: alpha-led, organized, still activity in the detail window. */
@@ -354,7 +435,7 @@ final class EEGStateScorer {
         )
         let holdingSteady = clamp01(stability)
 
-        let support = (0.35 * alphaCentroid) + (0.35 * organized) + (0.30 * holdingSteady)
+        let support = (medSupportCentroidWeight * alphaCentroid) + (medSupportOrganizedWeight * organized) + (medSupportSteadyWeight * holdingSteady)
 
         /* QUIET NO LONGER VETOES THIS. Measured but not multiplied in — same arrangement as
          stillness on dreamy, and for a related reason.
@@ -383,7 +464,7 @@ final class EEGStateScorer {
         meditationHoldingSteady = holdingSteady
         meditationAwakeEnough = awakeEnough
 
-        return clamp01(alphaLeads * (0.40 + (0.60 * support)))
+        return clamp01(alphaLeads * (medBaseOffset + (medSupportSpan * support)))
     }
 
     /* Dreamy: theta-led, quiet, slow activity. Theta remains full-spectrum upstream, but is
@@ -448,7 +529,7 @@ final class EEGStateScorer {
          second full-strength requirement on the same measurement. */
         smoothedVsFast += vsFastSmoothing * (thetaLeadDb - smoothedVsFast)
         let thetaVsFastDb = smoothedVsFast
-        let clearOfFastBands = ramp(thetaVsFastDb, low: -1.0, high: 2.0)
+        let clearOfFastBands = ramp(thetaVsFastDb, low: dreamyVsFastLowDb, high: dreamyVsFastHighDb)
 
         /* Stillness is measured and logged but NO LONGER GATES anything.
 
@@ -468,7 +549,7 @@ final class EEGStateScorer {
 
         //A calm low end. A blink drives delta up and pulls this down.
         let thetaVsDeltaDb = bands.thetaResidual - bands.deltaResidual
-        let calmLowEnd = ramp(thetaVsDeltaDb, low: -2.0, high: 2.0)
+        let calmLowEnd = ramp(thetaVsDeltaDb, low: dreamyCalmLowEndLowDb, high: dreamyCalmLowEndHighDb)
 
         /* NOT RUNNING FAST. The one thing theta alone can never do is separate drowsiness from
          concentration — frontal midline theta is a real focus rhythm, and on the sessions measured
@@ -546,7 +627,7 @@ final class EEGStateScorer {
 
         return clamp01(
             thetaLeads * clearOfFastBands * notRunningFast * looksLikeRhythm * calmGamma
-                * (0.50 + (0.50 * calmLowEnd))
+                * (dreamyBaseOffset + (dreamySupportSpan * calmLowEnd))
         )
     }
 
