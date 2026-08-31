@@ -67,9 +67,19 @@ class PPGAnalyzer {
     // calm/vasodilated, low under exertion/vasoconstriction — then blended with normalized BPM
     // so "working harder" reads louder, with BPM tempering the amplitude's signal-quality
     // confound (loose band / cold also drop amplitude).
+    // Max matches the analyzer's own 0.4s NN bound (150 bpm) — the fastest rate this pipeline
+    // can ever measure, so a maxed-out heart reads full scale instead of pinning at 83%.
     private let strengthBpmMin: Double = 60.0
-    private let strengthBpmMax: Double = 120.0
+    private let strengthBpmMax: Double = 150.0
     private let strengthAmpWeight: Double = 0.5 // 0 = all BPM, 1 = all flipped-amplitude
+
+    /* Performer's manual heart-rate offset, set from the diagnostic UI.
+
+     The strengthBpmMax ceiling describes how fast a MEASURED heart can plausibly run. The offset
+     is a deliberate override — someone reaching for more output than their resting body is
+     giving them — so it is added on top of the capped measurement rather than being capped with
+     it. Without that split, every widening of the ceiling would silently weaken the offset. */
+    internal var heartRateOffsetBPM: Double = 0.0
 
     internal func update(at timestamp: Double, amplitude: Double) -> PPGAnalysisPacket {
         
@@ -80,7 +90,7 @@ class PPGAnalyzer {
         
         // Accept only plausible NN intervals based on absolute bounds. prevTimestamp > 0 skips the
         // first beat, whose beatLength = timestamp − 0 is a bogus interval (was reading ~90 bpm).
-        if prevTimestamp > 0 && beatLength > 0.4 && beatLength < 1.8 { // ~40–180 bpm
+        if prevTimestamp > 0 && beatLength > 0.4 && beatLength < 1.8 { // ~33–150 bpm
             let instantBpm = 60.0 / beatLength
 
             // --- BPM buffer: reject gross outliers, but unstick on a sustained real HR change.
@@ -239,7 +249,8 @@ class PPGAnalyzer {
         // Flip perfusion (guarded: no-data 0 stays 0, not a full-blast 1), normalize BPM to
         // 0–1 over the resting→exertion band, then weighted-blend the two.
         let flippedPerfusion = perfusion > 0.0 ? (1.0 - perfusion) : 0.0
-        let normBpm = max(0.0, min(1.0, (averageBpm - strengthBpmMin) / (strengthBpmMax - strengthBpmMin)))
+        let drivenBpm = min(averageBpm, strengthBpmMax) + heartRateOffsetBPM
+        let normBpm = max(0.0, min(1.0, (drivenBpm - strengthBpmMin) / (strengthBpmMax - strengthBpmMin)))
         let beatStrength = strengthAmpWeight * flippedPerfusion + (1.0 - strengthAmpWeight) * normBpm
 
         // print(String(format: "  STR | str:%.2f  perfusion:%.2f (flip:%.2f)  bpm:%.0f",

@@ -976,7 +976,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var _quietFadedFrames: Int = 0
     private var _quietCappedFrames: Int = 0
 
+    ///quiet logging. Off while tuning FOCUS.
+    private static let logQuietLines = false
+
     private func logQuiet(raw: Double, published: Double, faded: Bool, capped: Bool) {
+        guard Self.logQuietLines else { return }
         let now = Date().timeIntervalSince1970
 
         if _quietWindowStart == 0 { _quietWindowStart = now }
@@ -1054,6 +1058,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         case "quiet.loudDb": loudDbOverride = value; refreshQuietCalibration()
         default: _stateAnalyzer.setTuning(key: key, value: value)
         }
+    }
+
+    /* Performer's manual heart-rate offset, in BPM. Set from the diagnostic UI's OFF +/- control.
+
+     Applied inside the PPG analyzer so beat strength sees it too; the app adds the same offset to
+     the BPM number it publishes downstream. Unlike the measured rate, the offset is never capped —
+     it exists precisely to reach output levels a resting heart will not produce on stage. */
+    public func set(heartRateOffsetBPM: Double) {
+        guard heartRateOffsetBPM.isFinite else { return }
+        _ppg.set(heartRateOffsetBPM: heartRateOffsetBPM)
+        _testPPG.set(heartRateOffsetBPM: heartRateOffsetBPM)
     }
 
     /* Return one parameter to its code default. For most keys the descriptor default IS the

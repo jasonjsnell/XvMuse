@@ -71,6 +71,8 @@ final class EEGStateAnalyzer {
      sets) set logStateDetail to false — a handful of summary lines describe a session better
      than 500 instantaneous ones, and can actually be pasted. */
     private let logStateDetail: Bool = true
+    ///FOCUS-ONLY MODE. Set true to bring the meditation and dreamy dumps back.
+    private let logMeditationAndDreamy: Bool = false
     private let stateSummaryInterval: TimeInterval = 10.0
     private var stateSummaryStart: Date? = nil
     private var dreamySamples: [DreamySample] = []
@@ -103,6 +105,11 @@ final class EEGStateAnalyzer {
         let steady: Double
         let support: Double
         let limitName: String
+        //raw measurements — the summary reports their percentiles, which is what a new
+        //threshold is actually read off
+        let tiltHz: Double
+        let spreadHz: Double
+        let alphaLeadDb: Double
     }
 
     private struct MedSample {
@@ -954,8 +961,12 @@ final class EEGStateAnalyzer {
 
         let elapsed = now.timeIntervalSince(launchTime)
         logFocus(scores: scores, elapsed: elapsed)
-        logMeditation(scores: scores, elapsed: elapsed)
-        logDreamy(scores: scores, elapsed: elapsed)
+
+        //MED and DREAMY silenced while FOCUS is being tuned — flip back on when their turn comes
+        if logMeditationAndDreamy {
+            logMeditation(scores: scores, elapsed: elapsed)
+            logDreamy(scores: scores, elapsed: elapsed)
+        }
     }
 
     private func accumulateStateSamples(scores: (meditation: Double, focus: Double, dreamy: Double)) {
@@ -1007,7 +1018,10 @@ final class EEGStateAnalyzer {
             broad: scorer.focusBroadEnough,
             steady: scorer.focusHoldingSteady,
             support: scorer.focusSupport,
-            limitName: focusLimit
+            limitName: focusLimit,
+            tiltHz: scorer.focusTiltOffsetHz,
+            spreadHz: scorer.focusSpreadOffsetHz,
+            alphaLeadDb: scorer.focusAlphaLeadDb
         ))
 
         let medSupportTerm = scorer.medBaseOffset + (scorer.medSupportSpan * scorer.medSupport)
@@ -1077,6 +1091,11 @@ final class EEGStateAnalyzer {
 
         func med3(_ values: [Double]) -> Double { percentile(values, 0.5) }
 
+        guard logMeditationAndDreamy else {
+            emitFocusSummary(focus: focus, elapsed: elapsed)
+            return
+        }
+
         let dreamyScores = dreamy.map(\.score)
         let leads = dreamy.map(\.smoothedLead)
         let dreamyLimit = topLimit(dreamy.map(\.limitName))
@@ -1094,17 +1113,7 @@ final class EEGStateAnalyzer {
             med3(dreamy.map(\.tension)), med3(dreamy.map(\.blink)), med3(dreamy.map(\.clean))
         ))
 
-        let focusScores = focus.map(\.score)
-        let focusLimit = topLimit(focus.map(\.limitName))
-        print(String(
-            format: "FOCUS SUMMARY  | t:%6.1f | focus med %3.0f p10 %3.0f p90 %3.0f | shape med %4.2f (fast %4.2f calm %4.2f notAlpha %4.2f) | broad %4.2f steady %4.2f | LIMIT %@ %2.0f%%",
-            elapsed,
-            med3(focusScores), percentile(focusScores, 0.1), percentile(focusScores, 0.9),
-            med3(focus.map(\.shape)), med3(focus.map(\.fast)), med3(focus.map(\.calm)),
-            med3(focus.map(\.notAlphaLed)),
-            med3(focus.map(\.broad)), med3(focus.map(\.steady)),
-            focusLimit.name, focusLimit.share
-        ))
+        emitFocusSummary(focus: focus, elapsed: elapsed)
 
         let medScores = med.map(\.score)
         let medLimit = topLimit(med.map(\.limitName))
@@ -1118,6 +1127,41 @@ final class EEGStateAnalyzer {
         ))
     }
 
+    /* FOCUS SUMMARY — the distribution over the window, plus the raw measurements' percentiles.
+
+     Split out so focus-only mode can print it without the meditation and dreamy summaries. */
+    private func emitFocusSummary(focus: [FocusSample], elapsed: TimeInterval) {
+        guard !focus.isEmpty else { return }
+        func med3(_ values: [Double]) -> Double { percentile(values, 0.5) }
+
+        let focusScores = focus.map(\.score)
+        let focusLimit = topLimit(focus.map(\.limitName))
+        let tilts = focus.map(\.tiltHz)
+        print(String(
+            format: "FOCUS SUMMARY  | t:%6.1f | focus med %3.0f p10 %3.0f p90 %3.0f | shape med %4.2f (fast %4.2f calm %4.2f notAlpha %4.2f) | broad %4.2f steady %4.2f | LIMIT %@ %2.0f%%",
+            elapsed,
+            med3(focusScores), percentile(focusScores, 0.1), percentile(focusScores, 0.9),
+            med3(focus.map(\.shape)), med3(focus.map(\.fast)), med3(focus.map(\.calm)),
+            med3(focus.map(\.notAlphaLed)),
+            med3(focus.map(\.broad)), med3(focus.map(\.steady)),
+            focusLimit.name, focusLimit.share
+        ))
+
+        /* The tuning line. p90 of tilt is the number a new FAST TILT HI is read off: set the high
+         anchor near it and the fast term saturates on the best moments instead of never. */
+        print(String(
+            format: "   tuning | tilt p10 %+5.2f med %+5.2f p90 %+5.2f (FAST %+.1f..%+.1f) | spread p10 %+5.2f med %+5.2f p90 %+5.2f (BROAD %+.1f..%+.1f) | αlead med %+5.2f (¬α %+.1f..%+.1f)",
+            percentile(tilts, 0.1), med3(tilts), percentile(tilts, 0.9),
+            scorer.focusTiltOffsetLowHz, scorer.focusTiltOffsetHighHz,
+            percentile(focus.map(\.spreadHz), 0.1), med3(focus.map(\.spreadHz)),
+            percentile(focus.map(\.spreadHz), 0.9),
+            scorer.broadOffsetLowHz, scorer.broadOffsetHighHz,
+            med3(focus.map(\.alphaLeadDb)),
+            scorer.focusNotAlphaLedLowDb, scorer.focusNotAlphaLedHighDb
+        ))
+
+    }
+
     /* FOCUS DIAGNOSTIC — same design as dreamy's: every multiplier, then the binding one.
 
      Focus is shape × support, where shape is the BETTER of two paths (fast tilt, or calm-but-broad
@@ -1127,6 +1171,10 @@ final class EEGStateAnalyzer {
         scores: (meditation: Double, focus: Double, dreamy: Double),
         elapsed: TimeInterval
     ) {
+        /* Line 1: the score and the gate values — WHICH term is limiting.
+         Line 2: the raw Hz/dB measurements and the thresholds acting on them — WHERE to move a
+         threshold. The gate values alone are not enough: a fast term of 0.51 is consistent with
+         many centroid positions depending on the anchors, so the offsets have to be printed too. */
         print(String(
             format: "FOCUS  %3.0f | shape x%4.2f (fast %4.2f | calm %4.2f = ctr %4.2f × broad %4.2f × notAlpha %4.2f) | support %4.2f (broad %4.2f steady %4.2f)",
             scores.focus,
@@ -1136,6 +1184,19 @@ final class EEGStateAnalyzer {
             scorer.focusCalmCentroid, scorer.focusBroadEnough, scorer.focusNotAlphaLed,
             scorer.focusSupport,
             scorer.focusBroadEnough, scorer.focusHoldingSteady
+        ))
+
+        print(String(
+            format: "   raw | tilt %+5.2fHz (FAST ramp %+.1f..%+.1f) | spread %+5.2fHz (BROAD ramp %+.1f..%+.1f) | αlead %+5.2fdB (¬α ramp %+.1f..%+.1f) | centroid %5.2f null %5.2f | tension %3.0f blink %3.0f",
+            scorer.focusTiltOffsetHz,
+            scorer.focusTiltOffsetLowHz, scorer.focusTiltOffsetHighHz,
+            scorer.focusSpreadOffsetHz,
+            scorer.broadOffsetLowHz, scorer.broadOffsetHighHz,
+            scorer.focusAlphaLeadDb,
+            scorer.focusNotAlphaLedLowDb, scorer.focusNotAlphaLedHighDb,
+            scorer.focusNullCentroidHz + scorer.focusTiltOffsetHz,
+            scorer.focusNullCentroidHz,
+            latestTensionPct, latestBlinkPct
         ))
     }
 

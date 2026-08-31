@@ -74,7 +74,14 @@ internal class MusePPG {
         resetDetectionState()
         _ppgAnalyzer.resetMetrics()
     }
-    
+
+    /* Manual heart-rate offset from the performer's UI. Beat strength is blended inside the
+     analyzer, so the offset has to reach it there — adding the offset downstream only moves the
+     BPM number, leaving beat strength (and the heartbeat note velocity it drives) deaf to it. */
+    internal func set(heartRateOffsetBPM: Double) {
+        _ppgAnalyzer.heartRateOffsetBPM = heartRateOffsetBPM
+    }
+
     internal var sensor: MusePPGSensor = MusePPGSensor(id: 0)
     private let _ppgAnalyzer: PPGAnalyzer = PPGAnalyzer()
     
@@ -83,11 +90,13 @@ internal class MusePPG {
     private var lastTimestamp: Double = 0.0
     
     private var lastBeatTime: Double = 0.0
-    // Refractory = max(absolute floor, 0.6 × expected heartbeat interval). The dicrotic notch /
-    // double-beat always lands at ~0.3–0.5× the RR interval, so a rate-relative gate rejects it
-    // at any heart rate. The absolute floor (~214 bpm) is the ceiling for genuine fast beats
-    // (kids/exercise). Expected RR is the robust median of recent accepted intervals, so a single
-    // double that slips in can't collapse the gate (which is how the cascade started).
+    // Refractory = max(absolute floor, refractoryFraction × expected heartbeat interval). The
+    // dicrotic notch / double-beat always lands at ~0.3–0.5× the RR interval, so a rate-relative
+    // gate rejects it at any heart rate. The absolute floor (~170 bpm) is the ceiling for genuine
+    // fast beats (kids/exercise) — though the analyzer's own 0.4s NN bound stops anything above
+    // ~150 bpm from reaching a BPM reading, so 150 is the effective limit. Expected RR is the
+    // robust median of recent accepted intervals, so a single double that slips in can't collapse
+    // the gate (which is how the cascade started).
     private let refractoryFloor: Double = 0.353 // ~170 bpm absolute floor
     private let refractoryCeil: Double = 0.50  // ~120 bpm — cap so a polluted (every-other-beat)
                                                // median can't push the gate above real fast beats

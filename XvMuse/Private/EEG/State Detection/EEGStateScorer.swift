@@ -32,6 +32,17 @@ final class EEGStateScorer {
     private(set) var focusFastCentroid: Double = 0.0
     private(set) var focusCalmCentroid: Double = 0.0
     private(set) var focusNotAlphaLed: Double = 1.0
+
+    /* The RAW Hz numbers behind the focus gates, exposed for tuning.
+
+     The gate values alone cannot tell you where to put a threshold — a fast term reading 0.51 is
+     consistent with many different centroid positions depending on where the ramp anchors sit.
+     These are the actual measured offsets from the window's null, which is what the FAST TILT and
+     BROAD keys are expressed in, so a log carrying them can be read straight off into new values. */
+    private(set) var focusTiltOffsetHz: Double = 0.0
+    private(set) var focusSpreadOffsetHz: Double = 0.0
+    private(set) var focusAlphaLeadDb: Double = 0.0
+    private(set) var focusNullCentroidHz: Double = 0.0
     private(set) var meditationAlphaLeadDb: Double = 0.0
     private(set) var meditationAlphaCentroid: Double = 0.0
     private(set) var meditationOrganized: Double = 0.0
@@ -385,6 +396,11 @@ final class EEGStateScorer {
 
         let calmFocus = calmCentroid * broadEnough * notAlphaLed
         let focusShape = max(fastCentroid, calmFocus)
+
+        focusTiltOffsetHz = tiltOffsetHz
+        focusSpreadOffsetHz = spreadOffsetHz
+        focusAlphaLeadDb = bands?.alphaLeadDb ?? 0.0
+        focusNullCentroidHz = nullCentroidHz
 
         //Keep focus detail-first. Low full-spectrum theta is too noisy to use as support here.
         let support = (focusSupportBroadWeight * broadEnough) + (focusSupportSteadyWeight * holdingSteady)
