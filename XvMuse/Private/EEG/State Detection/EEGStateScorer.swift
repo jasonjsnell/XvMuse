@@ -99,8 +99,8 @@ final class EEGStateScorer {
 
      Both are offsets in Hz from nullCentroidHz. Fast focus needs the centroid to have actually
      moved up; sitting at the null earns 0.20, not 0.79. */
-    var focusTiltOffsetLowHz: Double = -0.5
-    var focusTiltOffsetHighHz: Double = 2.0
+    var focusTiltOffsetLowHz: Double = -0.8
+    var focusTiltOffsetHighHz: Double = 1.2
     var calmFocusTiltOffsetHz: Double = -1.5
     var calmFocusTiltRadiusHz: Double = 1.4
 
@@ -127,7 +127,7 @@ final class EEGStateScorer {
      (median +0.1). Dreamy's band is deliberately the wider of the two because theta genuinely
      led half the frames in that recording and the score never moved. */
     var meditationAlphaLeadLowDb: Double = -2.0
-    var meditationAlphaLeadHighDb: Double = 1.0
+    var meditationAlphaLeadHighDb: Double = 0.0
 
     /* Alpha waxes and wanes in 1-2s waves even in deep meditation, so the instantaneous lead
      flips the gate on and off and the smoothed score settles at the wave duty cycle — measured
@@ -161,7 +161,7 @@ final class EEGStateScorer {
     var dreamyThetaLeadHighDb: Double = 3.0
 
     //alpha pulls the centroid below the null; how far below still counts as alpha-shaped
-    var meditationTiltOffsetHz: Double = -2.0
+    var meditationTiltOffsetHz: Double = -1.0
     var meditationTiltRadiusHz: Double = 3.0
 
     /* Spread thresholds, also offsets — from nullSpreadHz this time.
@@ -171,10 +171,10 @@ final class EEGStateScorer {
      `organized` read 0.00 in 79 of 81 frames. Being organized means being narrower than the null,
      which is only expressible as an offset. */
     var organizedOffsetLowHz: Double = -0.8
-    var organizedOffsetHighHz: Double = 0.0
+    var organizedOffsetHighHz: Double = 0.4
 
-    var broadOffsetLowHz: Double = -0.6
-    var broadOffsetHighHz: Double = 0.8
+    var broadOffsetLowHz: Double = -1.2
+    var broadOffsetHighHz: Double = 0.0
 
     /* Was meditation's low-voltage veto; now observation only, logged as `awake` but not
      multiplied into the score. Relaxed states do not gate each other — see scoreMeditation. */
@@ -214,14 +214,14 @@ final class EEGStateScorer {
     //focus: support = broadWeight*broadEnough + steadyWeight*holdingSteady; score = shape*(base + span*support)
     var focusSupportBroadWeight: Double = 0.55
     var focusSupportSteadyWeight: Double = 0.45
-    var focusBaseOffset: Double = 0.45
-    var focusSupportSpan: Double = 0.55
+    var focusBaseOffset: Double = 0.55
+    var focusSupportSpan: Double = 0.45
 
     //meditation: support = centroidW*alphaCentroid + organizedW*organized + steadyW*steady
     var medSupportCentroidWeight: Double = 0.35
     var medSupportOrganizedWeight: Double = 0.35
     var medSupportSteadyWeight: Double = 0.30
-    var medBaseOffset: Double = 0.40
+    var medBaseOffset: Double = 0.55
     var medSupportSpan: Double = 0.60
 
     //dreamy: short-memory theta-lead ramp (deliberately 1 dB looser than the 6 s gate)

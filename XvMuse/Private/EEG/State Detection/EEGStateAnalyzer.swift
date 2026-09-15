@@ -48,7 +48,7 @@ final class EEGStateAnalyzer {
 
     //centroid-SD (Hz) bounds for the steadiness ramp (runtime-tunable)
     private var stabilityLowSD: Double = 0.25
-    private var stabilityHighSD: Double = 1.6
+    private var stabilityHighSD: Double = 2.2
 
     //how far back the "is the centroid parked or wandering" judgement looks
     private let stabilityWindow: TimeInterval = 8.0

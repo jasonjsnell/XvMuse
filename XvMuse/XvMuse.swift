@@ -1151,8 +1151,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
 
     /* Return one parameter to its code default. For most keys the descriptor default IS the
-     code default, so a plain set suffices — but the quiet anchors are PER-DEVICE (muse2 0.5/13.0,
-     museS 1.5/10.5, athena -4.5/9.0), so resetting them must CLEAR the user override and restore
+     code default, so a plain set suffices — but the quiet anchors are PER-DEVICE (muse2 -0.5/2.5,
+     museS -0.5/2.5, athena -5.5/-1.5), so resetting them must CLEAR the user override and restore
      the identified device's own calibration, not install the descriptor (muse2) numbers. */
     public func resetStateTuning(key: String) {
         switch key {
@@ -1755,37 +1755,37 @@ public struct XvEEGStateTuningParameter {
         XvEEGStateTuningParameter("gates.scoreSmoothing", "SCORE SMOOTH", "gates", 0.18, 0.02, 0.9, 0.01),
         XvEEGStateTuningParameter("gates.blockedFadeSmoothing", "BLOCKED FADE", "gates", 0.05, 0.01, 0.5, 0.01),
         XvEEGStateTuningParameter("gates.stabilityLowSD", "STEADY SD LO", "gates", 0.25, 0.05, 2.0, 0.05),
-        XvEEGStateTuningParameter("gates.stabilityHighSD", "STEADY SD HI", "gates", 1.6, 0.3, 5.0, 0.05),
+        XvEEGStateTuningParameter("gates.stabilityHighSD", "STEADY SD HI", "gates", 2.2, 0.3, 5.0, 0.05),
 
         //MARK: meditation
         XvEEGStateTuningParameter("med.alphaLeadLowDb", "αLEAD LO dB", "med", -2.0, -8.0, 4.0, 0.1),
-        XvEEGStateTuningParameter("med.alphaLeadHighDb", "αLEAD HI dB", "med", 1.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("med.alphaLeadHighDb", "αLEAD HI dB", "med", 0.0, -4.0, 8.0, 0.1),
         XvEEGStateTuningParameter("med.alphaLeadSmoothing", "αLEAD SMOOTH", "med", 0.10, 0.02, 1.0, 0.01),
         XvEEGStateTuningParameter("med.earAlphaLeadLowDb", "EAR αLD LO dB", "med", 1.0, -4.0, 8.0, 0.1),
         XvEEGStateTuningParameter("med.earAlphaLeadHighDb", "EAR αLD HI dB", "med", 5.0, 0.0, 12.0, 0.1),
-        XvEEGStateTuningParameter("med.tiltOffsetHz", "TILT CTR Hz", "med", -2.0, -6.0, 2.0, 0.1),
+        XvEEGStateTuningParameter("med.tiltOffsetHz", "TILT CTR Hz", "med", -1.0, -6.0, 2.0, 0.1),
         XvEEGStateTuningParameter("med.tiltRadiusHz", "TILT RAD Hz", "med", 3.0, 0.5, 8.0, 0.1),
         XvEEGStateTuningParameter("med.organizedLowHz", "ORG LO Hz", "med", -0.8, -4.0, 2.0, 0.1),
-        XvEEGStateTuningParameter("med.organizedHighHz", "ORG HI Hz", "med", 0.0, -2.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("med.organizedHighHz", "ORG HI Hz", "med", 0.4, -2.0, 4.0, 0.1),
         XvEEGStateTuningParameter("med.supportCentroidWeight", "W CENTROID", "med", 0.35, 0.0, 1.0, 0.05),
         XvEEGStateTuningParameter("med.supportOrganizedWeight", "W ORGANIZED", "med", 0.35, 0.0, 1.0, 0.05),
         XvEEGStateTuningParameter("med.supportSteadyWeight", "W STEADY", "med", 0.30, 0.0, 1.0, 0.05),
-        XvEEGStateTuningParameter("med.baseOffset", "BASE", "med", 0.40, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("med.baseOffset", "BASE", "med", 0.55, 0.0, 1.0, 0.05),
         XvEEGStateTuningParameter("med.supportSpan", "SUPPORT SPAN", "med", 0.60, 0.0, 1.0, 0.05),
 
         //MARK: focus
-        XvEEGStateTuningParameter("focus.tiltLowHz", "FAST TILT LO", "focus", -0.5, -4.0, 6.0, 0.1),
-        XvEEGStateTuningParameter("focus.tiltHighHz", "FAST TILT HI", "focus", 2.0, -2.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("focus.tiltLowHz", "FAST TILT LO", "focus", -0.8, -4.0, 6.0, 0.1),
+        XvEEGStateTuningParameter("focus.tiltHighHz", "FAST TILT HI", "focus", 1.2, -2.0, 8.0, 0.1),
         XvEEGStateTuningParameter("focus.calmTiltOffsetHz", "CALM CTR Hz", "focus", -1.5, -5.0, 3.0, 0.1),
         XvEEGStateTuningParameter("focus.calmTiltRadiusHz", "CALM RAD Hz", "focus", 1.4, 0.3, 6.0, 0.1),
-        XvEEGStateTuningParameter("focus.broadLowHz", "BROAD LO Hz", "focus", -0.6, -4.0, 2.0, 0.1),
-        XvEEGStateTuningParameter("focus.broadHighHz", "BROAD HI Hz", "focus", 0.8, -2.0, 4.0, 0.1),
+        XvEEGStateTuningParameter("focus.broadLowHz", "BROAD LO Hz", "focus", -1.2, -4.0, 2.0, 0.1),
+        XvEEGStateTuningParameter("focus.broadHighHz", "BROAD HI Hz", "focus", 0.0, -2.0, 4.0, 0.1),
         XvEEGStateTuningParameter("focus.notAlphaLedLowDb", "¬α LO dB", "focus", -1.0, -6.0, 4.0, 0.1),
         XvEEGStateTuningParameter("focus.notAlphaLedHighDb", "¬α HI dB", "focus", 1.0, -4.0, 6.0, 0.1),
         XvEEGStateTuningParameter("focus.supportBroadWeight", "W BROAD", "focus", 0.55, 0.0, 1.0, 0.05),
         XvEEGStateTuningParameter("focus.supportSteadyWeight", "W STEADY", "focus", 0.45, 0.0, 1.0, 0.05),
-        XvEEGStateTuningParameter("focus.baseOffset", "BASE", "focus", 0.45, 0.0, 1.0, 0.05),
-        XvEEGStateTuningParameter("focus.supportSpan", "SUPPORT SPAN", "focus", 0.55, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("focus.baseOffset", "BASE", "focus", 0.55, 0.0, 1.0, 0.05),
+        XvEEGStateTuningParameter("focus.supportSpan", "SUPPORT SPAN", "focus", 0.45, 0.0, 1.0, 0.05),
 
         //MARK: dreamy
         XvEEGStateTuningParameter("dreamy.thetaLeadLowDb", "θLEAD LO dB", "dreamy", 0.0, -4.0, 6.0, 0.1),
@@ -1819,7 +1819,7 @@ public struct XvEEGStateTuningParameter {
         /* NOTE: code defaults are per-device (muse2 0.5/13.0, museS 1.5/10.5, athena -4.5/9.0).
          The descriptor defaults below are the legacy/muse2 anchors; an untouched control leaves
          the per-device calibration in place — it only overrides once the user adjusts it. */
-        XvEEGStateTuningParameter("quiet.quietDb", "QUIET dB", "quiet", 0.5, -15.0, 15.0, 0.5),
-        XvEEGStateTuningParameter("quiet.loudDb", "LOUD dB", "quiet", 13.0, -5.0, 30.0, 0.5),
+        XvEEGStateTuningParameter("quiet.quietDb", "QUIET dB", "quiet", -0.5, -15.0, 15.0, 0.5),
+        XvEEGStateTuningParameter("quiet.loudDb", "LOUD dB", "quiet", 2.5, -5.0, 30.0, 0.5),
     ]
 }
