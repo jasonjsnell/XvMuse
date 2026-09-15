@@ -12,14 +12,16 @@ import XvSensors
 //created when a heartbeat is detected
 internal struct MusePPGHeartEvent {
     
-    init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0) {
+    init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0, hrvBaseline:Double = 50.0) {
         self.bpm = bpm
         self.pulseStrength = pulseStrength
         self.sdnn = sdnn
+        self.hrvBaseline = hrvBaseline
     }
     var bpm:Double
     var pulseStrength:Double
     var sdnn:Double
+    var hrvBaseline:Double //0-100 HR-corrected HRV, 50 = on the wearer's master curve
 }
 
 //continuous data stream of bloodflow and respiratory data
@@ -80,6 +82,15 @@ internal class MusePPG {
      BPM number, leaving beat strength (and the heartbeat note velocity it drives) deaf to it. */
     internal func set(heartRateOffsetBPM: Double) {
         _ppgAnalyzer.heartRateOffsetBPM = heartRateOffsetBPM
+    }
+
+    //HR-corrected HRV master curve, exposed so the app can persist it across sessions
+    internal func hrvMasterCurveSnapshot() -> [Double] {
+        return _ppgAnalyzer.masterCurveSnapshot()
+    }
+
+    internal func restoreHRVMasterCurve(_ snapshot: [Double]) {
+        _ppgAnalyzer.restoreMasterCurve(snapshot)
     }
 
     internal var sensor: MusePPGSensor = MusePPGSensor(id: 0)
@@ -163,8 +174,10 @@ internal class MusePPG {
             }
             // On the clean→blocked transition, emit a single -1 sentinel so the UI renders
             // a dash instead of stale heart values. Silent while it stays blocked.
+            // hrvBaseline must be -1 too: its default (50) is a VALID neutral reading, and a
+            // sentinel carrying it would feed the mixers fabricated data all through the block.
             let blockedEvent: MusePPGHeartEvent? = prevAllowedHeartMetrics
-                ? MusePPGHeartEvent(bpm: -1, pulseStrength: -1, sdnn: -1)
+                ? MusePPGHeartEvent(bpm: -1, pulseStrength: -1, sdnn: -1, hrvBaseline: -1)
                 : nil
             prevAllowedHeartMetrics = false
             return MusePPGResult(heartEvent: blockedEvent, streams: streams)
@@ -348,7 +361,8 @@ internal class MusePPG {
                 heartEvent = MusePPGHeartEvent(
                     bpm: bpm,
                     pulseStrength: ppgAnalysis.beatStrength,
-                    sdnn: ppgAnalysis.sdnnMs
+                    sdnn: ppgAnalysis.sdnnMs,
+                    hrvBaseline: ppgAnalysis.hrvBaseline
                 )
             } else {
                 var reasons: [String] = []

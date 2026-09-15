@@ -53,9 +53,12 @@ final class EEGStateAnalyzer {
     //how far back the "is the centroid parked or wandering" judgement looks
     private let stabilityWindow: TimeInterval = 8.0
 
-    //detail-window power range used for the 0...1 intensity dimension
-    private let intensityLowLogPower: Double = 0.0
-    private let intensityHighLogPower: Double = 3.0
+    /* Detail-window power range used for the 0...1 intensity dimension. Absolute log-power
+     anchors, so they carry the hardware's amplitude scale: defaults are the Muse 2 numbers,
+     and device identification installs Athena's (~0.5 log10 lower) via the
+     gates.intensityLowLogPower / gates.intensityHighLogPower tuning keys. */
+    private var intensityLowLogPower: Double = 0.0
+    private var intensityHighLogPower: Double = 3.0
 
     //ignore bins the filter has pushed below half amplitude; correcting them amplifies noise
     private let minimumFilterResponse: Double = 0.5
@@ -66,19 +69,34 @@ final class EEGStateAnalyzer {
     private let logStates: Bool = true
     private let logInterval: TimeInterval = 1.0
 
+    /* Short headset tag for the summary lines, set by XvMuse at device identification, so a
+     pasted log excerpt names its own hardware — the same-brain A/B sessions needed hand labels. */
+    var deviceLabel: String = "?"
+
     /* Detail is the per-second dump for each state; the summaries are one line per state per
      window with the distribution. For a labeled calibration run (the pre-recorded Muse 2 state
      sets) set logStateDetail to false — a handful of summary lines describe a session better
-     than 500 instantaneous ones, and can actually be pasted. */
-    private let logStateDetail: Bool = true
-    ///FOCUS-ONLY MODE. Set true to bring the meditation and dreamy dumps back.
-    private let logMeditationAndDreamy: Bool = false
+     than 500 instantaneous ones, and can actually be pasted.
+     OFF for the HRV test round (Sep 2026) so the HRV master-curve log stays readable. */
+    private let logStateDetail: Bool = false
+    /* Per-state log switches — turn ONE on for a tuning session so the console stays readable.
+     Currently MEDITATION mode: alpha isn't rising on the Athena for anyone, so med gets the
+     microscope. Both the per-second dumps and the 10s summaries follow these. */
+    private let logFocusState: Bool = false
+    private let logMeditationState: Bool = true
+    private let logDreamyState: Bool = true
     private let stateSummaryInterval: TimeInterval = 10.0
     private var stateSummaryStart: Date? = nil
     private var dreamySamples: [DreamySample] = []
     private var focusSamples: [FocusSample] = []
     private var medSamples: [MedSample] = []
     private var dreamyRejectedFrames: Int = 0
+    /* Structure of the blocked frames, per summary window. 25% blocked spread evenly is
+     survivable; the same 25% in a few long runs drags the smoothed score to zero each time —
+     and whether blink or tension did the blocking names the detector to go look at. */
+    private var blockedCurrentRun: Int = 0
+    private var blockedMaxRun: Int = 0
+    private var blockedBlinkFrames: Int = 0
 
     private struct DreamySample {
         let score: Double
@@ -114,6 +132,8 @@ final class EEGStateAnalyzer {
 
     private struct MedSample {
         let score: Double
+        //this frame's UNsmoothed score — published score minus the smoothing lag/drag
+        let rawScore: Double
         let alphaLeadDb: Double
         let alphaLeads: Double
         let centroid: Double
@@ -121,6 +141,14 @@ final class EEGStateAnalyzer {
         let steady: Double
         let support: Double
         let limitName: String
+        //raw Hz offsets from the window null — what a new CTR/ORG anchor is read off
+        let tiltHz: Double
+        let spreadHz: Double
+        //detrended band residuals (γ raw — it sits outside the 1/f fit), for the α/β see-saw
+        let thetaDb: Double
+        let alphaDb: Double
+        let betaDb: Double
+        let gammaDb: Double
     }
     private var lastLogTime: Date? = nil
     private let launchTime = Date()
@@ -401,6 +429,53 @@ final class EEGStateAnalyzer {
         if blink > blinkHardBlockPct {
             latestEffectiveCleanPct = min(latestEffectiveCleanPct, 20.0)
         }
+    }
+
+    /* Ear-pair (TP9/TP10) bands. The five-cycle alpha-blocking test proved this wearer's alpha
+     appears at the ears (+5 to +11 dB on closure) and not the forehead, so meditation's alpha
+     gate now reads these — but only as far as they can be trusted.
+
+     EAR CONFIDENCE (0-1) is the routing signal, and its evidence is the SAME per-sensor noise
+     model that drives the interface's sensor symbols (MLManager.noiseProbability) — one noise
+     system, one opinion everywhere. XvMuse judges each valid ear with it and passes the worse
+     ear's 0-100 noise here; hair over an ear pad is the routine failure for long-haired wearers
+     and reads as high noise on that model. The trust ramp uses the interface's own "good
+     sensor" line: noise at or under 25 fully trusted, 60 or worse fully distrusted.
+
+     Confidence moves asymmetrically: it collapses quickly when the noise model turns bad (half
+     the gap per frame) and recovers slowly (5% per frame, ~5 s) — so a hair-blocked ear routes
+     to the forehead within a second or two, and the blend back never produces an audible jump
+     in the music. */
+    private(set) var latestEarBands: BandBalance? = nil
+    private(set) var earConfidence: Double = 0.0
+    private var latestEarNoisePct: Double = 100.0
+
+    func updateEarBands(
+        delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double,
+        noisePct: Double
+    ) {
+        let levels = [delta, theta, alpha, beta, gamma]
+        guard levels.allSatisfy({ $0.isFinite }), noisePct.isFinite else { return }
+        //five identical values = the unfilled-buffer frame, same reject rule as updateBands
+        guard let lo = levels.min(), let hi = levels.max(), hi - lo > 1e-9 else { return }
+        latestEarBands = BandBalance(
+            delta: delta, theta: theta, alpha: alpha, beta: beta, gamma: gamma,
+            quiet: 0.0, quietDb: 0.0
+        )
+        latestEarNoisePct = noisePct
+
+        //noise <= 25 (the interface's "good sensor" line) trusts fully; 60+ distrusts fully
+        let instant = 1.0 - min(1.0, max(0.0, (noisePct - 25.0) / 35.0))
+        let factor = instant < earConfidence ? 0.5 : 0.05
+        earConfidence += factor * (instant - earConfidence)
+    }
+
+    /* Called when the sides region hands back no spectrum at all — ear sensors disabled in the
+     UI, or both pads invalid. Confidence collapses and the gate routes fully to the forehead. */
+    func earBandsUnavailable() {
+        latestEarBands = nil
+        latestEarNoisePct = 100.0
+        earConfidence += 0.5 * (0.0 - earConfidence)
     }
 
     /* Band levels in dB. Call before processDetailSpectrum; the stored values are delayed briefly
@@ -802,6 +877,8 @@ final class EEGStateAnalyzer {
         case "gates.blockedFadeSmoothing": blockedFadeSmoothing = value
         case "gates.stabilityLowSD": stabilityLowSD = value
         case "gates.stabilityHighSD": stabilityHighSD = value
+        case "gates.intensityLowLogPower": intensityLowLogPower = value
+        case "gates.intensityHighLogPower": intensityHighLogPower = value
         case "dreamy.tensionDampOnset": RelaxedStateGate.tensionOnset = value
         case "dreamy.tensionDampFull": RelaxedStateGate.tensionFull = value
         case "dreamy.tensionDampFloor": RelaxedStateGate.floor = value
@@ -859,6 +936,8 @@ final class EEGStateAnalyzer {
             logPower: features.logPower,
             stability: steadiness,
             bands: latestBands,
+            earAlphaLeadDb: latestEarBands?.alphaLeadDb,
+            earConfidence: earConfidence,
             tension: latestTensionPct,
             thetaProminenceDb: latestThetaProminenceDb,
             smoothing: scoreSmoothing
@@ -960,20 +1039,20 @@ final class EEGStateAnalyzer {
         guard logStateDetail else { return }
 
         let elapsed = now.timeIntervalSince(launchTime)
-        logFocus(scores: scores, elapsed: elapsed)
-
-        //MED and DREAMY silenced while FOCUS is being tuned — flip back on when their turn comes
-        if logMeditationAndDreamy {
-            logMeditation(scores: scores, elapsed: elapsed)
-            logDreamy(scores: scores, elapsed: elapsed)
-        }
+        if logFocusState { logFocus(scores: scores, elapsed: elapsed) }
+        if logMeditationState { logMeditation(scores: scores, elapsed: elapsed) }
+        if logDreamyState { logDreamy(scores: scores, elapsed: elapsed) }
     }
 
     private func accumulateStateSamples(scores: (meditation: Double, focus: Double, dreamy: Double)) {
-        guard latestBands != nil else {
+        guard let bands = latestBands else {
             dreamyRejectedFrames += 1
+            blockedCurrentRun += 1
+            blockedMaxRun = max(blockedMaxRun, blockedCurrentRun)
+            if latestBlinkPct >= 15.0 { blockedBlinkFrames += 1 }
             return
         }
+        blockedCurrentRun = 0
 
         let lowEndTerm = scorer.dreamyBaseOffset + (scorer.dreamySupportSpan * scorer.dreamySupport)
         let terms: [(name: String, value: Double)] = [
@@ -1038,13 +1117,25 @@ final class EEGStateAnalyzer {
         }
         medSamples.append(MedSample(
             score: scores.meditation,
-            alphaLeadDb: scorer.meditationAlphaLeadDb,
+            rawScore: min(100.0, 100.0 * scorer.medGate
+                * (scorer.medBaseOffset + (scorer.medSupportSpan * scorer.medSupport))),
+            //the SMOOTHED lead — what the gate actually acts on, so summary percentiles
+            //stay the right numbers to read new anchors off
+            alphaLeadDb: scorer.meditationSmoothedAlphaLeadDb,
             alphaLeads: scorer.medGate,
             centroid: scorer.meditationAlphaCentroid,
             organized: scorer.meditationOrganized,
             steady: scorer.meditationHoldingSteady,
             support: scorer.medSupport,
-            limitName: medLimit
+            limitName: medLimit,
+            //tilt/spread offsets are state-independent measurements; the scorer publishes them
+            //on its focus-named fields once per frame regardless of which states are logged
+            tiltHz: scorer.focusTiltOffsetHz,
+            spreadHz: scorer.focusSpreadOffsetHz,
+            thetaDb: bands.thetaResidual,
+            alphaDb: bands.alphaResidual,
+            betaDb: bands.betaResidual,
+            gammaDb: bands.gamma
         ))
     }
 
@@ -1078,23 +1169,34 @@ final class EEGStateAnalyzer {
         let focus = focusSamples
         let med = medSamples
         let rejected = dreamyRejectedFrames
+        let maxRun = blockedMaxRun
+        let blinkBlocked = blockedBlinkFrames
         dreamySamples.removeAll(keepingCapacity: true)
         focusSamples.removeAll(keepingCapacity: true)
         medSamples.removeAll(keepingCapacity: true)
         dreamyRejectedFrames = 0
+        blockedMaxRun = 0
+        blockedBlinkFrames = 0
 
         guard !dreamy.isEmpty else {
-            print(String(format: "STATE SUMMARY | t:%6.1f | NO USABLE FRAMES (%d rejected)",
-                         elapsed, rejected))
+            print(String(format: "STATE SUMMARY | t:%6.1f | NO USABLE FRAMES (%d rejected) | dev %@",
+                         elapsed, rejected, deviceLabel))
             return
         }
 
+        if logDreamyState { emitDreamySummary(dreamy: dreamy, rejected: rejected, elapsed: elapsed) }
+        if logFocusState { emitFocusSummary(focus: focus, elapsed: elapsed) }
+        if logMeditationState {
+            emitMedSummary(
+                med: med, rejected: rejected,
+                maxRun: maxRun, blinkBlocked: blinkBlocked,
+                elapsed: elapsed
+            )
+        }
+    }
+
+    private func emitDreamySummary(dreamy: [DreamySample], rejected: Int, elapsed: TimeInterval) {
         func med3(_ values: [Double]) -> Double { percentile(values, 0.5) }
-
-        guard logMeditationAndDreamy else {
-            emitFocusSummary(focus: focus, elapsed: elapsed)
-            return
-        }
 
         let dreamyScores = dreamy.map(\.score)
         let leads = dreamy.map(\.smoothedLead)
@@ -1112,18 +1214,63 @@ final class EEGStateAnalyzer {
             dreamyLimit.name, dreamyLimit.share,
             med3(dreamy.map(\.tension)), med3(dreamy.map(\.blink)), med3(dreamy.map(\.clean))
         ))
+    }
 
-        emitFocusSummary(focus: focus, elapsed: elapsed)
+    /* MED SUMMARY — the distribution over the window plus the raw measurements' percentiles,
+     mirroring FOCUS SUMMARY.
+
+     `blocked` counts frames the artifact screen held the bands back on: the score freezes on
+     those frames and they never enter these percentiles. Max run and the blink-driven count say
+     whether the freezes come in long, blink-caused streaks — the Athena eyes-closed signature. */
+    private func emitMedSummary(
+        med: [MedSample], rejected: Int, maxRun: Int, blinkBlocked: Int, elapsed: TimeInterval
+    ) {
+        guard !med.isEmpty else {
+            print(String(
+                format: "MED SUMMARY    | t:%6.1f | NO USABLE FRAMES (%d blocked, max run %d, blink-driven %d) | dev %@",
+                elapsed, rejected, maxRun, blinkBlocked, deviceLabel
+            ))
+            return
+        }
+        func med3(_ values: [Double]) -> Double { percentile(values, 0.5) }
 
         let medScores = med.map(\.score)
         let medLimit = topLimit(med.map(\.limitName))
         print(String(
-            format: "MED SUMMARY    | t:%6.1f | med %3.0f p10 %3.0f p90 %3.0f | alphaLead med %+5.2fdB gate %4.2f | centroid %4.2f organized %4.2f steady %4.2f | LIMIT %@ %2.0f%%",
+            format: "MED SUMMARY    | t:%6.1f | frames %3d (blocked %2d, max run %d, blink-driven %d) | med %3.0f p10 %3.0f p90 %3.0f | RAW med %3.0f p90 %3.0f | alphaLead med %+5.2fdB gate %4.2f | centroid %4.2f organized %4.2f steady %4.2f | LIMIT %@ %2.0f%% | dev %@",
             elapsed,
+            med.count, rejected, maxRun, blinkBlocked,
             med3(medScores), percentile(medScores, 0.1), percentile(medScores, 0.9),
+            med3(med.map(\.rawScore)), percentile(med.map(\.rawScore), 0.9),
             med3(med.map(\.alphaLeadDb)), med3(med.map(\.alphaLeads)),
             med3(med.map(\.centroid)), med3(med.map(\.organized)), med3(med.map(\.steady)),
-            medLimit.name, medLimit.share
+            medLimit.name, medLimit.share, deviceLabel
+        ))
+
+        /* The tuning line. If αlead p90 sits below the gate's low anchor, the alpha lead this
+         headset measures never even enters the ramp — retune med.alphaLeadLowDb off p10/p90
+         the same way focus.tiltHighHz was read off the tilt percentiles. */
+        let alphaLeads = med.map(\.alphaLeadDb)
+        print(String(
+            format: "   tuning | αlead p10 %+5.2f med %+5.2f p90 %+5.2f (gate %+.1f..%+.1f) | tilt p10 %+5.2f med %+5.2f p90 %+5.2f (CTR %+.1f±%.1f) | spread p10 %+5.2f med %+5.2f p90 %+5.2f (ORG %+.1f..%+.1f)",
+            percentile(alphaLeads, 0.1), med3(alphaLeads), percentile(alphaLeads, 0.9),
+            scorer.meditationAlphaLeadLowDb, scorer.meditationAlphaLeadHighDb,
+            percentile(med.map(\.tiltHz), 0.1), med3(med.map(\.tiltHz)),
+            percentile(med.map(\.tiltHz), 0.9),
+            scorer.meditationTiltOffsetHz, scorer.meditationTiltRadiusHz,
+            percentile(med.map(\.spreadHz), 0.1), med3(med.map(\.spreadHz)),
+            percentile(med.map(\.spreadHz), 0.9),
+            scorer.organizedOffsetLowHz, scorer.organizedOffsetHighHz
+        ))
+
+        //the α/β see-saw over the window — full distributions for the pair, medians for θ/γ
+        print(String(
+            format: "   bands | α p10 %+5.2f med %+5.2f p90 %+5.2f | β p10 %+5.2f med %+5.2f p90 %+5.2f | θ med %+5.2f | γ med %+6.2f raw",
+            percentile(med.map(\.alphaDb), 0.1), med3(med.map(\.alphaDb)),
+            percentile(med.map(\.alphaDb), 0.9),
+            percentile(med.map(\.betaDb), 0.1), med3(med.map(\.betaDb)),
+            percentile(med.map(\.betaDb), 0.9),
+            med3(med.map(\.thetaDb)), med3(med.map(\.gammaDb))
         ))
     }
 
@@ -1202,19 +1349,77 @@ final class EEGStateAnalyzer {
 
     /* MEDITATION DIAGNOSTIC. awake is measured but not multiplied in — printed so its absence
      from the product can be verified rather than trusted. */
+    /* MEDITATION DIAGNOSTIC — same design as focus's two-line dump.
+
+     Line 1: the score and WHICH term is limiting (the gate is a hard multiplier; support only
+     scales it). Line 2: the raw dB/Hz measurements next to the thresholds acting on them —
+     WHERE to move an anchor.
+
+     The frame with no usable bands is the special case worth its own line: the artifact screen
+     (blink/tension pre-roll) holds the bands back and the score FREEZES at its last value —
+     it used to hard-zero, which made eyes-closed sessions (full of false blinks from eye rolls)
+     read as "alpha never rises". The blocked state is printed loudly so a freeze-heavy window
+     is visible instead of silently reusing last frame's numbers. */
     private func logMeditation(
         scores: (meditation: Double, focus: Double, dreamy: Double),
         elapsed: TimeInterval
     ) {
+        guard let bands = latestBands else {
+            print(String(
+                format: "MED    %3.0f | BANDS BLOCKED — artifact screen, score frozen at last value | tension %3.0f blink %3.0f clean %3.0f",
+                scores.meditation, latestTensionPct, latestBlinkPct, latestEffectiveCleanPct
+            ))
+            logEarBands()
+            return
+        }
+
         print(String(
-            format: "MED    %3.0f | alphaLead %+5.2fdB gate x%4.2f (opens %+.1f..%+.1f) | support %4.2f (centroid %4.2f organized %4.2f steady %4.2f) | awake %4.2f (unused)",
+            format: "MED    %3.0f raw %3.0f | alphaLead x%4.2f | support %4.2f (centroid %4.2f organized %4.2f steady %4.2f)",
             scores.meditation,
-            scorer.meditationAlphaLeadDb,
+            min(100.0, 100.0 * scorer.medGate
+                * (scorer.medBaseOffset + (scorer.medSupportSpan * scorer.medSupport))),
             scorer.medGate,
-            scorer.meditationAlphaLeadLowDb, scorer.meditationAlphaLeadHighDb,
             scorer.medSupport,
-            scorer.meditationAlphaCentroid, scorer.meditationOrganized, scorer.meditationHoldingSteady,
-            scorer.meditationAwakeEnough
+            scorer.meditationAlphaCentroid, scorer.meditationOrganized, scorer.meditationHoldingSteady
+        ))
+
+        print(String(
+            format: "   raw | αlead %+5.2f sm %+5.2fdB (gate ramp %+.1f..%+.1f on sm) | tilt %+5.2fHz (CTR %+.1f±%.1f) | spread %+5.2fHz (ORG ramp %+.1f..%+.1f) | centroid %5.2f null %5.2f | tension %3.0f blink %3.0f clean %3.0f",
+            scorer.meditationAlphaLeadDb,
+            scorer.meditationSmoothedAlphaLeadDb,
+            scorer.meditationAlphaLeadLowDb, scorer.meditationAlphaLeadHighDb,
+            scorer.focusTiltOffsetHz,
+            scorer.meditationTiltOffsetHz, scorer.meditationTiltRadiusHz,
+            scorer.focusSpreadOffsetHz,
+            scorer.organizedOffsetLowHz, scorer.organizedOffsetHighHz,
+            scorer.focusNullCentroidHz + scorer.focusTiltOffsetHz, scorer.focusNullCentroidHz,
+            latestTensionPct, latestBlinkPct, latestEffectiveCleanPct
+        ))
+
+        /* The see-saw view: alpha and beta trade off through a session, and a flat alpha with a
+         hot beta is a different problem (person not relaxing / EMG bleed) than both being flat
+         (measurement or calibration). θ/α/β are 1/f-detrended residuals — the oscillation above
+         the background slope, so they compare fairly. γ is raw dB: it is excluded from the fit
+         (the slope flattens up there) so it has no residual; read its movement, not its level. */
+        print(String(
+            format: " bands | θ %+5.2f  α %+5.2f  β %+5.2f (detrended dB) | γ %+6.2f raw dB",
+            bands.thetaResidual, bands.alphaResidual, bands.betaResidual, bands.gamma
+        ))
+        logEarBands()
+    }
+
+    /* The ear pair's answer to the forehead's `bands` line, αlead included so the meditation
+     gate's own measurement can be compared across locations frame by frame. Silent when the ear
+     sensors are disabled in the UI (no sides spectrum ever arrives). */
+    private func logEarBands() {
+        guard let ears = latestEarBands else { return }
+        print(String(
+            format: "  ears | θ %+5.2f  α %+5.2f  β %+5.2f (detrended dB) | αlead %+5.2f sm %+5.2fdB (ramp %+.1f..%+.1f) | noise %3.0f conf %4.2f gate ear x%4.2f front x%4.2f | γ %+6.2f raw dB",
+            ears.thetaResidual, ears.alphaResidual, ears.betaResidual,
+            ears.alphaLeadDb, scorer.meditationEarLeadSmoothedDb,
+            scorer.meditationEarAlphaLeadLowDb, scorer.meditationEarAlphaLeadHighDb,
+            latestEarNoisePct, earConfidence, scorer.meditationEarGate, scorer.meditationFrontGate,
+            ears.gamma
         ))
     }
 

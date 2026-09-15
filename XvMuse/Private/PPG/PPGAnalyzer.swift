@@ -3,6 +3,7 @@ struct PPGAnalysisPacket {
     var sdnnMs: Double     // SDNN in ms
     var rmssdMs: Double    // RMSSD in ms
     var hrvIndex: Double   // 0–100 scaled HRV index (from RMSSD)
+    var hrvBaseline: Double // 0–100 HR-corrected HRV: 50 = personal expected RMSSD at this HR
     var beatStrength: Double // 0–1 kick driver: flipped perfusion blended with normalized BPM
     var rawSdnnMs: Double
     var rawRmssdMs: Double
@@ -15,6 +16,7 @@ struct PPGAnalysisPacket {
         sdnnMs: Double,
         rmssdMs: Double,
         hrvIndex: Double,
+        hrvBaseline: Double,
         beatStrength: Double,
         rawSdnnMs: Double,
         rawRmssdMs: Double,
@@ -26,6 +28,7 @@ struct PPGAnalysisPacket {
         self.sdnnMs = sdnnMs
         self.rmssdMs = rmssdMs
         self.hrvIndex = hrvIndex
+        self.hrvBaseline = hrvBaseline
         self.beatStrength = beatStrength
         self.rawSdnnMs = rawSdnnMs
         self.rawRmssdMs = rawRmssdMs
@@ -72,6 +75,46 @@ class PPGAnalyzer {
     private let strengthBpmMin: Double = 60.0
     private let strengthBpmMax: Double = 150.0
     private let strengthAmpWeight: Double = 0.5 // 0 = all BPM, 1 = all flipped-amplitude
+
+    /* HR-CORRECTED HRV: THE MASTER CURVE.
+
+     RMSSD is mathematically entangled with heart rate — as HR rises, beat-to-beat variability
+     shrinks roughly exponentially for mechanical reasons, so a falling RMSSD can mean "stress"
+     or just "heart sped up". Following Rudics et al. (Biomedicines 2025, 13:81), we learn this
+     wearer's own RMSSD-vs-HR relationship (the "master curve") and report variability RELATIVE
+     to it: how variable is this heart compared to what is normal FOR IT at this exact rate.
+
+     The curve is a set of 5-BPM bins over 40-140 BPM, each holding a running mean of ln(RMSSD)
+     observed at that rate. ln, because RMSSD-vs-HR is close to log-linear, ratios are the
+     natural distance measure, and PPG outliers pull a log-mean far less than a linear one.
+     The output index is 50 + 50·(lnRMSSD − expected)/ln2, clamped 0-100: 50 = right on the
+     wearer's curve, 100 = twice the expected variability (relaxation), 0 = half (stress).
+     Neutral 50 is reported until the curve has enough beats to be trustworthy.
+
+     The curve can be snapshotted and restored, so the app can persist it across sessions —
+     the longer it accumulates, the wider its HR coverage and the better the correction. */
+    private let mcMinBpm: Double = 40.0
+    private let mcBinWidthBpm: Double = 5.0
+    private let mcBinCount: Int = 20                 // 40-140 BPM
+    /* Each bin is a RUNNING MEAN (alpha = 1/n) with this floor on alpha once the bin matures.
+     A fixed per-beat alpha would make the "baseline" a ~30-beat tracker of the current state —
+     a sustained relaxation would teach the curve its own relaxed values within a minute and the
+     index would self-cancel back to 50 while the state persisted. The running mean instead
+     converges on the average across every visit to that heart rate. The floor keeps old data
+     from freezing the curve forever, but must stay far slower than a session state: at 0.0003
+     the mature half-life is ~2300 in-bin beats (~35 min at 65 BPM), so a 30-minute relaxation
+     still keeps most of its index elevation while the curve absorbs it only gradually across
+     sessions. (0.002 was measurably too fast — a 10-minute state lost ~70% of its reading.) */
+    private let mcSmoothingFloor: Double = 0.0003
+    private let mcMinTotalSamples: Int = 30          // beats before the index leaves neutral
+    private let mcFullScaleLnRatio: Double = 0.693   // ln2: double/half spans the full index
+    private var mcLnRmssd: [Double]                  // per-bin EMA of ln(RMSSD ms)
+    private var mcCounts: [Double]                   // per-bin sample counts (Double for snapshots)
+
+    init() {
+        mcLnRmssd = Array(repeating: 0.0, count: mcBinCount)
+        mcCounts = Array(repeating: 0.0, count: mcBinCount)
+    }
 
     /* Performer's manual heart-rate offset, set from the diagnostic UI.
 
@@ -229,7 +272,20 @@ class PPGAnalyzer {
         let maxHRV: Double = 100.0
         let clamped = max(minHRV, min(maxHRV, rmssdMs))
         let hrvIndex = (clamped - minHRV) / (maxHRV - minHRV) * 100.0
-        
+
+        // --- HR-corrected HRV vs the personal master curve ---
+        // Feed the curve only on freshly-accepted, past-warm-up beats so rejected detections
+        // and the clamped startup window never bend the baseline.
+        let bpmForCurve = bpms.toArray().isEmpty ? 0.0 : bpms.toArray().reduce(0, +) / Double(bpms.count)
+        if didAcceptNNInterval,
+           nnIntervals.count >= initialHRVClampIntervals,
+           rmssdMs > 1.0,
+           bpmForCurve > 0 {
+            feedMasterCurve(bpm: bpmForCurve, lnRmssd: log(rmssdMs))
+        }
+        let hrvBaseline = hrvBaselineIndex(bpm: bpmForCurve, rmssdMs: rmssdMs)
+        logHRVIfDue(bpm: bpmForCurve, rmssdMs: rmssdMs, index: hrvBaseline)
+
         // --- perfusion (peripheral blood-volume pulse amplitude, raw optical envelope 0–1).
         // High when calm/warm/vasodilated, low under exertion/vasoconstriction. Stays local —
         // only the blended beatStrength leaves this class.
@@ -263,6 +319,7 @@ class PPGAnalyzer {
             sdnnMs: sdnnMs,
             rmssdMs: rmssdMs,
             hrvIndex: hrvIndex,
+            hrvBaseline: hrvBaseline,
             beatStrength: beatStrength,
             rawSdnnMs: rawSdnnMs,
             rawRmssdMs: rawRmssdMs,
@@ -310,6 +367,7 @@ class PPGAnalyzer {
         nnOutlierRun = 0
     }
 
+    //deliberately leaves the master curve alone: it is the wearer's baseline, not session state
     internal func resetMetrics() {
         bpms = RingBuffer<Double>(capacity: 12)
         nnIntervals = RingBuffer<Double>(capacity: 60)
@@ -321,6 +379,103 @@ class PPGAnalyzer {
         publishedRmssdMs = 0.0
         publishedPerfusion = 0.0
         prevTimestamp = 0
+    }
+
+    // MARK: Master curve (HR-corrected HRV)
+
+    private func mcBinIndex(bpm: Double) -> Int {
+        let index = Int((bpm - mcMinBpm) / mcBinWidthBpm)
+        return min(max(index, 0), mcBinCount - 1)
+    }
+
+    private func feedMasterCurve(bpm: Double, lnRmssd: Double) {
+        let bin = mcBinIndex(bpm: bpm)
+        if mcCounts[bin] == 0 {
+            mcLnRmssd[bin] = lnRmssd
+        } else {
+            //running mean: each new beat carries 1/n weight, floored so the curve never fully rigidifies
+            let alpha = max(1.0 / (mcCounts[bin] + 1.0), mcSmoothingFloor)
+            mcLnRmssd[bin] += alpha * (lnRmssd - mcLnRmssd[bin])
+        }
+        mcCounts[bin] += 1
+    }
+
+    /* Expected ln(RMSSD) at this heart rate. Interpolates between the nearest occupied bins on
+     each side; at the edges of coverage it extends the outermost bin flat. A single-bin curve
+     is still usable — it just reads as "vs your overall typical variability" until more of the
+     HR range has been visited. */
+    private func expectedLnRmssd(bpm: Double) -> Double? {
+        let occupied = (0..<mcBinCount).filter { mcCounts[$0] > 0 }
+        guard !occupied.isEmpty else { return nil }
+
+        let bin = mcBinIndex(bpm: bpm)
+        if mcCounts[bin] > 0 { return mcLnRmssd[bin] }
+
+        let below = occupied.last(where: { $0 < bin })
+        let above = occupied.first(where: { $0 > bin })
+        switch (below, above) {
+        case let (.some(b), .some(a)):
+            let t = Double(bin - b) / Double(a - b)
+            return mcLnRmssd[b] + t * (mcLnRmssd[a] - mcLnRmssd[b])
+        case let (.some(b), nil):
+            return mcLnRmssd[b]
+        case let (nil, .some(a)):
+            return mcLnRmssd[a]
+        default:
+            return nil
+        }
+    }
+
+    private func hrvBaselineIndex(bpm: Double, rmssdMs: Double) -> Double {
+        let total = mcCounts.reduce(0, +)
+        guard total >= Double(mcMinTotalSamples),
+              rmssdMs > 1.0,
+              bpm > 0,
+              let expected = expectedLnRmssd(bpm: bpm) else {
+            return 50.0 // neutral until the curve (or this beat) is trustworthy
+        }
+        let lnRatio = log(rmssdMs) - expected
+        let index = 50.0 + (lnRatio / mcFullScaleLnRatio) * 50.0
+        return min(max(index, 0.0), 100.0)
+    }
+
+    ///HRV master-curve logging, ~every 5 s. ON for the current test round — set false when done.
+    static let logHRV = true
+    private var lastHRVLogTime: TimeInterval = 0
+
+    private func logHRVIfDue(bpm: Double, rmssdMs: Double, index: Double) {
+        guard Self.logHRV else { return }
+        let now = Date().timeIntervalSince1970
+        guard now - lastHRVLogTime >= 5.0 else { return }
+        lastHRVLogTime = now
+
+        let occupied = mcCounts.filter { $0 > 0 }.count
+        let total = Int(mcCounts.reduce(0, +))
+        let expected = expectedLnRmssd(bpm: bpm)
+        let expectedMs = expected.map { exp($0) }
+        print(String(
+            format: "HRV | bpm %3.0f | rmssd %5.1fms | expected %@ | index %3.0f | bins %d/%d (%d beats)",
+            bpm,
+            rmssdMs,
+            expectedMs.map { String(format: "%5.1fms", $0) } ?? "  --  ",
+            index,
+            occupied, mcBinCount, total
+        ))
+    }
+
+    /* Persistence: first 20 values are the per-bin ln(RMSSD) EMAs, next 20 the sample counts.
+     Restoring merges nothing — it replaces, so restore BEFORE the session generates data. */
+    internal func masterCurveSnapshot() -> [Double] {
+        return mcLnRmssd + mcCounts
+    }
+
+    internal func restoreMasterCurve(_ snapshot: [Double]) {
+        guard snapshot.count == mcBinCount * 2 else { return }
+        let values = Array(snapshot[0..<mcBinCount])
+        let counts = Array(snapshot[mcBinCount..<(mcBinCount * 2)])
+        guard values.allSatisfy({ $0.isFinite }), counts.allSatisfy({ $0.isFinite && $0 >= 0 }) else { return }
+        mcLnRmssd = values
+        mcCounts = counts
     }
 
     private func stabilizeHRV(raw: Double, published: Double, sampleCount: Int, initialClamp: Double) -> Double {

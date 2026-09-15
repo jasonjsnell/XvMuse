@@ -168,6 +168,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var deviceName:XvDeviceName? //.muse2
     private var majorVersion:String? //"Muse"
     private var minorVersion:String? //1, 2, Athena
+
+    /* The identified headset model, for app-side per-device calibration (terrain display gain,
+     EQ resting offsets). .unknown until Bluetooth discovery resolves it; the Athena resolves a
+     beat after the provisional Muse S guess, so poll on a data callback rather than caching at
+     connect. */
+    public var connectedDeviceName: XvDeviceName { deviceName ?? .unknown }
     
     
     //MARK: - Private
@@ -186,17 +192,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var latestTensionPct: Double = 0.0
     private var latestBlinkPct: Double = 0.0
     private var latestPublishedQuietPct: Double = 0.0
-    /* Per-frame blend weights at the ~21 Hz publish rate, so 0.45 is a time constant of about
-     0.08 s — a cliff, not a fade. That was deliberate when the gate could zero quiet on a blink
-     and wanted to react instantly, but it also meant every dip arrived as a hard edge that no
-     amount of downstream smoothing could fully round off. Now that only sustained tension can
-     pull quiet down, the fall can afford to glide: 0.15 is roughly 0.3 s, close to the recovery
-     side, so quiet moves at a similar speed in both directions.
+    /* Per-frame blend weights at the ~21 Hz publish rate. The earlier 0.15/0.10 pair (~0.3-0.5 s)
+     still let quiet swing fast enough to yank the music around — the wideband loudness it
+     measures is naturally jumpy, and every jump went straight to the quiet-driven mixes. Slowed
+     to fader-ride speed (Sep 2026): 0.03 falls in ~1.6 s, 0.02 rises in ~2.4 s — quiet now
+     describes the last few seconds of stillness rather than the last few frames. Fall stays a
+     touch quicker than rise so movement/tension still takes the quiet outputs down promptly.
 
      This is the SOURCE smoothing, ahead of the split to music and visuals, so it is the one place
      that fixes the shape of the signal for both. */
-    private let quietFallSmoothing: Double = 0.15
-    private let quietRecoverSmoothing: Double = 0.10
+    private let quietFallSmoothing: Double = 0.03
+    private let quietRecoverSmoothing: Double = 0.02
 
     // Diagnostic: how many brainwave-history points/sec this device's EEG pipeline publishes.
     // Athena vs legacy comparison for the chunky-vs-smooth chart investigation.
@@ -352,6 +358,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             if (majorVersion == "Muse") {
                 deviceName = .muse1
                 applyQuietCalibration(deviceDefault: .legacy)
+                applyStateCalibration(deviceDefaults: XvMuse.baseStateTuningDefaults)
                 _ppg.set(deviceName: .muse1)
             } else if (majorVersion == "MuseS") {
                 /* Both the Muse S and the Athena advertise as "MuseS" — same sleep-band housing.
@@ -359,8 +366,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                  discovery, discoveredAthena() overwrites both the device and the calibration. */
                 deviceName = .museS
                 applyQuietCalibration(deviceDefault: .museS)
+                applyStateCalibration(deviceDefaults: XvMuse.museSStateTuningDefaults)
                 _ppg.set(deviceName: .museS)
             }
+            _stateAnalyzer.deviceLabel = deviceName?.rawValue ?? "?"
             print("XvMuse: Major version =", majorVersion ?? "unknown", "| Device may be", deviceName ?? .unknown)
         }
         
@@ -377,7 +386,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             minorVersion = "2"
             deviceName = .muse2
             applyQuietCalibration(deviceDefault: .muse2)
+            applyStateCalibration(deviceDefaults: XvMuse.baseStateTuningDefaults)
             _ppg.set(deviceName: .muse2)
+            _stateAnalyzer.deviceLabel = XvDeviceName.muse2.rawValue
         }
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
     }
@@ -385,7 +396,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         minorVersion = "Athena"
         deviceName = .museAthena
         applyQuietCalibration(deviceDefault: .athena)
+        applyStateCalibration(deviceDefaults: XvMuse.athenaStateTuningDefaults)
         _ppg.set(deviceName: .museAthena)
+        _stateAnalyzer.deviceLabel = XvDeviceName.museAthena.rawValue
         print("XvMuse: Version:", majorVersion ?? "unknown", minorVersion ?? "unknown", "| Device", deviceName ?? .unknown)
     }
     
@@ -770,7 +783,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
             //Quiet: absolute low activity across the bandwidth, now frontal-only
             let rawQuiet = frontal.analysis.quiet
-            let quiet = gatedQuiet(fromRawQuiet: rawQuiet)
+            let quiet = gatedQuiet(fromRawQuiet: rawQuiet, levelDb: frontal.analysis.quietLevelDb)
             delegate?.didReceiveQuiet(quiet)
 
             /* Focus and meditation are measured from the clean detail-window shape. Alpha/beta use
@@ -788,6 +801,37 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 quiet: frontal.analysis.quiet,
                 quietDb: frontal.analysis.quietLevelDb
             )
+
+            /* Ear pair (TP9+TP10) — now feeds meditation's alpha gate, routed by ear
+             confidence (see EEGStateAnalyzer.updateEarBands). The level gap between the ear and
+             forehead pairs is the contact-quality evidence: hair over an ear pad reads far
+             hotter or far deader than the forehead ever does. When the sides region hands back
+             no spectrum (ear sensors off in the UI, or both pads invalid), confidence collapses
+             and the gate falls back to the forehead pair automatically. */
+            let sides = eeg.sides
+            if !sides.linearSpectrum.isEmpty {
+                /* Ear trust uses the SAME per-sensor noise model that drives the interface's
+                 sensor symbols — one noise system, one opinion, everywhere. Each valid ear is
+                 judged separately (the interface's convention) and the worse one rules, because
+                 a single hair-blocked pad pollutes the averaged sides spectrum the alpha is
+                 measured from. An ear disabled in the UI simply isn't judged. */
+                var earNoises: [Double] = []
+                for sensor in [eeg.TP9, eeg.TP10] where sensor.hasValidSpectrum {
+                    if let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) {
+                        earNoises.append(p)
+                    }
+                }
+                _stateAnalyzer.updateEarBands(
+                    delta: sides.delta.decibel,
+                    theta: sides.theta.decibel,
+                    alpha: sides.alpha.decibel,
+                    beta: sides.beta.decibel,
+                    gamma: sides.gamma.decibel,
+                    noisePct: earNoises.max() ?? 100.0
+                )
+            } else {
+                _stateAnalyzer.earBandsUnavailable()
+            }
 
             /* Theta PROMINENCE has to read the same spectrum theta's amplitude came from, or dreamy
              would score its size from the forehead and its shape from the whole head. */
@@ -976,24 +1020,42 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var _quietFadedFrames: Int = 0
     private var _quietCappedFrames: Int = 0
 
-    ///quiet logging. Off while tuning FOCUS.
-    private static let logQuietLines = false
+    ///quiet logging. ON for the quiet-tuning round (Sep 2026) — off when done.
+    private static let logQuietLines = true
+    private var _quietDbSamples: [Double] = []
 
-    private func logQuiet(raw: Double, published: Double, faded: Bool, capped: Bool) {
+    private func logQuiet(
+        raw: Double,
+        published: Double,
+        levelDb: Double,
+        faded: Bool,
+        capped: Bool,
+        tensionDamp: Double,
+        blinkDamp: Double,
+        gammaDamp: Double
+    ) {
         guard Self.logQuietLines else { return }
         let now = Date().timeIntervalSince1970
 
         if _quietWindowStart == 0 { _quietWindowStart = now }
         _quietRawSamples.append(raw)
         _quietPubSamples.append(published)
+        _quietDbSamples.append(levelDb)
         if faded { _quietFadedFrames += 1 }
         if capped { _quietCappedFrames += 1 }
 
         if now - _quietLogTime >= 1.0 {
             _quietLogTime = now
+            /* level is the ONE number quiet measures: trimmed-mean loudness of the 2-47 Hz
+             frontal spectrum, in dB. The anchors map it to the score: level <= quietDb reads
+             100, level >= loudDb reads 0. damp shows the facial-stress multipliers
+             (tension/blink/gamma, x1.00 = no damping); the rest of the line is gates. */
+            let cal = XvEEGAnalysis.quietCalibration
             print(String(
-                format: "QUIET  %3.0f (raw %3.0f)%@%@ | tension %3.0f blink %3.0f clean %3.0f noise %3.0f",
+                format: "QUIET  %3.0f (raw %3.0f) | level %+5.1fdB (anchors %+4.1f..%+4.1f) | damp t%.2f b%.2f g%.2f%@%@ | tension %3.0f blink %3.0f clean %3.0f noise %3.0f",
                 published, raw,
+                levelDb, cal.quietDb, cal.loudDb,
+                tensionDamp, blinkDamp, gammaDamp,
                 faded ? " FADED (clean<60 or tension>60)" : "",
                 capped ? " CAPPED (noise>70)" : "",
                 latestTensionPct, latestBlinkPct, latestCleanPct, latestNoisePct
@@ -1007,9 +1069,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             func pct(_ sorted: [Double], _ p: Double) -> Double {
                 sorted.isEmpty ? 0 : sorted[min(Int((Double(sorted.count - 1) * p).rounded()), sorted.count - 1)]
             }
+            //the dB distribution is the tuning payload: set quietDb near a settled state's p10
+            //and loudDb near an active state's p90, and the score will separate the two
+            let sortedDb = _quietDbSamples.sorted()
             print(String(
-                format: "QUIET SUMMARY  | frames %3d | raw med %3.0f p10 %3.0f p90 %3.0f | published med %3.0f p10 %3.0f p90 %3.0f | faded %2.0f%% capped %2.0f%%",
+                format: "QUIET SUMMARY  | frames %3d | level dB med %+5.1f p10 %+5.1f p90 %+5.1f | raw med %3.0f p10 %3.0f p90 %3.0f | published med %3.0f p10 %3.0f p90 %3.0f | faded %2.0f%% capped %2.0f%%",
                 _quietRawSamples.count,
+                pct(sortedDb, 0.5), pct(sortedDb, 0.1), pct(sortedDb, 0.9),
                 pct(sortedRaw, 0.5), pct(sortedRaw, 0.1), pct(sortedRaw, 0.9),
                 pct(sortedPub, 0.5), pct(sortedPub, 0.1), pct(sortedPub, 0.9),
                 Double(_quietFadedFrames) / count * 100.0,
@@ -1018,6 +1084,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             _quietWindowStart = now
             _quietRawSamples.removeAll(keepingCapacity: true)
             _quietPubSamples.removeAll(keepingCapacity: true)
+            _quietDbSamples.removeAll(keepingCapacity: true)
             _quietFadedFrames = 0
             _quietCappedFrames = 0
         }
@@ -1035,9 +1102,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      Tension therefore fades the score toward zero from 30% and fully by 70% — same shape as the
      RelaxedStateGate but with no floor, because a fake gamma reading has no display value.
 
-     Anchors (1.5..4.5 dB) were measured on the Muse 2 corpus. Gamma on the Athena runs several
-     dB lower at rest (-3.9 median vs the Muse 2's -1.7), so if this pins at 0 on the Athena
-     during genuine hard focus, per-device anchors are the fix — same story as quiet's. */
+     Anchors (1.5..4.5 dB) were measured on the Muse 2 corpus. Gamma on the Athena runs about
+     2.2 dB lower at rest (-3.9 median vs the Muse 2's -1.7), so device identification installs
+     per-device anchors — see deviceStateTuningDefaults, same arrangement as quiet's. */
     //MARK: - Runtime state tuning API
 
     /* Live tuning for the state-detection pipeline. Keys, defaults and ranges are declared in
@@ -1071,6 +1138,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         _testPPG.set(heartRateOffsetBPM: heartRateOffsetBPM)
     }
 
+    /* HR-corrected HRV master curve (the wearer's personal RMSSD-vs-heart-rate baseline).
+     The curve improves the longer it accumulates, so the app should snapshot it periodically
+     and restore it at launch — restore REPLACES the in-memory curve, so do it before the
+     session generates beats. The snapshot is 40 doubles (20 bin values + 20 counts). */
+    public func hrvMasterCurveSnapshot() -> [Double] {
+        return _ppg.hrvMasterCurveSnapshot()
+    }
+
+    public func restoreHRVMasterCurve(_ snapshot: [Double]) {
+        _ppg.restoreHRVMasterCurve(snapshot)
+    }
+
     /* Return one parameter to its code default. For most keys the descriptor default IS the
      code default, so a plain set suffices — but the quiet anchors are PER-DEVICE (muse2 0.5/13.0,
      museS 1.5/10.5, athena -4.5/9.0), so resetting them must CLEAR the user override and restore
@@ -1084,7 +1163,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             loudDbOverride = nil
             refreshQuietCalibration()
         default:
-            if let param = XvEEGStateTuningParameter.all.first(where: { $0.key == key }) {
+            /* Device-calibrated keys reset to the IDENTIFIED device's default, not the
+             descriptor's (which carries the Muse 2 corpus numbers) — same rule as quiet. */
+            if let deviceDefault = deviceStateTuningDefaults[key] {
+                setStateTuning(key: key, value: deviceDefault)
+            } else if let param = XvEEGStateTuningParameter.all.first(where: { $0.key == key }) {
                 setStateTuning(key: key, value: param.defaultValue)
             }
         }
@@ -1110,6 +1193,45 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         refreshQuietCalibration()
     }
 
+    /* PER-DEVICE STATE-DETECTION DEFAULTS — the anchors that read RAW dB, which is the one
+     scale the headsets disagree on. The detrended residual measures (meditation, focus shape,
+     dreamy's theta lead) self-normalize and need none of this.
+
+     Measured 14-15 Sep 2026, same-brain A/B/C sessions (one wearer, all three headsets back
+     to back). Front gamma beds: Athena ~2 dB below the Muse 2 (session medians -0.2 vs +1.8;
+     corpus rest -3.9 vs -1.7), the Muse S ~1.5 dB ABOVE it (+3.2) — the S is the hottest of
+     the three, not the middle, and on inherited Muse 2 anchors its dreamy detector sat at
+     LIMIT calmGamma in ~85% of windows. Athena 8-20 Hz detail power runs about half a log10
+     unit low; the S's is close enough to the Muse 2's to share anchors.
+
+     Applied through setStateTuning at identification so the tuning panel shows the live
+     values; resetStateTuning restores the identified device's entry from this table. A swap
+     to another headset mid-session re-applies that device's defaults, which also overwrites
+     any live tuning of these keys — accepted: a headset change invalidates those tweaks anyway. */
+    private static let baseStateTuningDefaults: [String: Double] = [
+        "gamma.lowDb": 1.5, "gamma.highDb": 4.5,
+        "dreamy.gammaLowDb": 2.0, "dreamy.gammaHighDb": 4.0,
+        "gates.intensityLowLogPower": 0.0, "gates.intensityHighLogPower": 3.0,
+    ]
+    private static let athenaStateTuningDefaults: [String: Double] = [
+        "gamma.lowDb": -0.7, "gamma.highDb": 2.3,
+        "dreamy.gammaLowDb": -0.2, "dreamy.gammaHighDb": 1.8,
+        "gates.intensityLowLogPower": -0.5, "gates.intensityHighLogPower": 2.5,
+    ]
+    private static let museSStateTuningDefaults: [String: Double] = [
+        "gamma.lowDb": 3.0, "gamma.highDb": 6.0,
+        "dreamy.gammaLowDb": 3.5, "dreamy.gammaHighDb": 5.5,
+        "gates.intensityLowLogPower": 0.0, "gates.intensityHighLogPower": 3.0,
+    ]
+    private var deviceStateTuningDefaults: [String: Double] = [:]
+
+    private func applyStateCalibration(deviceDefaults: [String: Double]) {
+        deviceStateTuningDefaults = deviceDefaults
+        for (key, value) in deviceDefaults {
+            setStateTuning(key: key, value: value)
+        }
+    }
+
     private var latestPublishedGammaPct: Double = 0.0
     //runtime-tunable via setStateTuning ("gamma.*" keys)
     private var gammaFocusSmoothing: Double = 0.10
@@ -1132,7 +1254,30 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         delegate?.didReceiveGammaFocus(min(max(latestPublishedGammaPct, 0.0), 100.0))
     }
 
-    private func gatedQuiet(fromRawQuiet rawQuiet: Double) -> Double {
+    /* Facial-stress damping ramps for quiet (Sep 2026, by request): tension, blinking, and
+     gamma are all face/arousal evidence, and a face under load is not a quiet mind even when
+     the broadband dB happens to read low. Each factor scales quiet from x1.0 at its onset to
+     x0.0 at full; the three multiply, so any one of them can take quiet out alone.
+
+     Yes, tension partly double-counts (a clench also raises the 20-35 Hz stretch of the level
+     measure) — that is now deliberate: quiet should be the hardest state to earn, and facial
+     stress should kill it from both directions. Blink damping is safe again because the
+     published value is smoothed over seconds, so a single blink barely dents it — only
+     SUSTAINED eye activity pulls quiet down. Gamma uses the published gammaFocus score, which
+     is per-device anchored and already smoothed. */
+    private let quietTensionDampOnset: Double = 20.0
+    private let quietTensionDampFull: Double = 60.0
+    private let quietBlinkDampOnset: Double = 30.0
+    private let quietBlinkDampFull: Double = 80.0
+    private let quietGammaDampOnset: Double = 30.0
+    private let quietGammaDampFull: Double = 80.0
+
+    private func stressDamp(_ value: Double, onset: Double, full: Double) -> Double {
+        guard full > onset else { return value >= full ? 0.0 : 1.0 }
+        return 1.0 - min(max((value - onset) / (full - onset), 0.0), 1.0)
+    }
+
+    private func gatedQuiet(fromRawQuiet rawQuiet: Double, levelDb: Double) -> Double {
         var quiet = rawQuiet
 
         //an unusable signal can't be called quiet, whatever the numbers say
@@ -1144,22 +1289,27 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             quiet = min(quiet, 30.0)
         }
 
-        /* Muscle tension is NOT damped here any more — it was being counted twice.
-
-         Quiet is a wideband 2-47 Hz loudness measure, and 20-35 Hz of that range IS the muscle
-         band the tension detector reads. A clench already pushes the raw quiet value down on its
-         own; multiplying by the tension ramp on top of that applied the same evidence a second
-         time and drove quiet toward zero far faster than the signal warranted.
-
-         The blink and noise guards above stay, because those bands are screened rather than
-         measured — a blink is a transient the wideband average barely notices. */
+        //facial stress is not a quiet mind — see the damping comment above
+        let tensionDamp = stressDamp(latestTensionPct, onset: quietTensionDampOnset, full: quietTensionDampFull)
+        let blinkDamp = stressDamp(latestBlinkPct, onset: quietBlinkDampOnset, full: quietBlinkDampFull)
+        let gammaDamp = stressDamp(latestPublishedGammaPct, onset: quietGammaDampOnset, full: quietGammaDampFull)
+        quiet *= tensionDamp * blinkDamp * gammaDamp
 
         let target = min(max(quiet, 0.0), 100.0)
         let smoothing = target < latestPublishedQuietPct ? quietFallSmoothing : quietRecoverSmoothing
         latestPublishedQuietPct = (smoothing * target) + ((1.0 - smoothing) * latestPublishedQuietPct)
         let published = min(max(latestPublishedQuietPct, 0.0), 100.0)
 
-        logQuiet(raw: rawQuiet, published: published, faded: faded, capped: capped)
+        logQuiet(
+            raw: rawQuiet,
+            published: published,
+            levelDb: levelDb,
+            faded: faded,
+            capped: capped,
+            tensionDamp: tensionDamp,
+            blinkDamp: blinkDamp,
+            gammaDamp: gammaDamp
+        )
         return published
     }
 
@@ -1551,7 +1701,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         return XvPPGHeartEvent(
             bpm: musePPGHeartEvent.bpm,
             sdnn: musePPGHeartEvent.sdnn,
-            beatStrength: musePPGHeartEvent.pulseStrength
+            beatStrength: musePPGHeartEvent.pulseStrength,
+            hrvBaseline: musePPGHeartEvent.hrvBaseline
         )
     }
     
@@ -1609,6 +1760,9 @@ public struct XvEEGStateTuningParameter {
         //MARK: meditation
         XvEEGStateTuningParameter("med.alphaLeadLowDb", "αLEAD LO dB", "med", -2.0, -8.0, 4.0, 0.1),
         XvEEGStateTuningParameter("med.alphaLeadHighDb", "αLEAD HI dB", "med", 1.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("med.alphaLeadSmoothing", "αLEAD SMOOTH", "med", 0.10, 0.02, 1.0, 0.01),
+        XvEEGStateTuningParameter("med.earAlphaLeadLowDb", "EAR αLD LO dB", "med", 1.0, -4.0, 8.0, 0.1),
+        XvEEGStateTuningParameter("med.earAlphaLeadHighDb", "EAR αLD HI dB", "med", 5.0, 0.0, 12.0, 0.1),
         XvEEGStateTuningParameter("med.tiltOffsetHz", "TILT CTR Hz", "med", -2.0, -6.0, 2.0, 0.1),
         XvEEGStateTuningParameter("med.tiltRadiusHz", "TILT RAD Hz", "med", 3.0, 0.5, 8.0, 0.1),
         XvEEGStateTuningParameter("med.organizedLowHz", "ORG LO Hz", "med", -0.8, -4.0, 2.0, 0.1),

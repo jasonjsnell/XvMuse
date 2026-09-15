@@ -44,6 +44,11 @@ final class EEGStateScorer {
     private(set) var focusAlphaLeadDb: Double = 0.0
     private(set) var focusNullCentroidHz: Double = 0.0
     private(set) var meditationAlphaLeadDb: Double = 0.0
+    private(set) var meditationSmoothedAlphaLeadDb: Double = 0.0
+    private(set) var meditationEarLeadSmoothedDb: Double = 0.0
+    private(set) var meditationEarGate: Double = 0.0
+    private(set) var meditationFrontGate: Double = 0.0
+    private(set) var meditationEarWeight: Double = 0.0
     private(set) var meditationAlphaCentroid: Double = 0.0
     private(set) var meditationOrganized: Double = 0.0
     private(set) var meditationHoldingSteady: Double = 0.0
@@ -124,6 +129,28 @@ final class EEGStateScorer {
     var meditationAlphaLeadLowDb: Double = -2.0
     var meditationAlphaLeadHighDb: Double = 1.0
 
+    /* Alpha waxes and wanes in 1-2s waves even in deep meditation, so the instantaneous lead
+     flips the gate on and off and the smoothed score settles at the wave duty cycle — measured
+     on a real session: RAW medians of 65-83 publishing as 25-40. Same failure dreamy's theta
+     lead had, same fix: smooth the lead BEFORE the ramp. 0.10 at the 0.25s publish cadence is
+     roughly a 2.5s memory — long enough to bridge the troughs between waves, short enough that
+     opening the eyes still closes the gate within a few seconds. */
+    var meditationAlphaLeadSmoothing: Double = 0.10
+    private var smoothedAlphaLead: Double = 0.0
+
+    /* EAR-PAIR ALPHA GATE. The five-cycle alpha-blocking test proved this wearer's eyes-closed
+     alpha appears at TP9/TP10 at +5 to +11 dB while the forehead stays negative. So meditation
+     reads the ears when they are trustworthy, the forehead when they are not, and blends by ear
+     confidence in between — hair over an ear sensor is the routine failure for long-haired
+     wearers, so trust is earned per session, never assumed.
+
+     The ear signal lives on a much bigger scale than the frontal one (eyes-open ~0 dB,
+     meditating +5 and up), hence its own anchors, measured off that same test: open med -0.5
+     with p90 +2.5, closed med +5.5 with p10 +2. */
+    var meditationEarAlphaLeadLowDb: Double = 1.0
+    var meditationEarAlphaLeadHighDb: Double = 5.0
+    private var smoothedEarAlphaLead: Double = 0.0
+
     /* Re-anchored 9 Aug 2026 for the alpha-beta-trend version of thetaLeadDb, which reads on a
      different scale from the old residual version. Measured on the drifting-asleep Athena session
      that exposed the delta problem: smoothed lead held at +2.2 dB (old metric: -1.5, gate shut all
@@ -167,7 +194,10 @@ final class EEGStateScorer {
      tired (+0.2), meditation (+1.3) and real sleep drift (-3.9) all sat at or below +1.3.
      Gamma is fast cortical activity plus EMG — the things drowsiness, by definition, lacks —
      and it lives above the detail window, so the tilt veto cannot see it. This is what
-     actually separates concentration theta from drowsy theta when the tilt is ambiguous. */
+     actually separates concentration theta from drowsy theta when the tilt is ambiguous.
+
+     These defaults are the Muse 2 corpus numbers; the Athena's gamma bed sits ~2.2 dB lower,
+     so device identification installs -0.2..1.8 there (XvMuse.deviceStateTuningDefaults). */
     var dreamyGammaLowDb: Double = 2.0
     var dreamyGammaHighDb: Double = 4.0
 
@@ -224,6 +254,9 @@ final class EEGStateScorer {
 
         case "med.alphaLeadLowDb": meditationAlphaLeadLowDb = value
         case "med.alphaLeadHighDb": meditationAlphaLeadHighDb = value
+        case "med.alphaLeadSmoothing": meditationAlphaLeadSmoothing = value
+        case "med.earAlphaLeadLowDb": meditationEarAlphaLeadLowDb = value
+        case "med.earAlphaLeadHighDb": meditationEarAlphaLeadHighDb = value
         case "med.tiltOffsetHz": meditationTiltOffsetHz = value
         case "med.tiltRadiusHz": meditationTiltRadiusHz = value
         case "med.organizedLowHz": organizedOffsetLowHz = value
@@ -292,6 +325,8 @@ final class EEGStateScorer {
         dreamyGammaDb = 0.0
         smoothedThetaLead = 0.0
         smoothedVsFast = 0.0
+        smoothedAlphaLead = 0.0
+        smoothedEarAlphaLead = 0.0
     }
 
     func applyStateScores(
@@ -300,6 +335,8 @@ final class EEGStateScorer {
         logPower: Double,
         stability: Double,
         bands: BandBalance?,
+        earAlphaLeadDb: Double?,
+        earConfidence: Double,
         tension: Double,
         thetaProminenceDb: Double,
         smoothing: Double
@@ -315,15 +352,26 @@ final class EEGStateScorer {
             bands: bands
         ) * 100.0
 
-        let newMeditation = scoreMeditation(
-            centroidHz: centroidHz,
-            spreadHz: spreadHz,
-            stability: stability,
-            bands: bands
-        ) * 100.0
-
         focusScore = smoothScore(old: focusScore, new: newFocus, factor: smoothing)
-        meditationScore = smoothScore(old: meditationScore, new: newMeditation, factor: smoothing)
+
+        /* Meditation holds its last value while the artifact screen has the bands — same
+         arrangement dreamy has always had. A blocked frame means "no reading", not "no
+         meditation": with eyes closed, slow eye rolls under the lids read as blinks and were
+         blocking 25%+ of frames, and scoring each one as 0 knocked the smoothed score back down
+         every time it started to climb. The clean-threshold fade (fadeScores) still applies, so
+         a genuinely lost signal decays rather than freezing forever. */
+        if bands != nil {
+            let newMeditation = scoreMeditation(
+                centroidHz: centroidHz,
+                spreadHz: spreadHz,
+                stability: stability,
+                bands: bands,
+                earAlphaLeadDb: earAlphaLeadDb,
+                earConfidence: earConfidence,
+                tension: tension
+            ) * 100.0
+            meditationScore = smoothScore(old: meditationScore, new: newMeditation, factor: smoothing)
+        }
 
         //dreamy holds its last value if band data hasn't arrived yet
         if let bands {
@@ -421,7 +469,10 @@ final class EEGStateScorer {
         centroidHz: Double,
         spreadHz: Double,
         stability: Double,
-        bands: BandBalance?
+        bands: BandBalance?,
+        earAlphaLeadDb: Double?,
+        earConfidence: Double,
+        tension: Double
     ) -> Double {
 
         guard let bands else {
@@ -433,11 +484,39 @@ final class EEGStateScorer {
         /* Detrended, so this asks "is alpha oscillating above its own background level" rather
          than "is alpha the loudest band", which it can never be — see BandBalance. */
         let alphaLeadDb = bands.alphaLeadDb
-        let alphaLeads = ramp(
-            alphaLeadDb,
+        smoothedAlphaLead += meditationAlphaLeadSmoothing * (alphaLeadDb - smoothedAlphaLead)
+        let frontGate = ramp(
+            smoothedAlphaLead,
             low: meditationAlphaLeadLowDb,
             high: meditationAlphaLeadHighDb
         )
+
+        /* The ear path. Damped by tension because TP9/TP10 sit over jaw and neck muscle — the
+         very reason the front-only rule existed — so a clench cannot fake alpha through this
+         gate. Ear confidence does the routing: 1.0 reads the ears, 0.0 reads the forehead, and
+         because the analyzer moves confidence slowly upward the blend never jumps audibly. */
+        var earWeight = 0.0
+        var earGate = 0.0
+        if let earLead = earAlphaLeadDb {
+            smoothedEarAlphaLead += meditationAlphaLeadSmoothing * (earLead - smoothedEarAlphaLead)
+            earGate = ramp(
+                smoothedEarAlphaLead,
+                low: meditationEarAlphaLeadLowDb,
+                high: meditationEarAlphaLeadHighDb
+            ) * RelaxedStateGate.damping(forTension: tension)
+            earWeight = clamp01(earConfidence)
+        }
+        /* The front gate is the FLOOR: ears may add evidence but never veto a live forehead.
+         The 14 Sep 2026 same-brain A/B produced a round where the Athena's ears flooded with
+         theta (+10..+15 dB, alpha negative) that the noise model still read as clean — full
+         confidence weighted a zero ear gate at 1.0 and multiplied the forehead's real flickers
+         (front gate 0.3..0.9) out of the score for the entire round. */
+        let alphaLeads = max(frontGate, (earWeight * earGate) + ((1.0 - earWeight) * frontGate))
+
+        meditationEarLeadSmoothedDb = smoothedEarAlphaLead
+        meditationEarGate = earGate
+        meditationFrontGate = frontGate
+        meditationEarWeight = earWeight
 
         let alphaCentroid = centered(
             centroidHz - nullCentroidHz,
@@ -475,6 +554,7 @@ final class EEGStateScorer {
         medGate = alphaLeads
         medSupport = support
         meditationAlphaLeadDb = alphaLeadDb
+        meditationSmoothedAlphaLeadDb = smoothedAlphaLead
         meditationAlphaCentroid = alphaCentroid
         meditationOrganized = organized
         meditationHoldingSteady = holdingSteady
