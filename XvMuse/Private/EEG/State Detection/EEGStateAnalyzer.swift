@@ -83,8 +83,8 @@ final class EEGStateAnalyzer {
      Currently MEDITATION mode: alpha isn't rising on the Athena for anyone, so med gets the
      microscope. Both the per-second dumps and the 10s summaries follow these. */
     private let logFocusState: Bool = false
-    private let logMeditationState: Bool = true
-    private let logDreamyState: Bool = true
+    private let logMeditationState: Bool = false
+    private let logDreamyState: Bool = false
     private let stateSummaryInterval: TimeInterval = 10.0
     private var stateSummaryStart: Date? = nil
     private var dreamySamples: [DreamySample] = []
@@ -1179,8 +1179,10 @@ final class EEGStateAnalyzer {
         blockedBlinkFrames = 0
 
         guard !dreamy.isEmpty else {
-            print(String(format: "STATE SUMMARY | t:%6.1f | NO USABLE FRAMES (%d rejected) | dev %@",
-                         elapsed, rejected, deviceLabel))
+            if logDreamyState || logFocusState || logMeditationState {
+                print(String(format: "STATE SUMMARY | t:%6.1f | NO USABLE FRAMES (%d rejected) | dev %@",
+                             elapsed, rejected, deviceLabel))
+            }
             return
         }
 

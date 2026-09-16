@@ -485,11 +485,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 //to see a single packet for testing
                 //if (i == 2) { print(bytes, ",") }
                 
+                let samples = _parserLegacy.getEEGSamples(from: bytes)
+                tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
                 return MuseEEGPacket(
                     packetIndex: packetIndex,
                     sensor: i,
                     timestamp: timestamp,
-                    samples: _parserLegacy.getEEGSamples(from: bytes))
+                    samples: samples)
             }
             
             // local func to make PPG packet from the above variables
@@ -503,11 +505,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 //print off a single packet for testing
                 //print(bytes, ",")
                 
+                let samples = _parserLegacy.getPPGSamples(from: bytes)
+                tickRate("rawPPG", samples: samples.count, bytes: samples.count * 4)
                 return MusePPGPacket(
                     packetIndex: packetIndex,
                     sensor: sensor,
                     timestamp: timestamp,
-                    samples: _parserLegacy.getPPGSamples(from: bytes))
+                    samples: samples)
             }
     
             //check the char ID and parse data based on it
@@ -544,7 +548,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 
                 //MARK: PPG
             case MuseConstants.CHAR_PPG1, MuseConstants.CHAR_PPG2, MuseConstants.CHAR_PPG3:
-            
+
                 //PPG1 values ~ 87,000
                 //PPG2 values ~ 280,000
                 //PPG3 values ~ 0-100 but very erratic
@@ -552,7 +556,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 //PPG2 is what I usually use for Muse S
                 //PPG3 works on Muse 2 as well
                 //all PPGs now work on Muse S if preset is set to 51 on init
-                
+
                 /*
                  //https://mind-monitor.com/forums/viewtopic.php?f=19&t=1379
                  //https://developer.apple.com/documentation/accelerate/signal_extraction_from_noise
@@ -560,9 +564,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 uint:24,uint:24,uint:24
                 UInt24 x 6 samples
                 */
-                
+
                 //print(bytes) // <-- use to print out test PPG samples
-                
+
                 let ppgSensorIndex: Int
                 switch bluetoothCharacteristic.uuid {
                 case MuseConstants.CHAR_PPG1:
@@ -585,6 +589,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
                         
                         //send blood flow and resp streams to parent
+                        tickRate("PPG", bytes: (ppgStreams.bloodFlow.count + ppgStreams.resp.count) * 4)
                         delegate?.didReceive(ppgStreams: convert(musePPGStreams: ppgStreams))
                     }
                     
@@ -592,6 +597,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                         //send up to parent
                         //print("XvMuse: didReceive heart event", ppgHeartEvent.bpm, ppgHeartEvent.sdnn, ppgHeartEvent.pulseStrength)
+                        tickRate("HEART", bytes: 16) //bpm, strength, sdnn, hrvBaseline as Float32
                         delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
                     }
                 }
@@ -605,7 +611,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 */
                 
                 _accelRaw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
-                
+                tickRate("rawACCEL", samples: 3, bytes: 9 * 4) //3 xyz samples (9 values) per packet
+
                 let _accelPacket:XvAccelPacket = convert(
                     museAccelPacket: _accel.update(
                         withAccelPacket: MuseAccelPacket(
@@ -615,6 +622,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                         )
                     )
                 )
+                tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32
                 delegate?.didReceive(accelPacket: _accelPacket)
                 
                 
@@ -731,6 +739,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             gammaY: eeg.position.gamma.y
         )
 
+        tickRate("PSD", bytes: (eeg.linearSpectrum.count + eeg.detailLinearSpectrum.count) * 4)
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         delegate?.didReceive(detailLinearSpectrum: eeg.detailLinearSpectrum)
         /* ML HEARTBEAT — must never be starved by the adaptive weights. The device average
@@ -1008,7 +1017,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     }
 
     ///Adaptive-weighting log, ~every 5 s. ON for the adaptive test round — set false when done.
-    private static let logSensorWeights = true
+    private static let logSensorWeights = false
     private var lastSensorWeightLogTime: TimeInterval = 0
 
     private func logSensorWeightsIfDue() {
@@ -1023,6 +1032,67 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             return String(format: "%@ %3.0f w%.2f", label, heldSensorNoise[index], weight)
         }
         print("SENSORS | \(entry("TP9", 0)) | \(entry("AF7", 1)) | \(entry("AF8", 2)) | \(entry("TP10", 3)) | best noise \(Int(latestNoisePct.rounded()))")
+    }
+
+    ///Data-rate log: counts PSD / PPG / HEART / ACCEL sends to the delegate and prints a
+    ///timestamped summary every 5 s with the measured Hz of each stream. Set false when done measuring.
+    private static let logDataRates = false
+    private var rateCounts: [String: Int] = [:]
+    private var rateSampleCounts: [String: Int] = [:]
+    private var rateByteCounts: [String: Int] = [:]
+    private var rateWindowStart: TimeInterval = 0
+
+    ///`samples` = how many raw samples the packet carried (0 = not a sample-carrying stream).
+    ///`bytes` = the packet's payload size as Float32 binary (4 bytes per value) — the realistic
+    ///compact upload encoding. JSON of the same numbers runs ~2-3x larger.
+    private func tickRate(_ key: String, samples: Int = 0, bytes: Int = 0) {
+        guard Self.logDataRates else { return }
+        let now = Date().timeIntervalSince1970
+        if rateWindowStart == 0 { rateWindowStart = now }
+        rateCounts[key, default: 0] += 1
+        if samples > 0 { rateSampleCounts[key, default: 0] += samples }
+        if bytes > 0 { rateByteCounts[key, default: 0] += bytes }
+        let elapsed = now - rateWindowStart
+        guard elapsed >= 5.0 else { return }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        let stamp = formatter.string(from: Date())
+
+        func line(_ label: String, _ keys: [String]) -> Double {
+            var bytesPerSec = 0.0
+            let parts = keys.compactMap { key -> String? in
+                guard let count = rateCounts[key] else { return nil }
+                var part = String(format: "%@ %.1f pkt/s", key, Double(count) / elapsed)
+                if let sampleCount = rateSampleCounts[key] {
+                    part += String(format: " %.0f smp/s", Double(sampleCount) / elapsed)
+                }
+                if let byteCount = rateByteCounts[key] {
+                    let perEntry = Double(byteCount) / Double(count)
+                    let perSec = Double(byteCount) / elapsed
+                    bytesPerSec += perSec
+                    part += String(format: " %.0f B/pkt %.2f KB/s", perEntry, perSec / 1024.0)
+                }
+                return part
+            }
+            if !parts.isEmpty { print("\(label) \(stamp) | " + parts.joined(separator: " | ")) }
+            return bytesPerSec
+        }
+        //processed streams sent up to the app (fixed order so columns don't jump around)
+        let processedBps = line("RATE", ["PSD", "PPG", "HEART", "ACCEL"])
+        //raw ingress straight off the Bluetooth parser, before any processing.
+        //rawEEG counts ALL sensors combined — divide pkt/s and smp/s by 4 for per-sensor rate.
+        let rawBps = line("RAW ", ["rawEEG", "rawPPG", "rawACCEL"])
+        //upload estimate: what a 10-second batch would weigh in each strategy
+        print(String(
+            format: "SIZE %@ | processed %.1f KB per 10s batch | raw %.1f KB per 10s batch | (Float32 binary; JSON ~2-3x)",
+            stamp, processedBps * 10.0 / 1024.0, rawBps * 10.0 / 1024.0
+        ))
+
+        rateCounts = [:]
+        rateSampleCounts = [:]
+        rateByteCounts = [:]
+        rateWindowStart = now
     }
 
     /* "bp" is a FALLBACK, not a second source.
@@ -1434,6 +1504,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             return
         }
 
+        tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
+
         let eegPacket = MuseEEGPacket(
             packetIndex: UInt16(packetIndex),
             sensor: sensor,
@@ -1453,6 +1525,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //includes the sensor num, timestamp, and with a single sample or array of samples
     func didReceiveAthena(ppgPacket: MusePPGPacket) {
 
+        tickRate("rawPPG", samples: ppgPacket.samples.count, bytes: ppgPacket.samples.count * 4)
+
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
@@ -1464,6 +1538,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             if let ppgStreams:MusePPGStreams = ppgResult.streams {
 
                 //send blood flow and resp streams to parent
+                tickRate("PPG", bytes: (ppgStreams.bloodFlow.count + ppgStreams.resp.count) * 4)
                 delegate?.didReceive(ppgStreams: convert( musePPGStreams: ppgStreams))
             }
             
@@ -1471,14 +1546,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             if let ppgHeartEvent:MusePPGHeartEvent = ppgResult.heartEvent {
                 //send up to parent
                 //print("XvMuse: Athena heart event: BPM;", ppgHeartEvent.bpm, "Str:", ppgHeartEvent.pulseStrength, "HRV SDNN", ppgHeartEvent.sdnn )
+                tickRate("HEART", bytes: 16) //bpm, strength, sdnn, hrvBaseline as Float32
                 delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
             }
         }
     }
     
     func didReceiveAthena(accelPacket: MuseAccelPacket) {
+        tickRate("rawACCEL", samples: 1, bytes: 12) //one xyz sample per packet, 3 x Float32
         //receive muse accel, convert to xvaccel, and send to parent
         let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
+        tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32
         delegate?.didReceive(accelPacket: _accelPacket)
     }
     
