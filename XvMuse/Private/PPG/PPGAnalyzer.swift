@@ -439,8 +439,8 @@ class PPGAnalyzer {
         return min(max(index, 0.0), 100.0)
     }
 
-    ///HRV master-curve logging, ~every 5 s. ON for the current test round — set false when done.
-    static let logHRV = true
+    ///HRV master-curve logging, ~every 5 s. Off — flip on when testing the HR correction.
+    static let logHRV = false
     private var lastHRVLogTime: TimeInterval = 0
 
     private func logHRVIfDue(bpm: Double, rmssdMs: Double, index: Double) {

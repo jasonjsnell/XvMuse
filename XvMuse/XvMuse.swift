@@ -577,8 +577,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 if let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
-                    allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
-                    allowsRespMetrics: latestNoisePct <= 35.0
+                    allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+                    allowsRespMetrics: heartGateNoisePct <= 35.0
                 ) {
                     
                     //if streams are valid...
@@ -733,16 +733,30 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         delegate?.didReceive(linearSpectrum: eeg.linearSpectrum)
         delegate?.didReceive(detailLinearSpectrum: eeg.detailLinearSpectrum)
-        _mlManager.process(linearSpectrum: eeg.linearSpectrum)
+        /* ML HEARTBEAT — must never be starved by the adaptive weights. The device average
+         goes EMPTY when every pad is fully distrusted (all contact weights 0 — the ordinary
+         headset-on-the-table case), and this call's callback is the sole writer of the
+         per-sensor scores that could ever recover those weights. Feeding it the weighted
+         average therefore created a permanent lockout: weights 0 -> empty average -> ML
+         guard bails -> no callback -> weights stay 0 forever, surviving a re-seated headset.
+         When the weighted average is empty, drive the cadence with any valid sensor's
+         spectrum instead — the callback ignores the device-level score and judges each
+         sensor individually, so the input only needs to exist, not be meaningful. */
+        let mlDriveSpectrum = !eeg.linearSpectrum.isEmpty
+            ? eeg.linearSpectrum
+            : (eeg.sensors.first(where: { $0.hasValidSpectrum })?.linearSpectrum ?? [])
+        _mlManager.process(linearSpectrum: mlDriveSpectrum)
 
         /* Signal quality is emitted from here rather than from the ML callback, because only one
-         of its three parts comes from the model. Noise is the model's job; tension and blink are
+         of its three parts comes from the model. Noise is the BEST enabled sensor's held score
+         (adaptive weighting — only high when every pad is compromised); tension and blink are
          measured straight off the spectrum by XvEEGAnalysis, each against its own drifting
          resting level. Publishing all of it on the EEG cadence keeps the three in step.
 
-         Both read the device average across all four sensors. Forehead and brow tension spikes
-         the 20-35 Hz window just as hard as jaw tension does, so limiting tension to the ears
-         would miss half of what it is there to catch. */
+         Tension and blink read the CONTACT-WEIGHTED device average across the sensors: a pad
+         that has faded out for contact noise no longer fakes tension, while genuine muscle
+         tension on any well-seated sensor still registers (brow spikes 20-35 Hz just as hard
+         as jaw, so tension is never limited to one region). */
         latestTensionPct = eeg.analysis.tension
         latestBlinkPct = eeg.analysis.blink
 
@@ -810,16 +824,22 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
              and the gate falls back to the forehead pair automatically. */
             let sides = eeg.sides
             if !sides.linearSpectrum.isEmpty {
-                /* Ear trust uses the SAME per-sensor noise model that drives the interface's
-                 sensor symbols — one noise system, one opinion, everywhere. Each valid ear is
-                 judged separately (the interface's convention) and the worse one rules, because
-                 a single hair-blocked pad pollutes the averaged sides spectrum the alpha is
-                 measured from. An ear disabled in the UI simply isn't judged. */
+                /* Ear trust uses the SAME per-sensor noise scores that drive the weights and
+                 the interface's sensor symbols — one noise system, one opinion, everywhere
+                 (now read from the held per-sensor values instead of re-running the model
+                 here). Each valid ear judged separately and the worse one rules: even with
+                 contact-weighted averaging, a partially-degraded pad still colors the sides
+                 spectrum the alpha is measured from. An ear disabled in the UI isn't judged. */
+                /* Only ears still CONTRIBUTING to the sides average get a vote: on the
+                 25-60 partial ramp a degraded pad both colors the average and lowers trust
+                 (consistent), but at >=60 it contributes nothing — letting it keep vetoing
+                 would defeat the whole "one clean ear keeps meditation alive" behavior. */
                 var earNoises: [Double] = []
-                for sensor in [eeg.TP9, eeg.TP10] where sensor.hasValidSpectrum {
-                    if let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) {
-                        earNoises.append(p)
-                    }
+                if eeg.TP9.hasValidSpectrum && heldSensorNoise[0] < sensorWeightNoiseFull {
+                    earNoises.append(heldSensorNoise[0])
+                }
+                if eeg.TP10.hasValidSpectrum && heldSensorNoise[3] < sensorWeightNoiseFull {
+                    earNoises.append(heldSensorNoise[3])
                 }
                 _stateAnalyzer.updateEarBands(
                     delta: sides.delta.decibel,
@@ -895,65 +915,114 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
      dt is capped at 1 s so that returning from the background releases by at most one second's
      worth rather than a whole gap — erring toward keeping noise high, which is the safe side. */
-    private var heldNoisePct: Double = 0.0
-    private var heldCleanPct: Double = 0.0
-    private var lastSignalQualityTime: TimeInterval?
+    /* ADAPTIVE SENSOR WEIGHTING (Sep 2026). Every ML cycle each sensor is judged by the same
+     contact-noise model — no longer only when the device average looks bad, because the whole
+     point is to know which pads to LEAN ON, not just which to blame. Three outputs:
+
+     1. Per-sensor held noise: rises instantly, releases over ~5 s (same asymmetry the old
+        device-level hold had) so weights don't flicker with the raw 0-100 model output.
+        A sensor with no valid spectrum reads 100 (worst) — no data is NOT clean data. (The old
+        code reported 0 for a dead pad, which painted a disconnected sensor as perfect.)
+     2. Contact weights into XvEEG (1.0 clean, fading to 0.0 over the 25-60 noise ramp — the
+        same ramp ear trust uses): every region/device average fades a failing pad out
+        proportionally while the clean sensors carry the signal.
+     3. Device noise/clean = the BEST enabled sensor's noise. Noise only reads high when every
+        sensor is compromised; one flaky pad no longer pushes the noise output or trips the
+        global gates while three good sensors are still delivering. */
+    private var heldSensorNoise: [Double] = [0.0, 0.0, 0.0, 0.0]  //TP9, AF7, AF8, TP10
+    private var heartGateNoisePct: Double = 0.0  //best FOREHEAD pad — gates the PPG, which sits on the forehead
+    private var lastSensorNoiseTime: TimeInterval?
     private let signalQualityReleaseSeconds: Double = 5.0
-
-    private func heldSignalQuality(noise: Double, clean: Double) -> (noise: Double, clean: Double) {
-        let now = Date().timeIntervalSinceReferenceDate
-
-        //adopt the first real reading rather than climbing to it from a default
-        guard let last = lastSignalQualityTime else {
-            lastSignalQualityTime = now
-            heldNoisePct = noise
-            heldCleanPct = clean
-            return (noise, clean)
-        }
-
-        let dt = min(max(now - last, 0.0), 1.0)
-        lastSignalQualityTime = now
-        let alpha = 1 - exp(-dt / signalQualityReleaseSeconds)
-
-        heldNoisePct = noise >= heldNoisePct ? noise : heldNoisePct + alpha * (noise - heldNoisePct)
-        heldCleanPct = clean <= heldCleanPct ? clean : heldCleanPct + alpha * (clean - heldCleanPct)
-
-        return (min(max(heldNoisePct, 0.0), 100.0), min(max(heldCleanPct, 0.0), 100.0))
-    }
+    private let sensorWeightNoiseOnset: Double = 25.0  //full weight at or below this noise
+    private let sensorWeightNoiseFull: Double = 60.0   //zero weight at or above this noise
 
     func didReceiveMLNoise(noise: Double, clean: Double) {
-        let held = heldSignalQuality(noise: noise, clean: clean)
-        latestNoisePct = held.noise
-        latestCleanPct = held.clean
-
-        //the combined signal-quality update is published on the EEG cadence, not here
-
-        /* Per-sensor noise localization: only when the device-level (averaged) noise is high, run
-         each sensor's spectrum through the same model to see WHICH electrode(s) are noisy. Each
-         sensor judged independently (no peer comparison) so "all loose / headset off" -> all high.
-
-         Triggered on the HELD value so the signal-quality display keeps showing which electrode is
-         at fault for as long as the app is treating the signal as bad. */
-        if latestNoisePct > 10.0 {
-            func sensorNoise(_ sensor: XvEEGSensor) -> Double {
-                guard sensor.hasValidSpectrum,
-                      let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) else {
-                    return 0.0
-                }
-                return p
+        //independent per-sensor judgment, so "all loose / headset off" reads all high
+        func sensorNoise(_ sensor: XvEEGSensor) -> Double {
+            guard sensor.hasValidSpectrum,
+                  let p = _mlManager.noiseProbability(forSpectrum: sensor.linearSpectrum) else {
+                return 100.0
             }
-
-            let tp9Noise = sensorNoise(eeg.TP9)
-            let af7Noise = sensorNoise(eeg.AF7)
-            let af8Noise = sensorNoise(eeg.AF8)
-            let tp10Noise = sensorNoise(eeg.TP10)
-
-            delegate?.didReceiveSensorNoise(tp9: tp9Noise, af7: af7Noise, af8: af8Noise, tp10: tp10Noise)
-
-            //print("SENSOR NOISE | all:\(Int(noise.rounded()))  TP9(L Ear):\(Int(tp9Noise.rounded()))  AF7(L Frnt):\(Int(af7Noise.rounded()))  AF8(R Frnt):\(Int(af8Noise.rounded()))  TP10(R Ear):\(Int(tp10Noise.rounded()))")
-        } else {
-            delegate?.didReceiveSensorNoise(tp9: 0, af7: 0, af8: 0, tp10: 0)
+            return p
         }
+        let rawByIndex = [
+            sensorNoise(eeg.TP9),
+            sensorNoise(eeg.AF7),
+            sensorNoise(eeg.AF8),
+            sensorNoise(eeg.TP10)
+        ]
+
+        //asymmetric hold: up instantly, down over ~5 s; dt capped so backgrounding can't leap it
+        let now = Date().timeIntervalSinceReferenceDate
+        var alpha = 1.0
+        if let last = lastSensorNoiseTime {
+            let dt = min(max(now - last, 0.0), 1.0)
+            alpha = 1 - exp(-dt / signalQualityReleaseSeconds)
+        }
+        lastSensorNoiseTime = now
+        for index in 0..<heldSensorNoise.count {
+            let raw = rawByIndex[index]
+            heldSensorNoise[index] = raw >= heldSensorNoise[index]
+                ? raw
+                : heldSensorNoise[index] + alpha * (raw - heldSensorNoise[index])
+        }
+
+        //weights into the averaging layer, config order TP9, AF7, AF8, TP10
+        let ramp = sensorWeightNoiseFull - sensorWeightNoiseOnset
+        eeg.setSensorContactWeights(heldSensorNoise.map { held in
+            1.0 - min(max((held - sensorWeightNoiseOnset) / ramp, 0.0), 1.0)
+        })
+
+        //device quality = best enabled sensor; clean is its mirror (the model defines clean = 100 - noise)
+        let sensorsByIndex = [eeg.TP9, eeg.AF7, eeg.AF8, eeg.TP10]
+        let bestNoise = sensorsByIndex.enumerated()
+            .filter { $0.element.isEnabled }
+            .map { heldSensorNoise[$0.offset] }
+            .min() ?? 100.0
+        latestNoisePct = min(max(bestNoise, 0.0), 100.0)
+        latestCleanPct = 100.0 - latestNoisePct
+
+        /* The PPG is a FOREHEAD optical sensor: both forehead EEG pads noisy is strong
+         evidence the band is loose exactly where the PPG needs skin contact, even when an
+         ear pad is pristine. Heart/resp gating therefore keys on the best FOREHEAD pad,
+         not the best pad anywhere on the head. */
+        heartGateNoisePct = min(heldSensorNoise[1], heldSensorNoise[2])
+
+        /* Held per-sensor values published every cycle — the UI arcs now always show real
+         scores. A USER-disabled sensor publishes 0 (the legacy "not judged" convention):
+         the headset-fit views read this feed as "does this pad need fixing", and a pad the
+         wearer deliberately turned off must not block their ready checks or raise fix-it
+         tips forever. Internally its held value stays 100 so weights, the best-sensor min
+         (which filters isEnabled anyway) and the ear votes all treat it as absent. */
+        func published(_ index: Int, _ sensor: XvEEGSensor) -> Double {
+            sensor.isEnabled ? heldSensorNoise[index] : 0.0
+        }
+        delegate?.didReceiveSensorNoise(
+            tp9: published(0, eeg.TP9),
+            af7: published(1, eeg.AF7),
+            af8: published(2, eeg.AF8),
+            tp10: published(3, eeg.TP10)
+        )
+
+        logSensorWeightsIfDue()
+    }
+
+    ///Adaptive-weighting log, ~every 5 s. ON for the adaptive test round — set false when done.
+    private static let logSensorWeights = true
+    private var lastSensorWeightLogTime: TimeInterval = 0
+
+    private func logSensorWeightsIfDue() {
+        guard Self.logSensorWeights else { return }
+        let now = Date().timeIntervalSince1970
+        guard now - lastSensorWeightLogTime >= 5.0 else { return }
+        lastSensorWeightLogTime = now
+
+        let ramp = sensorWeightNoiseFull - sensorWeightNoiseOnset
+        func entry(_ label: String, _ index: Int) -> String {
+            let weight = 1.0 - min(max((heldSensorNoise[index] - sensorWeightNoiseOnset) / ramp, 0.0), 1.0)
+            return String(format: "%@ %3.0f w%.2f", label, heldSensorNoise[index], weight)
+        }
+        print("SENSORS | \(entry("TP9", 0)) | \(entry("AF7", 1)) | \(entry("AF8", 2)) | \(entry("TP10", 3)) | best noise \(Int(latestNoisePct.rounded()))")
     }
 
     /* "bp" is a FALLBACK, not a second source.
@@ -1020,8 +1089,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var _quietFadedFrames: Int = 0
     private var _quietCappedFrames: Int = 0
 
-    ///quiet logging. ON for the quiet-tuning round (Sep 2026) — off when done.
-    private static let logQuietLines = true
+    ///quiet logging. Off — flip on when re-tuning the quiet anchors.
+    private static let logQuietLines = false
     private var _quietDbSamples: [Double] = []
 
     private func logQuiet(
@@ -1387,8 +1456,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
-            allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
-            allowsRespMetrics: latestNoisePct <= 35.0
+            allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: heartGateNoisePct <= 35.0
         ) {
             
             //if streams are valid...
@@ -1525,8 +1594,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
         if let testPPGResult:MusePPGResult = _testPPG.update(
             withPPGPacket: testPPGPacket,
-            allowsHeartMetrics: latestNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
-            allowsRespMetrics: latestNoisePct <= 35.0
+            allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
+            allowsRespMetrics: heartGateNoisePct <= 35.0
         ) {
             
             //if streams are valid...
@@ -1637,14 +1706,23 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         
     }
     
+    /* The timers fire on the MAIN run loop, but the pipeline they drive mutates the same
+     state (sensor spectra, heldSensorNoise, region caches, analyzers) that live packets
+     mutate on processingQ — so the work is dispatched onto processingQ to keep the "single
+     lane for all DSP + parsing" rule true during test playback and the test/live handoff. */
     @objc public func generateTestEEGData() {
-        //grabs pre-recorded EEG data from muse framework
-        processAndPublishEEGData(from: getTestEEG(id: testDataSet))
+        processingQ.async { [weak self] in
+            guard let self else { return }
+            //grabs pre-recorded EEG data from muse framework
+            self.processAndPublishEEGData(from: self.getTestEEG(id: self.testDataSet))
+        }
     }
     @objc func generateTestPPGData() {
-        //processes pre-recorded PPG data from muse framework
-        //note: delegate callbacks happen inside the processTestPPG func
-        processTestPPG(id: testDataSet)
+        processingQ.async { [weak self] in
+            //processes pre-recorded PPG data from muse framework
+            //note: delegate callbacks happen inside the processTestPPG func
+            self?.processTestPPG(id: self?.testDataSet ?? 0)
+        }
     }
 
     public func stopTestData(){
