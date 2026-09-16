@@ -280,8 +280,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     //MARK: - INIT -
     //default range is 0 Hz delta to 45 Hz gamma
-    public init(deviceUUID:String? = nil) {
-       
+    ///startBluetoothImmediately: pass false to defer Bluetooth startup — creating
+    ///the central manager is what triggers the iOS "Allow Bluetooth?" prompt, so
+    ///apps that show onboarding first should wait; the prompt then appears on the
+    ///first lookForNearbyMuses() call instead of at launch.
+    public init(deviceUUID:String? = nil, startBluetoothImmediately: Bool = true) {
+
         if (deviceUUID == nil) {
             print("XvMuse: init with no deviceUUID")
         }
@@ -309,7 +313,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      
         bluetooth = MuseBluetooth(deviceCBUUID: deviceCBUUID)
         bluetooth.delegate = self
-        bluetooth.start()
+        if startBluetoothImmediately {
+            bluetooth.start()
+        }
         
         _parserAthena.delegate = self
         _fft.delegate = self
