@@ -114,7 +114,7 @@ final class EEGMLManager {
      unpadded one. Taking every other value reconstructs the original 128-bin spectrum bit for
      bit, which is why the model's behaviour is unchanged by the padding. */
     private static func oneHzSpectrum(from spectrum: [Double]) -> [Double] {
-        let binsPerHz = Int((Double(MuseConstants.EEG_FFT_BINS) / MuseConstants.SAMPLING_RATE).rounded())
+        let binsPerHz = Int((Double(XvMuseConstants.EEG_FFT_BINS) / XvMuseConstants.SAMPLING_RATE).rounded())
         guard binsPerHz > 1 else { return spectrum }
         return stride(from: 0, to: spectrum.count, by: binsPerHz).map { spectrum[$0] }
     }

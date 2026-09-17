@@ -26,10 +26,10 @@ class EpochGenerator {
     
     init(){
         
-        self.interval = MuseConstants.EPOCH_REFRESH_TIME
+        self.interval = XvMuseConstants.EPOCH_REFRESH_TIME
         
         //make a unique slot for each sensors start time
-        for _ in 0..<MuseConstants.EEG_SENSOR_TOTAL{
+        for _ in 0..<XvMuseConstants.EEG_SENSOR_TOTAL{
             _startTimes.append(0.0)
         }
     }

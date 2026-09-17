@@ -68,7 +68,7 @@ class Buffer {
     init(sensor:Int) {
         
         //set the max for the samples and timestamps arrays
-        self._samplesMax = MuseConstants.EEG_EPOCH_SAMPLES
+        self._samplesMax = XvMuseConstants.EEG_EPOCH_SAMPLES
         
         //number of timestamps is the length of the sample buffer (ex: 256)
         //divided by 12 samples per incoming packet (12)

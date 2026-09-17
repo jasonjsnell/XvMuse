@@ -75,17 +75,31 @@ public class XvBluetooth {
                     serviceUUID: serviceUUID
                 )
                 listeners.append(listener)
+            } else {
+                print("XvBluetooth: Listener already loaded for device:", deviceUUID as Any)
             }
     }
-    
+
     public func removeAllListeners(){
+        //dropping the listeners also drops their central managers, so anything that
+        //calls this has to start() again before the next scan
+        print("XvBluetooth: Removing all listeners (was", listeners.count, ")")
         listeners = []
     }
     
     public func connect(){
-        
-        //print("XvBluetooth: Connect")
-        
+
+        /* An empty listener list means connect() does nothing at all, and used to do
+         it silently: no scan, no central manager, no state callback, and so a UI stuck
+         on "unknown" with no log line to explain it. That is a caller bug (connect
+         before start), so say so rather than returning quietly. */
+        guard !listeners.isEmpty else {
+            print("XvBluetooth: Error: connect() called with no listeners. Nothing will scan. Call start() first.")
+            return
+        }
+
+        print("XvBluetooth: Connect,", listeners.count, "listener(s)")
+
         for listener in listeners {
             
             //the the device ID is valid, print it

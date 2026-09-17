@@ -274,10 +274,10 @@ final class EEGStateAnalyzer {
     //MARK: - Init
 
     init(
-        sampleRate: Double = MuseConstants.SAMPLING_RATE,
-        fftBins: Int = MuseConstants.EEG_FFT_BINS,
-        lowHz: Double = MuseConstants.DETAIL_BANDPASS_LOW_HZ,
-        highHz: Double = MuseConstants.DETAIL_BANDPASS_HIGH_HZ
+        sampleRate: Double = XvMuseConstants.SAMPLING_RATE,
+        fftBins: Int = XvMuseConstants.EEG_FFT_BINS,
+        lowHz: Double = XvMuseConstants.DETAIL_BANDPASS_LOW_HZ,
+        highHz: Double = XvMuseConstants.DETAIL_BANDPASS_HIGH_HZ
     ) {
         binWidthHz = sampleRate / Double(fftBins)
 

@@ -53,6 +53,12 @@ class BluetoothListener:NSObject {
     }
     private var _deviceUUID:CBUUID?
     private var _serviceUUID:CBUUID?
+
+    ///A scan was asked for before the radio reported poweredOn. CoreBluetooth
+    ///reports its state asynchronously, so on a cold start the first connect()
+    ///almost always arrives too early; centralManagerDidUpdateState runs the scan
+    ///once the state lands.
+    private var _scanPending:Bool = false
     
     //view controller to send updates to
     internal weak var delegate:XvBluetoothDelegate?
@@ -79,10 +85,22 @@ class BluetoothListener:NSObject {
         //let options: [String: Any] = [CBCentralManagerOptionShowPowerAlertKey: true]
         
         //_centralManager = CBCentralManager(delegate: self, queue: workerQueue, options: options)
+
+        /* This line is what triggers the iOS "Allow Bluetooth?" prompt. Logged
+         unconditionally: if this line never prints, no scan can possibly work, and
+         the app will sit on "unknown" forever with nothing else to show for it.
+         Authorization is printed alongside because notDetermined here, on a rescan,
+         means the prompt has still never been shown. */
+        print("BLUETOOTH: Creating central manager. Authorization:", BluetoothUtils.authDesc())
+
         _centralManager = CBCentralManager(delegate: self, queue: nil)
-        
-        if (debug){ print("BLUETOOTH LISTENER: Init") }
-        
+
+        //.unknown is expected at this instant. CoreBluetooth reports the real state
+        //asynchronously in centralManagerDidUpdateState, usually within a few ms.
+        print("BLUETOOTH: Central manager created. State at creation:",
+              BluetoothUtils.shortName(forState: _centralManager!.state),
+              "| device:", _deviceUUID?.uuidString ?? "none (scan for any Muse)",
+              "| service:", _serviceUUID?.uuidString ?? "none")
     }
     
     //hard reset
@@ -106,27 +124,41 @@ class BluetoothListener:NSObject {
             delegate?.update(bluetoothStateDescription: currentMessage, rawState: currentState)
 
             guard currentState == .poweredOn else {
+                /* Not an error. On a cold start the radio has usually not reported in
+                 yet, so this path is the norm, not the exception. The scan is queued
+                 rather than dropped; centralManagerDidUpdateState picks it up. */
+                _scanPending = true
+                print("BLUETOOTH: Scan deferred, radio is",
+                      BluetoothUtils.shortName(forState: currentState),
+                      "not poweredOn. Queued until the state updates.")
                 return
             }
-            
-            
+
+
             if (_serviceUUID != nil && _deviceUUID != nil) {
-                
+
                 //scan for device with service
+                print("BLUETOOTH: Scanning for service", _serviceUUID!.uuidString,
+                      "targeting device", _deviceUUID!.uuidString)
                 _centralManager!.scanForPeripherals(
                     withServices: [_serviceUUID!],
                     options: nil
                 )
-                
+
             } else {
-                
+
                 //if no service ID, scan for all, and look for device ID
+                print("BLUETOOTH: Scanning for all nearby devices (service:",
+                      _serviceUUID?.uuidString ?? "none",
+                      "device:", _deviceUUID?.uuidString ?? "none", ")")
                 _centralManager!.scanForPeripherals(
                     withServices: nil,
                     options: nil
                 ) //scans for all bluetooth devices in area
             }
-            
+
+            print("BLUETOOTH: Scan started. isScanning:", _centralManager!.isScanning)
+
         } else {
             print("BLUETOOTH: Error: Central Manager is nil in connect()")
         }
@@ -177,13 +209,24 @@ extension BluetoothListener: CBCentralManagerDelegate {
     //MARK: State change for the central BLE (power on, off, etc.) not the periphereal
     
     internal func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        
-        if (debug){
-            BluetoothUtils.printState(state: central.state) //output status during debugging
-        }
-        
+
+        /* Unconditional: this is the single most useful line when a scan does not
+         start. It is the ONLY place the real radio state arrives, so its absence
+         from a log is itself the diagnosis — either no central manager exists or
+         this object was deallocated and CoreBluetooth dropped its weak delegate. */
+        print("BLUETOOTH: State ->", BluetoothUtils.shortName(forState: central.state),
+              "| authorization:", BluetoothUtils.authDesc())
+
         delegate?.update(bluetoothStateDescription: BluetoothUtils.getDesc(forState: central.state), rawState: central.state)
-        
+
+        /* A scan requested before the radio was ready was dropped by the guard in
+         connect(). Now that it is ready, run it — otherwise the user is looking at a
+         spinner that will never resolve, because nothing else retries. */
+        if central.state == .poweredOn && _scanPending {
+            print("BLUETOOTH: Radio ready; running the scan that was requested earlier")
+            _scanPending = false
+            connect()
+        }
     }
     
     

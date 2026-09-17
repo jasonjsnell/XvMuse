@@ -32,7 +32,7 @@ and sends it here to create a streaming buffer, slice out epoch windows, and ret
 
 /* A circular, updating stream of samples (each sensor has it's own sample array). It includes a corresponding timestamp array, which has fewer slots, since there is one timestamp per every 12 samples. This stream is produced by the Buffer object */
 
-public struct DataStream {
+internal struct DataStream {
     
     public init(sensor: Int, samplesCapacity: Int, timestampsCapacity: Int) {
         self.sensor = sensor
@@ -50,21 +50,21 @@ public struct DataStream {
 
 /* This is a snapshot of data from the data stream, containing values in a specific window of time. This object is released from the Epoch Manager every X milliseconds and has a bin length equal to the Buffer */
 
-public struct Epoch {
+internal struct Epoch {
     public var sensor:Int // same as data stream
     public var samples:[Double] = [] // X amount of EEG samples in a specific window of time
 }
 
 /* This stores the different FFT result arrays, including magnitudes (above zero, absolute values) and decibels (which the Muse SDK outputs) */
 
-public struct FFTResult {
+internal struct FFTResult {
     public var sensor: Int // same as epoch / channel id
     public var power: [Double] // One-sided linear POWER per bin (|X[k]|^2), scaled for FFT length and window.
 }
 
 /* Holds the parallel FFT outputs from the same epoch:
    full = unfiltered full-window spectrum, detail = 5-20 Hz pre-filtered spectrum. */
-public struct FFTResultSet {
+internal struct FFTResultSet {
     public var sensor: Int
     public var full: FFTResult?
     public var detail: FFTResult?
@@ -75,19 +75,19 @@ internal protocol FFTManagerDelegate:AnyObject {
     func fftManagerDidUpdateBufferProgress(samples:Int, total:Int)
 }
 
-public class FFTManager {
+internal class FFTManager {
     
     /* Instead of doing 2D arrays of 256 samples for each sensor, I'm optmizing the FFT processing by resuing the Epoch Generator and FFT Transformer for all data. The Buffers needs one object per sensor because it is storing an ongoing stream of data from each sensor. The epoch generator is just one object, but has an array of start times, since that's the only var that needs to be sensor-specific. And the FFT transformer processes different data each func call, with no data persisting inbetween calls, so I'm using one object to process the data of all the sensors (they all take turns sending in and processing their samples, getting their returned FFT data) */
     
     private var _buffers:[Buffer] = []
     private var _epochGenerator:EpochGenerator = EpochGenerator()
     private lazy var _fullFFT: FFT = FFT(
-        bins: MuseConstants.EEG_FFT_BINS,
-        windowLength: MuseConstants.EEG_EPOCH_SAMPLES
+        bins: XvMuseConstants.EEG_FFT_BINS,
+        windowLength: XvMuseConstants.EEG_EPOCH_SAMPLES
     )
     private lazy var _detailFFT: FFT = FFT(
-        bins: MuseConstants.EEG_FFT_BINS,
-        windowLength: MuseConstants.EEG_EPOCH_SAMPLES
+        bins: XvMuseConstants.EEG_FFT_BINS,
+        windowLength: XvMuseConstants.EEG_EPOCH_SAMPLES
     )
     private var _detailFilters:[FFTFilter] = []
     internal weak var delegate:FFTManagerDelegate?
@@ -96,15 +96,15 @@ public class FFTManager {
     internal init() {
         
         //safey check, make sure bin size is power of 2
-        precondition(MuseConstants.EEG_FFT_BINS.nonzeroBitCount == 1, "EEG_FFT_BINS must be power-of-two for vDSP")
+        precondition(XvMuseConstants.EEG_FFT_BINS.nonzeroBitCount == 1, "EEG_FFT_BINS must be power-of-two for vDSP")
         
-        for i in 0..<MuseConstants.EEG_SENSOR_TOTAL {
+        for i in 0..<XvMuseConstants.EEG_SENSOR_TOTAL {
             _buffers.append(Buffer(sensor:i))
             _detailFilters.append(
                 FFTFilter(
-                    sampleRate: MuseConstants.SAMPLING_RATE,
-                    lowCutHz: MuseConstants.DETAIL_BANDPASS_LOW_HZ,
-                    highCutHz: MuseConstants.DETAIL_BANDPASS_HIGH_HZ
+                    sampleRate: XvMuseConstants.SAMPLING_RATE,
+                    lowCutHz: XvMuseConstants.DETAIL_BANDPASS_LOW_HZ,
+                    highCutHz: XvMuseConstants.DETAIL_BANDPASS_HIGH_HZ
                 )
             )
         }
@@ -119,7 +119,7 @@ public class FFTManager {
         
         //make sure this is one of the main 4 sensors (2 forehead, 2 ears, not an AUX)
         let s = eegPacket.sensor
-            guard (0..<MuseConstants.EEG_SENSOR_TOTAL).contains(s) else {
+            guard (0..<XvMuseConstants.EEG_SENSOR_TOTAL).contains(s) else {
                 print("Muse: FFTManager - Unknown sensor index: \(s), perhaps an AUX sensor.")
                 return nil
             }
@@ -138,7 +138,7 @@ public class FFTManager {
 
                 // Detail Window: forehead-only AF8/AF7 branch, filtered before FFT.
                 let detailResult:FFTResult?
-                if MuseConstants.DETAIL_EEG_SENSOR_IDS.contains(epoch.sensor) {
+                if XvMuseConstants.DETAIL_EEG_SENSOR_IDS.contains(epoch.sensor) {
                     let detailEpoch:Epoch = _detailFilters[epoch.sensor].process(epoch: epoch)
                     detailResult = _detailFFT.transform(epoch: detailEpoch)
                 } else {

@@ -50,7 +50,7 @@ class ParserLegacy {
             Double(values[start+6])
        
         //divide by 3 to get average and multiple by scale
-        return (sum / 3) * MuseConstants.ACCEL_SCALE_FACTOR
+        return (sum / 3) * XvMuseConstants.ACCEL_SCALE_FACTOR
     }
     
     //MARK: - CONTROL MESSAGES -

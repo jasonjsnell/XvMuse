@@ -12,16 +12,27 @@ import XvSensors
 //created when a heartbeat is detected
 internal struct MusePPGHeartEvent {
     
-    init(bpm:Double = 0.0, pulseStrength:Double = 0.0, sdnn:Double = 0.0, hrvBaseline:Double = 50.0) {
+    init(
+        bpm:Double = 0.0,
+        pulseStrength:Double = 0.0,
+        sdnn:Double = 0.0,
+        hrvBaseline:Double = 50.0,
+        rmssdMs:Double = 0.0,
+        hrvIndex:Double = 0.0
+    ) {
         self.bpm = bpm
         self.pulseStrength = pulseStrength
         self.sdnn = sdnn
         self.hrvBaseline = hrvBaseline
+        self.rmssdMs = rmssdMs
+        self.hrvIndex = hrvIndex
     }
     var bpm:Double
     var pulseStrength:Double
     var sdnn:Double
     var hrvBaseline:Double //0-100 HR-corrected HRV, 50 = on the wearer's master curve
+    var rmssdMs:Double     //raw beat-to-beat variability in ms, uncorrected for heart rate
+    var hrvIndex:Double    //0-100 scaling of raw RMSSD, uncorrected
 }
 
 //continuous data stream of bloodflow and respiratory data
@@ -43,17 +54,25 @@ internal struct MusePPGStreams {
     // sample-clock time (NOT the jittery BLE packet-arrival time). Empty for non-detection
     // channels. Beat detection runs per-sample over these so beat timing is on a clean grid.
     internal var newSamples: [(t: Double, x: Double)]
+    ///Breaths per minute over the trailing minute, nil until trustworthy.
+    internal var respRateBpm: Double?
+    ///0-1 confidence in respRateBpm.
+    internal var respQuality: Double
 
     init(
         bloodFlow: [Double],
         resp: [Double],
         respDiagnostic: MuseRespDiagnostic? = nil,
-        newSamples: [(t: Double, x: Double)] = []
+        newSamples: [(t: Double, x: Double)] = [],
+        respRateBpm: Double? = nil,
+        respQuality: Double = 0
     ) {
         self.bloodFlow = bloodFlow
         self.resp = resp
         self.respDiagnostic = respDiagnostic
         self.newSamples = newSamples
+        self.respRateBpm = respRateBpm
+        self.respQuality = respQuality
     }
 }
 
@@ -177,7 +196,7 @@ internal class MusePPG {
             // hrvBaseline must be -1 too: its default (50) is a VALID neutral reading, and a
             // sentinel carrying it would feed the mixers fabricated data all through the block.
             let blockedEvent: MusePPGHeartEvent? = prevAllowedHeartMetrics
-                ? MusePPGHeartEvent(bpm: -1, pulseStrength: -1, sdnn: -1, hrvBaseline: -1)
+                ? MusePPGHeartEvent(bpm: -1, pulseStrength: -1, sdnn: -1, hrvBaseline: -1, rmssdMs: -1, hrvIndex: -1)
                 : nil
             prevAllowedHeartMetrics = false
             return MusePPGResult(heartEvent: blockedEvent, streams: streams)
@@ -362,7 +381,9 @@ internal class MusePPG {
                     bpm: bpm,
                     pulseStrength: ppgAnalysis.beatStrength,
                     sdnn: ppgAnalysis.sdnnMs,
-                    hrvBaseline: ppgAnalysis.hrvBaseline
+                    hrvBaseline: ppgAnalysis.hrvBaseline,
+                    rmssdMs: ppgAnalysis.rmssdMs,
+                    hrvIndex: ppgAnalysis.hrvIndex
                 )
             } else {
                 var reasons: [String] = []

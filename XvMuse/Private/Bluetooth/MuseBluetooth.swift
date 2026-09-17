@@ -28,6 +28,9 @@ internal protocol MuseBluetoothObserver:AnyObject {
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String)
 }
 
+//PUBLIC ON PURPOSE, despite the folder name: sibling Xv projects import
+//this directly. Narrowing it would break them. See the access-level note
+//in XvMuse.swift.
 public class MuseBluetooth:XvBluetoothDelegate {
     
     private let bluetooth:XvBluetooth
@@ -49,42 +52,63 @@ public class MuseBluetooth:XvBluetoothDelegate {
         bluetooth = XvBluetooth()
     }
     
+    /* Whether a listener (and therefore a CBCentralManager) currently exists.
+
+     start() is the only thing that creates one, and stop() throws it away. Anything
+     that scans without one does nothing at all, so connect() checks this rather than
+     trusting the caller to have sequenced start() correctly. */
+    private var isStarted:Bool = false
+
     //hard reset
     internal func reset(){
         deviceID = nil
         bluetooth.reset()
     }
-    
+
     //selected in user interface
     internal func load(muse:CBPeripheral) {
         deviceID = CBUUID(string: muse.identifier.uuidString)
         start()
     }
-    
+
     internal func start(){
-        
+
         nearbyMuses = []
-    
-        if (debug){
-            print("MuseBluetooth: Start: Add listeners")
-        }
-        
+
+        print("MuseBluetooth: Start: add listener for device:",
+              deviceID?.uuidString ?? "none (scan for any Muse)")
+
         //add bluetooth listeners
         bluetooth.addListener(
             observer: self,
             deviceUUID: deviceID,
-            serviceUUID: MuseConstants.SERVICE_ID
+            serviceUUID: XvMuseConstants.SERVICE_ID
         )
+
+        isStarted = true
     }
-    
+
     func stop(){
+        print("MuseBluetooth: Stop")
         bluetooth.removeAllListeners()
+        isStarted = false
     }
     
     
     //MARK: - Updates from the Muse headband via Bluetooth -
     public func update(bluetoothStateDescription: String, rawState: CBManagerState) {
         let bluetoothState = XvMuseBluetoothState(managerState: rawState)
+
+        /* Logged on the way up as well as at the source, because the two lines answer
+         different questions. The BLUETOOTH: line says CoreBluetooth reported a state.
+         This one says the state cleared the framework boundary and is on its way to the
+         app. If the first appears without the second, the delegate chain is broken. */
+        if (debug){
+            print("MuseBluetooth: Passing state up:",
+                  BluetoothUtils.shortName(forState: rawState),
+                  "| delegate:", delegate == nil ? "MISSING" : "set")
+        }
+
         delegate?.didReceiveBluetoothState(bluetoothState, message: bluetoothStateDescription)
     }
     
@@ -160,13 +184,13 @@ public class MuseBluetooth:XvBluetoothDelegate {
     public func discovered(characteristic: CBCharacteristic) {
         print("XvMuse: Discovered char:", characteristic.uuid.uuidString, characteristic.properties.rawValue)
         //check for specific sensors
-        if characteristic.uuid == MuseConstants.CHAR_PPG1 ||
-            characteristic.uuid == MuseConstants.CHAR_PPG2 ||
-            characteristic.uuid == MuseConstants.CHAR_PPG3 {
+        if characteristic.uuid == XvMuseConstants.CHAR_PPG1 ||
+            characteristic.uuid == XvMuseConstants.CHAR_PPG2 ||
+            characteristic.uuid == XvMuseConstants.CHAR_PPG3 {
             print("MuseBluetooth: Found PPG characteristic")
             delegate?.discoveredPPG()
         }
-        if (characteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN){
+        if (characteristic.uuid == XvMuseConstants.CHAR_ATHENA_MAIN){
             print("MuseBluetooth: Found Athena characteristic")
             delegate?.discoveredAthena()
         }
@@ -242,8 +266,26 @@ public class MuseBluetooth:XvBluetoothDelegate {
     
     //MARK: - Send commands to the Muse headband -
     
-    //attempts to connect to device. Run this once the bluetooth has had a few seconds to initialize
+    /* Attempts to connect to the device.
+
+     THE START IS NOT OPTIONAL, and it used to be easy to skip. A central manager only
+     exists after start(), and start() had exactly one caller: the init, guarded by
+     startBluetoothImmediately. Any app passing false for that flag (Odyssey-iOS does,
+     to hold the iOS permission prompt back until the connect screen) reached this
+     method with an empty listener list and scanned nothing, with no error anywhere —
+     the UI simply sat on "unknown" forever, because "unknown" is the initial value of
+     a state that nothing was ever going to update.
+
+     Starting here makes the deferred case work the same as the immediate one, and also
+     covers the second path into the same hole: stop() drops the listeners, so any
+     connect() after a stop() had the identical problem. */
     public func connect(){
+
+        if !isStarted {
+            print("MuseBluetooth: connect() with no listener; starting Bluetooth now")
+            start()
+        }
+
         bluetooth.connect()
     }
     
@@ -257,14 +299,14 @@ public class MuseBluetooth:XvBluetoothDelegate {
         //reset connection time
         connectionStartTime = Date()
         
-        let data:Data = Data(_:MuseConstants.CMND_RESUME)
+        let data:Data = Data(_:XvMuseConstants.CMND_RESUME)
         sendControlCommand(data: data)
     }
     
     //pause the stream
     public func pauseStreaming(){
         
-        let data:Data = Data(_:MuseConstants.CMND_HALT)
+        let data:Data = Data(_:XvMuseConstants.CMND_HALT)
         sendControlCommand(data: data)
     }
     
@@ -272,44 +314,44 @@ public class MuseBluetooth:XvBluetoothDelegate {
     public func versionHandshake(){
         
         //device info is the way to set the command protocol to V2
-        let data:Data = Data(_:MuseConstants.CMND_VERSION_HANDSHAKE)
+        let data:Data = Data(_:XvMuseConstants.CMND_VERSION_HANDSHAKE)
         sendControlCommand(data: data)
     }
     
     public func set(hostPlatform:UInt8){
         
-        var hostHex:UInt8 = MuseConstants.HOST_PLATFORM_MAC_HEX
+        var hostHex:UInt8 = XvMuseConstants.HOST_PLATFORM_MAC_HEX
         
         switch hostPlatform {
         
-        case MuseConstants.HOST_PLATFORM_IOS,
-             MuseConstants.HOST_PLATFORM_IOS_HEX:
+        case XvMuseConstants.HOST_PLATFORM_IOS,
+             XvMuseConstants.HOST_PLATFORM_IOS_HEX:
             print("MuseBluetooth: Set Host Platform to iOS")
-            hostHex = MuseConstants.HOST_PLATFORM_IOS_HEX
-        case MuseConstants.HOST_PLATFORM_ANDROID,
-             MuseConstants.HOST_PLATFORM_ANDROID_HEX:
+            hostHex = XvMuseConstants.HOST_PLATFORM_IOS_HEX
+        case XvMuseConstants.HOST_PLATFORM_ANDROID,
+             XvMuseConstants.HOST_PLATFORM_ANDROID_HEX:
             print("MuseBluetooth: Set Host Platform to Android")
-            hostHex = MuseConstants.HOST_PLATFORM_ANDROID_HEX
-        case MuseConstants.HOST_PLATFORM_WINDOWS,
-             MuseConstants.HOST_PLATFORM_WINDOWS_HEX:
+            hostHex = XvMuseConstants.HOST_PLATFORM_ANDROID_HEX
+        case XvMuseConstants.HOST_PLATFORM_WINDOWS,
+             XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX:
             print("MuseBluetooth: Set Host Platform to Windows")
-            hostHex = MuseConstants.HOST_PLATFORM_WINDOWS_HEX
-        case MuseConstants.HOST_PLATFORM_MAC,
-             MuseConstants.HOST_PLATFORM_MAC_HEX:
+            hostHex = XvMuseConstants.HOST_PLATFORM_WINDOWS_HEX
+        case XvMuseConstants.HOST_PLATFORM_MAC,
+             XvMuseConstants.HOST_PLATFORM_MAC_HEX:
             print("MuseBluetooth: Set Host Platform to Mac")
-            hostHex = MuseConstants.HOST_PLATFORM_MAC_HEX
-        case MuseConstants.HOST_PLATFORM_LINUX,
-             MuseConstants.HOST_PLATFORM_LINUX_HEX:
+            hostHex = XvMuseConstants.HOST_PLATFORM_MAC_HEX
+        case XvMuseConstants.HOST_PLATFORM_LINUX,
+             XvMuseConstants.HOST_PLATFORM_LINUX_HEX:
             print("MuseBluetooth: Set Host Platform to Linux")
-            hostHex = MuseConstants.HOST_PLATFORM_LINUX_HEX
+            hostHex = XvMuseConstants.HOST_PLATFORM_LINUX_HEX
         default:
             print("MuseBluetooth: Error: Host Platform ID", hostPlatform)
             break
         }
     
-        var hostPlatformCmnd:[UInt8] = MuseConstants.CMND_HOST_PLATFORM_PRE
+        var hostPlatformCmnd:[UInt8] = XvMuseConstants.CMND_HOST_PLATFORM_PRE
         hostPlatformCmnd.append(hostHex)
-        hostPlatformCmnd.append(MuseConstants.CMND_HOST_PLATFORM_POST)
+        hostPlatformCmnd.append(XvMuseConstants.CMND_HOST_PLATFORM_POST)
         
         let data:Data = Data(_:hostPlatformCmnd)
         sendControlCommand(data: data)
@@ -319,28 +361,28 @@ public class MuseBluetooth:XvBluetoothDelegate {
         
         print("MuseBluetooth: Set Preset to", preset)
         
-        var presetHex:[UInt8] = MuseConstants.P21_HEX //default
+        var presetHex:[UInt8] = XvMuseConstants.P21_HEX //default
         
         switch preset {
         
-        case MuseConstants.PRESET_20:
-            presetHex = MuseConstants.P20_HEX
-        case MuseConstants.PRESET_21:
-            presetHex = MuseConstants.P21_HEX
-        case MuseConstants.PRESET_22:
-            presetHex = MuseConstants.P22_HEX
-        case MuseConstants.PRESET_23:
-            presetHex = MuseConstants.P23_HEX
-        case MuseConstants.PRESET_51:
-            presetHex = MuseConstants.P51_HEX
+        case XvMuseConstants.PRESET_20:
+            presetHex = XvMuseConstants.P20_HEX
+        case XvMuseConstants.PRESET_21:
+            presetHex = XvMuseConstants.P21_HEX
+        case XvMuseConstants.PRESET_22:
+            presetHex = XvMuseConstants.P22_HEX
+        case XvMuseConstants.PRESET_23:
+            presetHex = XvMuseConstants.P23_HEX
+        case XvMuseConstants.PRESET_51:
+            presetHex = XvMuseConstants.P51_HEX
         default:
             print("MuseBluetooth: Error: Preset ID", preset)
             break
         }
         
-        var presetCmnd:[UInt8] = MuseConstants.CMND_PRESET_PRE
+        var presetCmnd:[UInt8] = XvMuseConstants.CMND_PRESET_PRE
         presetCmnd += presetHex
-        presetCmnd.append(MuseConstants.CMND_PRESET_POST)
+        presetCmnd.append(XvMuseConstants.CMND_PRESET_POST)
         
         let data:Data = Data(_:presetCmnd)
         sendControlCommand(data: data)
@@ -348,7 +390,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
     
     public func resetMuse(){
         print("MuseBluetooth: Reset Muse")
-        let data:Data = Data(_:MuseConstants.CMND_RESET)
+        let data:Data = Data(_:XvMuseConstants.CMND_RESET)
         sendControlCommand(data: data)
     }
     
@@ -357,13 +399,13 @@ public class MuseBluetooth:XvBluetoothDelegate {
     //get status, including battery power (bp)
     public func controlStatus(){
         
-        let data:Data = Data(_:MuseConstants.CMND_STATUS)
+        let data:Data = Data(_:XvMuseConstants.CMND_STATUS)
         sendControlCommand(data: data)
     }
     
     //internal
     internal func keepAlive(){
-        let data:Data = Data(_:MuseConstants.CMND_KEEP)
+        let data:Data = Data(_:XvMuseConstants.CMND_KEEP)
         sendControlCommand(data: data)
     }
     
@@ -472,7 +514,7 @@ public class MuseBluetooth:XvBluetoothDelegate {
             bluetooth.write(
                 data:data,
                 toDeviceWithID: deviceID!,
-                forCharacteristicWithID: MuseConstants.CHAR_CONTROL,
+                forCharacteristicWithID: XvMuseConstants.CHAR_CONTROL,
                 withType: .withoutResponse
             )
             

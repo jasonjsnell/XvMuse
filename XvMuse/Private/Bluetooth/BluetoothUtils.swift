@@ -41,9 +41,51 @@ class BluetoothUtils {
     }
     
     class func printState(state:CBManagerState) {
-        
+
         print("BLUETOOTH:", getDesc(forState:state))
-        
+
+    }
+
+    ///One word, for log lines that are read in sequence. getDesc is a sentence
+    ///meant for on-screen display and is too long to scan in a console.
+    class func shortName(forState:CBManagerState) -> String {
+
+        switch forState {
+        case .poweredOn:    return "poweredOn"
+        case .poweredOff:   return "poweredOff"
+        case .unsupported:  return "unsupported"
+        case .unauthorized: return "unauthorized"
+        case .resetting:    return "resetting"
+        case .unknown:      return "unknown"
+        @unknown default:   return "unrecognized(\(forState.rawValue))"
+        }
+    }
+
+    /* SEPARATE FROM STATE, and the distinction is the whole point on iOS.
+
+     CBManagerState says whether the radio is usable right now. Authorization says
+     what the user has decided about this app. They fail differently and the fix is
+     different, but both surface as "no devices found":
+
+     notDetermined  the permission prompt has not been shown yet. On iOS the prompt
+                    fires when the first CBCentralManager is created, so seeing this
+                    after a scan attempt means no central manager was ever made.
+     denied         the user said no. Only Settings can undo it; no amount of
+                    rescanning will help.
+     restricted     blocked by parental controls or MDM.
+     allowedAlways  fine. Any failure is elsewhere.
+
+     Mac builds effectively never hit the first three, which is why a bug here can
+     hide for a long time in a codebase that is developed on macOS. */
+    class func authDesc() -> String {
+
+        switch CBManager.authorization {
+        case .notDetermined:  return "notDetermined (prompt not shown yet)"
+        case .restricted:     return "restricted (parental controls / MDM)"
+        case .denied:         return "denied (user declined; fix in Settings)"
+        case .allowedAlways:  return "allowedAlways"
+        @unknown default:     return "unrecognized"
+        }
     }
     
     // debugs the type of incoming characteristic

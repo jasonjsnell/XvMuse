@@ -8,6 +8,9 @@
 
 import Foundation
 
+//PUBLIC ON PURPOSE, despite the folder name: sibling Xv projects import
+//this directly. Narrowing it would break them. See the access-level note
+//in XvMuse.swift.
 public class Bytes {
     
     //MARK: - SIMPLE CONVERSIONS

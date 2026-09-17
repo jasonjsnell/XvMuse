@@ -8,7 +8,8 @@
 
 // Simple fixed-capacity ring buffer for Double samples.
 // Stores items in insertion order and provides O(1) append without shifting.
-public struct RingBuffer<Element> {
+//Internal: used only by the FFT buffers inside this framework.
+internal struct RingBuffer<Element> {
     private var storage: [Element]
     private var head: Int = 0          // next write position
     private(set) var count: Int = 0

@@ -151,6 +151,26 @@ internal struct MuseBattery {
 }
 
 //MARK: - MUSE -
+/* ACCESS LEVELS IN THIS FRAMEWORK
+ Checked 17 Sep 2026. XvMuse is imported by roughly 25 projects: the current
+ Odyssey app plus a decade of performance apps from desktop 1.0 through 2.0.3
+ and mobile 2.0 to 2.2. That history is why the access levels look untidy.
+
+ The intended public API is the Xv-prefixed set: XvMuse, XvMuseDelegate,
+ XvMuseRawDataObserver, XvMuseConstants, XvMuseBluetoothState and
+ XvEEGStateTuningParameter.
+
+ Several utility types inside Private/ are also public and must stay that way,
+ because those older projects call them directly: Number (161 files), JSON,
+ Bytes, PeakDetector (dead inside this framework but live for the desktop apps),
+ BluetoothConstants, XvBluetooth and XvBluetoothDelegate. MuseBluetooth is
+ public because XvMuse.bluetooth is public and the app calls disconnect() on it.
+ Narrowing any of those is a breaking change to that archive, not a tidy-up.
+
+ The FFT types (DataStream, Epoch, FFTResult, FFTResultSet, FFTManager) and
+ RingBuffer were public but used nowhere outside this framework, so they are
+ now internal. The folder name "Private" is aspirational, not enforced. */
+
 public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDelegate, EEGStateAnalyzerDelegate, XvEEGNoteTriggerDelegate {
 
     //MARK: - vars
@@ -265,15 +285,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private static func museEEGConfig() -> XvEEGConfig {
         let baseConfig = XvSupportedDevices.museConfig
         let museBandConfig = baseConfig.withBandRanges((
-            delta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_DELTA, fallback: baseConfig.bandRanges.delta),
-            theta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_THETA, fallback: baseConfig.bandRanges.theta),
-            alpha: museFrequencyBand(MuseConstants.FREQUENCY_BAND_ALPHA, fallback: baseConfig.bandRanges.alpha),
-            beta: museFrequencyBand(MuseConstants.FREQUENCY_BAND_BETA, fallback: baseConfig.bandRanges.beta),
-            gamma: museFrequencyBand(MuseConstants.FREQUENCY_BAND_GAMMA, fallback: baseConfig.bandRanges.gamma)
+            delta: museFrequencyBand(XvMuseConstants.FREQUENCY_BAND_DELTA, fallback: baseConfig.bandRanges.delta),
+            theta: museFrequencyBand(XvMuseConstants.FREQUENCY_BAND_THETA, fallback: baseConfig.bandRanges.theta),
+            alpha: museFrequencyBand(XvMuseConstants.FREQUENCY_BAND_ALPHA, fallback: baseConfig.bandRanges.alpha),
+            beta: museFrequencyBand(XvMuseConstants.FREQUENCY_BAND_BETA, fallback: baseConfig.bandRanges.beta),
+            gamma: museFrequencyBand(XvMuseConstants.FREQUENCY_BAND_GAMMA, fallback: baseConfig.bandRanges.gamma)
         ))
 
         return museBandConfig.withDetailBandRangeHz(
-            MuseConstants.DETAIL_BANDPASS_LOW_HZ...MuseConstants.DETAIL_BANDPASS_HIGH_HZ
+            XvMuseConstants.DETAIL_BANDPASS_LOW_HZ...XvMuseConstants.DETAIL_BANDPASS_HIGH_HZ
         )
     }
     
@@ -327,14 +347,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //MARK: - Device API -
     //MARK: Nearby Muses
     public func lookForNearbyMuses(){
-        
-        if (debug) { print("XvMuse: lookForNearbyMuses") }
-        
+
+        //unconditional: this is the entry point for every scan, and a log that starts
+        //here and then goes quiet is the signature of a scan that never began
+        print("XvMuse: lookForNearbyMuses")
+
         //reset deviceID
         deviceUUID = nil
         bluetooth.reset()
-        
-        //connect bluetooth again
+
+        //connect bluetooth again. Starts Bluetooth first if it has not been started,
+        //which is the case whenever the app deferred it with startBluetoothImmediately
         bluetooth.connect()
     }
     
@@ -425,7 +448,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         var athenaRXSequence: UInt64 = 0
         var athenaIngressDeltaMS: Double = 0
-        if callbackUUID == MuseConstants.CHAR_ATHENA_MAIN {
+        if callbackUUID == XvMuseConstants.CHAR_ATHENA_MAIN {
             _athenaRXSequence &+= 1
             athenaRXSequence = _athenaRXSequence
 
@@ -460,7 +483,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
             //MARK: route Athena data to parser
             // Special-case Athena main stream BEFORE legacy parsing
-            if bluetoothCharacteristic.uuid == MuseConstants.CHAR_ATHENA_MAIN {
+            if bluetoothCharacteristic.uuid == XvMuseConstants.CHAR_ATHENA_MAIN {
                 let bytes = [UInt8](_data)
                 _parserAthena.parse(
                     bytes: bytes,
@@ -493,6 +516,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 
                 let samples = _parserLegacy.getEEGSamples(from: bytes)
                 tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
+                countRawEEGSamples(samples.count, packetSensorIndex: i)
+                if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: i) {
+                    observer.didReceiveRawEEG(
+                        configSensorIndex: index,
+                        samples: samples,
+                        deviceTime: timestamp
+                    )
+                }
                 return MuseEEGPacket(
                     packetIndex: packetIndex,
                     sensor: i,
@@ -513,6 +544,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 
                 let samples = _parserLegacy.getPPGSamples(from: bytes)
                 tickRate("rawPPG", samples: samples.count, bytes: samples.count * 4)
+                countRawPPGSamples(samples.count)
+                rawDataObserver?.didReceiveRawPPG(
+                    channelIndex: sensor,
+                    samples: samples,
+                    deviceTime: timestamp
+                )
                 return MusePPGPacket(
                     packetIndex: packetIndex,
                     sensor: sensor,
@@ -540,20 +577,20 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //1 AF08: right forehead
             //2 TP09: left ear
             //3 AF07: left forehead
-            case MuseConstants.CHAR_TP10:
+            case XvMuseConstants.CHAR_TP10:
                  _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
-            case MuseConstants.CHAR_AF8:
+            case XvMuseConstants.CHAR_AF8:
                  _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
-            case MuseConstants.CHAR_TP9:
+            case XvMuseConstants.CHAR_TP9:
                  _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
-            case MuseConstants.CHAR_AF7:
+            case XvMuseConstants.CHAR_AF7:
                  _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
                  
                  //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
                  processAndPublishEEGData(from: convert(museEEG: _eeg))
                 
                 //MARK: PPG
-            case MuseConstants.CHAR_PPG1, MuseConstants.CHAR_PPG2, MuseConstants.CHAR_PPG3:
+            case XvMuseConstants.CHAR_PPG1, XvMuseConstants.CHAR_PPG2, XvMuseConstants.CHAR_PPG3:
 
                 //PPG1 values ~ 87,000
                 //PPG2 values ~ 280,000
@@ -575,11 +612,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 let ppgSensorIndex: Int
                 switch bluetoothCharacteristic.uuid {
-                case MuseConstants.CHAR_PPG1:
+                case XvMuseConstants.CHAR_PPG1:
                     ppgSensorIndex = 0
-                case MuseConstants.CHAR_PPG2:
+                case XvMuseConstants.CHAR_PPG2:
                     ppgSensorIndex = 1
-                case MuseConstants.CHAR_PPG3:
+                case XvMuseConstants.CHAR_PPG3:
                     ppgSensorIndex = 2
                 default:
                     ppgSensorIndex = 1
@@ -608,7 +645,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     }
                 }
                 
-            case MuseConstants.CHAR_ACCEL:
+            case XvMuseConstants.CHAR_ACCEL:
                 
                 //MARK: Accel
                 /*
@@ -618,6 +655,15 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 
                 _accelRaw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
                 tickRate("rawACCEL", samples: 3, bytes: 9 * 4) //3 xyz samples (9 values) per packet
+                countRawIMUSamples(3)
+                if let observer = rawDataObserver {
+                    observer.didReceiveRawIMU(
+                        x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
+                        y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
+                        z: _parserLegacy.getXYZ(values: _accelRaw, start: 2),
+                        deviceTime: timestamp
+                    )
+                }
 
                 let _accelPacket:XvAccelPacket = convert(
                     museAccelPacket: _accel.update(
@@ -632,7 +678,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 delegate?.didReceive(accelPacket: _accelPacket)
                 
                 
-            case MuseConstants.CHAR_BATTERY:
+            case XvMuseConstants.CHAR_BATTERY:
                 
                 //MARK: Battery
                 /*
@@ -647,7 +693,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 _batteryRaw = Bytes.constructUInt16Array(fromUInt8Array: bytes, packetTotal: 4)
                 
                 //parse the percentage and send up to parent
-                let primaryBatteryPercent = Int16(_batteryRaw[0] / MuseConstants.BATTERY_PCT_DIVIDEND)
+                let primaryBatteryPercent = Int16(_batteryRaw[0] / XvMuseConstants.BATTERY_PCT_DIVIDEND)
                 guard !shouldIgnorePrimaryBattery(primaryBatteryPercent) else { return }
                 delegate?.didReceive(batteryPacket:
                     XvBatteryPacket(
@@ -655,7 +701,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     )
                 )
 
-            case MuseConstants.CHAR_CONTROL:
+            case XvMuseConstants.CHAR_CONTROL:
                 
                 //MARK: Control Commands
                 //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
@@ -1101,6 +1147,83 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         rateWindowStart = now
     }
 
+    //MARK: - Raw data capture -
+    /* The session's raw archive taps in here, at the parser, before any
+     averaging, weighting or gating. Anything downstream has already been
+     processed, so a raw recording made from it would not be raw.
+
+     These fire at the full stream rate on the Bluetooth processing queue, so an
+     observer must be cheap and thread safe. EEG arrives per sensor in CONFIG
+     order (0 = TP9, 1 = AF7, 2 = AF8, 3 = TP10), matching every other
+     per-sensor API. */
+    public weak var rawDataObserver: XvMuseRawDataObserver?
+
+    //MARK: - Raw sample accounting -
+    /* Counts of raw samples that actually arrived, per stream. The session recorder
+     drains these at every 10-second bundle boundary to fill in n.eegGot / n.ppgGot /
+     n.imuGot and the per-channel drop counts. Counting here, at the parser, is the
+     only honest place: anything further downstream has already been averaged,
+     weighted or gated, so a missing sample would be invisible.
+
+     EEG counts come back in CONFIG order (TP9, AF7, AF8, TP10) to match every other
+     per-sensor API the app sees. The Muse packet order is the reverse of that
+     (0 = TP10, 1 = AF8, 2 = TP9, 3 = AF7), so the index is flipped on the way in
+     rather than leaving the caller to remember. */
+    private var rawEEGSampleCounts: [Int] = [0, 0, 0, 0]
+    private var rawPPGSampleCount: Int = 0
+    private var rawIMUSampleCount: Int = 0
+    private let rawCountLock = NSLock()
+
+    ///Muse packet sensor index (0 = TP10 ... 3 = AF7) to config index (0 = TP9 ... 3 = TP10).
+    private func configSensorIndex(fromPacketIndex packetIndex: Int) -> Int? {
+        guard packetIndex >= 0, packetIndex <= 3 else { return nil }
+        return 3 - packetIndex
+    }
+
+    internal func countRawEEGSamples(_ count: Int, packetSensorIndex: Int) {
+        guard let index = configSensorIndex(fromPacketIndex: packetSensorIndex) else { return }
+        rawCountLock.lock()
+        rawEEGSampleCounts[index] += count
+        rawCountLock.unlock()
+    }
+
+    internal func countRawPPGSamples(_ count: Int) {
+        rawCountLock.lock()
+        rawPPGSampleCount += count
+        rawCountLock.unlock()
+    }
+
+    internal func countRawIMUSamples(_ count: Int) {
+        rawCountLock.lock()
+        rawIMUSampleCount += count
+        rawCountLock.unlock()
+    }
+
+    /// Sample counts since the last drain, then resets them. EEG is per sensor in
+    /// config order (TP9, AF7, AF8, TP10).
+    public func drainRawSampleCounts() -> (eegBySensor: [Int], ppg: Int, imu: Int) {
+        rawCountLock.lock()
+        let result = (eegBySensor: rawEEGSampleCounts, ppg: rawPPGSampleCount, imu: rawIMUSampleCount)
+        rawEEGSampleCounts = [0, 0, 0, 0]
+        rawPPGSampleCount = 0
+        rawIMUSampleCount = 0
+        rawCountLock.unlock()
+        return result
+    }
+
+    /// Nominal per-10-seconds sample counts for the connected headset, for the
+    /// bundle's expected-vs-received accounting. Measured 16 Sep 2026: EEG is
+    /// 4x256 Hz everywhere; Athena delivers one pre-averaged optical channel and a
+    /// slower accelerometer than the legacy headsets.
+    public var expectedSampleCountsPer10s: (eeg: Int, ppg: Int, imu: Int) {
+        let isAthena = connectedDeviceName == .museAthena
+        return (
+            eeg: 4 * 256 * 10,
+            ppg: isAthena ? 640 : 1920,
+            imu: isAthena ? 170 : 520
+        )
+    }
+
     /* "bp" is a FALLBACK, not a second source.
 
      Muse 2 and S report battery on CHAR_BATTERY; Athena on older firmware reports it as subpacket
@@ -1511,6 +1634,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
 
         tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
+        countRawEEGSamples(samples.count, packetSensorIndex: sensor)
+        if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: sensor) {
+            observer.didReceiveRawEEG(
+                configSensorIndex: index,
+                samples: samples.map { Double($0) },
+                deviceTime: timestamp
+            )
+        }
 
         let eegPacket = MuseEEGPacket(
             packetIndex: UInt16(packetIndex),
@@ -1532,6 +1663,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     func didReceiveAthena(ppgPacket: MusePPGPacket) {
 
         tickRate("rawPPG", samples: ppgPacket.samples.count, bytes: ppgPacket.samples.count * 4)
+        countRawPPGSamples(ppgPacket.samples.count)
+        rawDataObserver?.didReceiveRawPPG(
+            channelIndex: ppgPacket.sensor,
+            samples: ppgPacket.samples,
+            deviceTime: ppgPacket.timestamp
+        )
 
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
@@ -1560,6 +1697,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     func didReceiveAthena(accelPacket: MuseAccelPacket) {
         tickRate("rawACCEL", samples: 1, bytes: 12) //one xyz sample per packet, 3 x Float32
+        countRawIMUSamples(1)
+        rawDataObserver?.didReceiveRawIMU(
+            x: accelPacket.x,
+            y: accelPacket.y,
+            z: accelPacket.z,
+            deviceTime: Date().timeIntervalSince1970
+        )
         //receive muse accel, convert to xvaccel, and send to parent
         let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
         tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32
@@ -1725,12 +1869,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
             //uncomment to turn off PPG
             //setting the preset turns off the PPG
-            //bluetooth.set(preset: MuseConstants.PRESET_20)
+            //bluetooth.set(preset: XvMuseConstants.PRESET_20)
             
             //print("Version?", majorVersion, minorVersion)
             if (deviceName == .museS) {
                 print("XvMuse: Using MuseS preset 51")
-                bluetooth.set(preset: MuseConstants.PRESET_51)
+                bluetooth.set(preset: XvMuseConstants.PRESET_51)
             } else if (deviceName == .museAthena) {
                 print("XvMuse: Init Athena")
                 bluetooth.athenaInitializeAndStart()
@@ -1738,7 +1882,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             
             
             //sets host platform to Mac
-            //bluetooth.set(hostPlatform: MuseConstants.HOST_PLATFORM_MAC)
+            //bluetooth.set(hostPlatform: XvMuseConstants.HOST_PLATFORM_MAC)
         }
         
         //get status
@@ -1855,7 +1999,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private func convert(musePPGStreams:MusePPGStreams) -> XvPPGStreams {
         return XvPPGStreams(
             bloodFlow: musePPGStreams.bloodFlow,
-            resp: musePPGStreams.resp
+            resp: musePPGStreams.resp,
+            respRateBpm: musePPGStreams.respRateBpm,
+            respQuality: musePPGStreams.respQuality
         )
     }
     
@@ -1864,7 +2010,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             bpm: musePPGHeartEvent.bpm,
             sdnn: musePPGHeartEvent.sdnn,
             beatStrength: musePPGHeartEvent.pulseStrength,
-            hrvBaseline: musePPGHeartEvent.hrvBaseline
+            hrvBaseline: musePPGHeartEvent.hrvBaseline,
+            rmssdMs: musePPGHeartEvent.rmssdMs,
+            hrvIndex: musePPGHeartEvent.hrvIndex
         )
     }
     

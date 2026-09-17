@@ -89,6 +89,10 @@ internal class MusePPGSensor {
     // normalizes the streams so Muse 2/S and Athena work with their different ranges
     private var bloodFlowNormalizer:StreamNormalizer = StreamNormalizer()
     private let respSignalProcessor = RespiratorySignalProcessor(sampleRate: 64.0)
+    ///Breaths per minute from that waveform. One update per appended resp sample,
+    ///so it sees the same series the stream carries, at whatever rate this device
+    ///produces it.
+    private let respRateEstimator = RespirationRateEstimator()
     private var legacyChannelNormalizers: [StreamNormalizer] = []
     private var legacyChannelLatestValues: [Double?] = []
 
@@ -155,6 +159,7 @@ internal class MusePPGSensor {
         
         if allowsRespMetrics, let respSample = latestRespSample {
             baselineAveragedFirstSamples.append(respSample.output)
+            respRateEstimator.add(sample: respSample.output, atDeviceTime: packet.timestamp)
             respDiagnostic = MuseRespDiagnostic(
                 raw: respSample.raw,
                 lp1: respSample.highPassed,
@@ -175,17 +180,23 @@ internal class MusePPGSensor {
         let resp = allowsRespMetrics ? baselineAveragedFirstSamples.toArray() : []
 
         guard allowsRespMetrics else {
+            /* Metrics are gated (noisy forehead), so the waveform has a hole in it.
+             Drop the window rather than time breaths across the gap. */
+            respRateEstimator.reset()
             return MusePPGStreams(bloodFlow: bloodFlow, resp: resp, newSamples: newSamples)
         }
 
         //block until the resp stream has at least one populated value
         guard let firstResp = resp.first, firstResp != 0.0 else { return nil }
 
+        let respReading = respRateEstimator.current
         return MusePPGStreams(
             bloodFlow: bloodFlow,
             resp: resp,
             respDiagnostic: respDiagnostic,
-            newSamples: newSamples
+            newSamples: newSamples,
+            respRateBpm: respReading.rateBpm,
+            respQuality: respReading.quality
         )
     }
 

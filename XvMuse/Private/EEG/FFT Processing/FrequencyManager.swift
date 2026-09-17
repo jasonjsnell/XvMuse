@@ -18,19 +18,19 @@ class FrequencyManager {
        
     private init() {
         
-        let freqInc:Double = MuseConstants.SAMPLING_RATE / Double(MuseConstants.EEG_FFT_BINS)
+        let freqInc:Double = XvMuseConstants.SAMPLING_RATE / Double(XvMuseConstants.EEG_FFT_BINS)
         //print("EEG: FrequencyManager: Frequency increment per bin", freqInc)
-        let freqRange:Array<Int> = Array(0...MuseConstants.EEG_FFT_BINS/2)
+        let freqRange:Array<Int> = Array(0...XvMuseConstants.EEG_FFT_BINS/2)
         
         frequencies = freqRange.map { Double($0) * freqInc }
         
         //put calculated bins into a public array
         bins = [
-            getBinsFor(frequencyRange: MuseConstants.FREQUENCY_BAND_DELTA),
-            getBinsFor(frequencyRange: MuseConstants.FREQUENCY_BAND_THETA),
-            getBinsFor(frequencyRange: MuseConstants.FREQUENCY_BAND_ALPHA),
-            getBinsFor(frequencyRange: MuseConstants.FREQUENCY_BAND_BETA),
-            getBinsFor(frequencyRange: MuseConstants.FREQUENCY_BAND_GAMMA)
+            getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_DELTA),
+            getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_THETA),
+            getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_ALPHA),
+            getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_BETA),
+            getBinsFor(frequencyRange: XvMuseConstants.FREQUENCY_BAND_GAMMA)
         ]
     }
     
@@ -101,7 +101,7 @@ class FrequencyManager {
         }
 
         //if high value is above the max, make it the max
-        if (range[1] > MuseConstants.FREQUENCY_SLICE_MAX) { range[1] = MuseConstants.FREQUENCY_SLICE_MAX }
+        if (range[1] > XvMuseConstants.FREQUENCY_SLICE_MAX) { range[1] = XvMuseConstants.FREQUENCY_SLICE_MAX }
 
 
         //MARK: Get bins
