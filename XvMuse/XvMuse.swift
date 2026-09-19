@@ -185,7 +185,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public weak var delegate:XvMuseDelegate?
     
     //device version
-    private var deviceName:XvDeviceName? //.muse2
+    private var deviceName:XvDeviceName? { //.muse2
+        //every identification, provisional or final, goes to the raw archive so each
+        //file can say which headset produced it (see didIdentifyDevice)
+        didSet {
+            if let deviceName { rawDataObserver?.didIdentifyDevice(deviceName) }
+        }
+    }
     private var majorVersion:String? //"Muse"
     private var minorVersion:String? //1, 2, Athena
 
@@ -251,6 +257,29 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     // characteristic value read on processingQ so this test does not change existing behavior.
     private var _athenaRXSequence: UInt64 = 0
     private var _athenaLastRXUptime: TimeInterval = 0
+
+    /* BACKLOG DETECTION, 19 Sep 2026.
+
+     Notifications normally arrive at a steady ~100 a second. When the app has been paused
+     (suspended in the background, frozen by the debugger, or stalled) and resumes, iOS hands
+     over everything that queued up in one burst: seconds or minutes of samples in a few
+     milliseconds. Analysed live, that burst replays the past at high speed through the state
+     detectors, the music and the visualizer. The raw archive wants every sample; nothing
+     else does.
+
+     So the burst is measured here, on the callback thread, where arrival timing is real, and
+     each notification carries a flag into the processing block saying whether to analyse it
+     or only record it. Rate-based rather than time-based, because queued notifications all
+     carry the same arrival time, so nothing about an individual packet gives it away.
+     Main thread only. */
+    private var recentCallbackUptimes: [TimeInterval] = []
+    private let backlogWindow: TimeInterval = 0.25
+    private let backlogThreshold = 90          //about 3.5x the normal ~26 per 250 ms
+    private var backlogStartedUptime: TimeInterval = 0
+    private var backlogDropped = 0
+    ///Set at the top of each processing block and read by the Athena delegate callbacks,
+    ///which run synchronously inside the parser on processingQ.
+    private var isDiscardingBacklog = false
     
     //grabs a timestamp when the system launches, to make timestamps easier to read
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
@@ -446,6 +475,39 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let callbackUUID = bluetoothCharacteristic.uuid
         let callbackUptime = ProcessInfo.processInfo.systemUptime
 
+        /* The value MUST be copied here, synchronously, inside the Bluetooth callback.
+
+         CoreBluetooth reuses one CBCharacteristic object per characteristic and overwrites
+         its .value with every notification. This used to be read inside the processingQ
+         block below, i.e. later, by which time a newer notification may already have
+         replaced it. Whenever two notifications landed before the queue caught up, the
+         first one's data was lost and the second one's was parsed twice.
+
+         Found 18 Sep 2026 in a raw archive minute: ~95 packets per minute duplicated
+         exactly, in EEG and optics alike, each one paired with a silent loss. The counts
+         still looked healthy (the duplicates filled in for the losses), which is how it
+         went unnoticed, but every duplicate spliced a repeated 16 ms of EEG into the
+         stream and stretched a heartbeat interval by 47 ms. It got worse whenever
+         delivery turned bursty. */
+        let characteristicValue = bluetoothCharacteristic.value
+
+        //backlog check: is this notification part of a burst? (see the declaration)
+        recentCallbackUptimes.append(callbackUptime)
+        recentCallbackUptimes.removeAll { callbackUptime - $0 > backlogWindow }
+        let isBacklog = recentCallbackUptimes.count > backlogThreshold
+        if isBacklog {
+            if backlogStartedUptime == 0 {
+                backlogStartedUptime = callbackUptime
+                print("XvMuse: delivery burst, \(recentCallbackUptimes.count) notifications in 250 ms (normal about 26). Live analysis paused; the raw archive keeps them")
+            }
+            backlogDropped += 1
+        } else if backlogStartedUptime > 0 {
+            print(String(format: "XvMuse: delivery burst over after %.1fs, %d notifications kept out of live analysis",
+                         callbackUptime - backlogStartedUptime, backlogDropped))
+            backlogStartedUptime = 0
+            backlogDropped = 0
+        }
+
         var athenaRXSequence: UInt64 = 0
         var athenaIngressDeltaMS: Double = 0
         if callbackUUID == XvMuseConstants.CHAR_ATHENA_MAIN {
@@ -462,7 +524,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
             //safety checks
             guard let self = self else { return }
-            guard let _data:Data = bluetoothCharacteristic.value else { return }
+            //the copy taken in the callback, never bluetoothCharacteristic.value (see above)
+            guard let _data:Data = characteristicValue else { return }
 
             /* Mock data yields to the real thing. Test packets never come through here — they are
              injected straight into processAndPublishEEGData — so any characteristic arriving in
@@ -481,6 +544,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
             let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
             
+            //the Athena delegate callbacks run synchronously inside the parser, so this
+            //flag is how they learn whether to analyse this notification or only record it
+            self.isDiscardingBacklog = isBacklog
+
             //MARK: route Athena data to parser
             // Special-case Athena main stream BEFORE legacy parsing
             if bluetoothCharacteristic.uuid == XvMuseConstants.CHAR_ATHENA_MAIN {
@@ -577,17 +644,23 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //1 AF08: right forehead
             //2 TP09: left ear
             //3 AF07: left forehead
+            //_makeEEGPacket also feeds the raw archive, so it always runs; only the analysis
+            //after it is skipped while a backlog burst is being delivered
             case XvMuseConstants.CHAR_TP10:
-                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 0)))
+                 let packet = _makeEEGPacket(i: 0)
+                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
             case XvMuseConstants.CHAR_AF8:
-                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 1)))
+                 let packet = _makeEEGPacket(i: 1)
+                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
             case XvMuseConstants.CHAR_TP9:
-                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 2)))
+                 let packet = _makeEEGPacket(i: 2)
+                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
             case XvMuseConstants.CHAR_AF7:
-                 _eeg.update(withFFTResultSet: _fft.process(eegPacket: _makeEEGPacket(i: 3)))
+                 let packet = _makeEEGPacket(i: 3)
+                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
                  
                  //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 processAndPublishEEGData(from: convert(museEEG: _eeg))
+                 if !isBacklog { processAndPublishEEGData(from: convert(museEEG: _eeg)) }
                 
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1, XvMuseConstants.CHAR_PPG2, XvMuseConstants.CHAR_PPG3:
@@ -622,15 +695,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     ppgSensorIndex = 1
                 }
 
-                if let ppgResult:MusePPGResult = _ppg.update(
-                    withPPGPacket: _makePPGPacket(sensor: ppgSensorIndex),
+                //_makePPGPacket feeds the raw archive, so it always runs
+                let ppgPacket = _makePPGPacket(sensor: ppgSensorIndex)
+                if !isBacklog, let ppgResult:MusePPGResult = _ppg.update(
+                    withPPGPacket: ppgPacket,
                     allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
                     allowsRespMetrics: heartGateNoisePct <= 35.0
                 ) {
-                    
+
                     //if streams are valid...
                     if let ppgStreams:MusePPGStreams = ppgResult.streams {
-                        
+
                         //send blood flow and resp streams to parent
                         tickRate("PPG", bytes: (ppgStreams.bloodFlow.count + ppgStreams.resp.count) * 4)
                         delegate?.didReceive(ppgStreams: convert(musePPGStreams: ppgStreams))
@@ -665,17 +740,19 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     )
                 }
 
-                let _accelPacket:XvAccelPacket = convert(
-                    museAccelPacket: _accel.update(
-                        withAccelPacket: MuseAccelPacket(
-                            x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
-                            y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
-                            z: _parserLegacy.getXYZ(values: _accelRaw, start: 2)
+                if !isBacklog {
+                    let _accelPacket:XvAccelPacket = convert(
+                        museAccelPacket: _accel.update(
+                            withAccelPacket: MuseAccelPacket(
+                                x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
+                                y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
+                                z: _parserLegacy.getXYZ(values: _accelRaw, start: 2)
+                            )
                         )
                     )
-                )
-                tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32
-                delegate?.didReceive(accelPacket: _accelPacket)
+                    tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32
+                    delegate?.didReceive(accelPacket: _accelPacket)
+                }
                 
                 
             case XvMuseConstants.CHAR_BATTERY:
@@ -706,8 +783,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 //MARK: Control Commands
                 //any calls to the headband cause a reply. With most its a "rc:0" response code = 0 (success)
                 //getting device info or a control status send back JSON dictionaries with several vars
-                //note: this package does not use packetIndex, so pass in the raw charactersitic value
-                if let commandResponse: [String: Any] = _parserLegacy.parse(controlLine: bluetoothCharacteristic.value) {
+                //note: this package does not use packetIndex, so pass in the raw charactersitic value.
+                //The copy taken in the callback, not bluetoothCharacteristic.value: a status reply
+                //arrives as many notifications in a row, and reading late spliced fragments of the
+                //wrong ones together, which is where replies like "sn": "7010-PEVF-FC29-fc-2f" came from
+                if let commandResponse: [String: Any] = _parserLegacy.parse(controlLine: _data) {
                     
                     // Drop the rc field
                     var filtered = commandResponse
@@ -1156,7 +1236,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      observer must be cheap and thread safe. EEG arrives per sensor in CONFIG
      order (0 = TP9, 1 = AF7, 2 = AF8, 3 = TP10), matching every other
      per-sensor API. */
-    public weak var rawDataObserver: XvMuseRawDataObserver?
+    public weak var rawDataObserver: XvMuseRawDataObserver? {
+        //an observer attached after the headset was identified still needs to know it
+        didSet {
+            if let deviceName { rawDataObserver?.didIdentifyDevice(deviceName) }
+        }
+    }
 
     //MARK: - Raw sample accounting -
     /* Counts of raw samples that actually arrived, per stream. The session recorder
@@ -1643,6 +1728,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             )
         }
 
+        //recorded above, analysed only if this is live data rather than a backlog burst
+        guard !isDiscardingBacklog else { return }
+
         let eegPacket = MuseEEGPacket(
             packetIndex: UInt16(packetIndex),
             sensor: sensor,
@@ -1669,6 +1757,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             samples: ppgPacket.samples,
             deviceTime: ppgPacket.timestamp
         )
+
+        //recorded above, analysed only if this is live data rather than a backlog burst
+        guard !isDiscardingBacklog else { return }
 
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
@@ -1704,6 +1795,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             z: accelPacket.z,
             deviceTime: Date().timeIntervalSince1970
         )
+        //recorded above, analysed only if this is live data rather than a backlog burst
+        guard !isDiscardingBacklog else { return }
+
         //receive muse accel, convert to xvaccel, and send to parent
         let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
         tickRate("ACCEL", bytes: 16) //x, y, z, movement as Float32

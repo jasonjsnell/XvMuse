@@ -66,7 +66,6 @@ internal class MusePPGSensor {
     private var baselineAveragedFirstSamples = RingBuffer<Double>(capacity: 16)
 
     private var _respPrintCounter: Int = 0
-    private var _lastTraceTimestamp: Double = 0 // HRV timing trace: prev packet arrival time
 
     // Regular sample-clock for beat timing. Muse PPG hardware streams at 64 Hz; the BLE
     // packet-arrival timestamp (Date()) is jittery and shared by all 6 samples, which
@@ -104,18 +103,12 @@ internal class MusePPGSensor {
         //need to know which device is being used before processing streams
         guard deviceName != .unknown else { return nil }
 
-        // === Dropped-packet watch ===
-        // The 64 Hz sample-clock assumes no gaps; a lost packet makes it under-count vs real
-        // time and would compress one beat interval. Flag likely gaps (normal cadence ~0.094s
-        // for 6 samples @ 64 Hz) so we can spot HRV artifacts from packet loss.
-        if deviceName == .museAthena || packet.sensor == legacyRespChannelIndex {
-            let dt = _lastTraceTimestamp == 0 ? 0 : packet.timestamp - _lastTraceTimestamp
-            _lastTraceTimestamp = packet.timestamp
-            if dt > 0.15 {
-                print(String(format: "TRACE GAP | sensor:%d dt:%.5f (~%d packets missed)",
-                             packet.sensor, dt, Int((dt / 0.09375).rounded()) - 1))
-            }
-        }
+        // No packet-timing log here any more (removed 19 Sep 2026). packet.timestamp is the
+        // phone's clock at Bluetooth delivery, so it could only ever show LATE arrival, never
+        // loss, and late arrival is harmless: samples are placed by the 64 Hz sample clock, not
+        // by arrival time. Real loss or duplication shows up in the session bundles (n.ppgGot
+        // against n.ppgExp) and in the raw archive (Tools/read_raw_minute.py counts exactly
+        // repeated packets, which real sensor noise never produces).
 
         // Beat detection runs only on the detection channel (Athena single, or Muse 2 PPG2),
         // so each of its samples gets a regular 64 Hz sample-clock time for clean beat timing.
