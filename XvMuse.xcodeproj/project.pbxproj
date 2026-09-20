@@ -68,6 +68,7 @@
 		BBCDE4FE281CA48F001B67E7 /* MockPPGTiredData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */; };
 		BBCDE500281CA8A4001B67E7 /* MockPPGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */; };
 		BBCDE502281CAC31001B67E7 /* TestEEGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCDE501281CAC31001B67E7 /* TestEEGData.swift */; };
+		BBD1DF0B306013E70059E635 /* HeadsetOffDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */; };
 		BBD265222EDD986100D0AA47 /* ParserAthena.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD265212EDD985D00D0AA47 /* ParserAthena.swift */; };
 		BBD741612857789500857B78 /* TestEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* TestEEGGammaBurstsData.swift */; };
 		BBEFB4E32E834077005AEC3B /* TestEEGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E22E83406B005AEC3B /* TestEEGSleepingData.swift */; };
@@ -85,7 +86,7 @@
 		BBEFB5102E8541C4005AEC3B /* MockPPGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */; };
 		BBEFB5122E854291005AEC3B /* TestEEGCoffeeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB5112E85428C005AEC3B /* TestEEGCoffeeData.swift */; };
 		BBF829712FFACF8F00D0002A /* XvDataMapping.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBF829702FFACF8F00D0002A /* XvDataMapping.framework */; };
-		BBFD8FE4305BE8DE00C46C0C /* RespirationRateEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator.swift */; };
+		BBFD8FE4305BE8DE00C46C0C /* RespirationRateEstimator 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator 2.swift */; };
 		BBFD8FFE305BEC7A00C46C0C /* XvMuseRawDataObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFD8FFD305BEC7A00C46C0C /* XvMuseRawDataObserver.swift */; };
 /* End PBXBuildFile section */
 
@@ -153,6 +154,7 @@
 		BBCDE4FD281CA48F001B67E7 /* MockPPGTiredData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGTiredData.swift; sourceTree = "<group>"; };
 		BBCDE4FF281CA8A4001B67E7 /* MockPPGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGData.swift; sourceTree = "<group>"; };
 		BBCDE501281CAC31001B67E7 /* TestEEGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGData.swift; sourceTree = "<group>"; };
+		BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetOffDetector.swift; sourceTree = "<group>"; };
 		BBD265212EDD985D00D0AA47 /* ParserAthena.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParserAthena.swift; sourceTree = "<group>"; };
 		BBD741602857789500857B78 /* TestEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGGammaBurstsData.swift; sourceTree = "<group>"; };
 		BBEFB4E22E83406B005AEC3B /* TestEEGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGSleepingData.swift; sourceTree = "<group>"; };
@@ -170,7 +172,7 @@
 		BBEFB50F2E8541BF005AEC3B /* MockPPGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGCoffeeData.swift; sourceTree = "<group>"; };
 		BBEFB5112E85428C005AEC3B /* TestEEGCoffeeData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGCoffeeData.swift; sourceTree = "<group>"; };
 		BBF829702FFACF8F00D0002A /* XvDataMapping.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = XvDataMapping.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RespirationRateEstimator.swift; sourceTree = "<group>"; };
+		BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RespirationRateEstimator 2.swift"; sourceTree = "<group>"; };
 		BBFD8FFD305BEC7A00C46C0C /* XvMuseRawDataObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XvMuseRawDataObserver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -346,7 +348,6 @@
 			children = (
 				BBAA8F0A2499086600DE3691 /* ParserLegacy.swift */,
 				BBD265212EDD985D00D0AA47 /* ParserAthena.swift */,
-				BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator.swift */,
 				BB7741E524CA1FF9004B8AE5 /* Bluetooth */,
 				BB8B857124B0E81E00376FD4 /* EEG */,
 				BB99B22824CF0A93007346A4 /* PPG */,
@@ -365,6 +366,7 @@
 				BB7741DF24CA1CF3004B8AE5 /* Number.swift */,
 				BB7741E124CA1F27004B8AE5 /* JSON.swift */,
 				BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */,
+				BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -395,6 +397,7 @@
 			isa = PBXGroup;
 			children = (
 				BB99B22924CF0AA4007346A4 /* PPGAnalyzer.swift */,
+				BBFD8FE3305BE8DD00C46C0C /* RespirationRateEstimator 2.swift */,
 				BB14EE5428AE875300B2A14D /* Test Data */,
 			);
 			path = PPG;
@@ -559,7 +562,7 @@
 				BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */,
 				BBEFB5002E853FD5005AEC3B /* MockPPGClearMindData.swift in Sources */,
 				BBEFB50C2E85416C005AEC3B /* TestEEGArousalData.swift in Sources */,
-				BBFD8FE4305BE8DE00C46C0C /* RespirationRateEstimator.swift in Sources */,
+				BBFD8FE4305BE8DE00C46C0C /* RespirationRateEstimator 2.swift in Sources */,
 				BB4E779F2F4A3F2A001E2BF8 /* MuseAccel.swift in Sources */,
 				BB7741E924CA2066004B8AE5 /* BluetoothListener.swift in Sources */,
 				BB43B3FB24CCFA5600E6D3D3 /* MusePPG.swift in Sources */,
@@ -600,6 +603,7 @@
 				BB7741DE24CA1BCF004B8AE5 /* Bytes.swift in Sources */,
 				BB4228742E85469C001E6DB9 /* TestEEGLooseFitData.swift in Sources */,
 				BB42285F2E8544D0001E6DB9 /* MockPPGCodingData.swift in Sources */,
+				BBD1DF0B306013E70059E635 /* HeadsetOffDetector.swift in Sources */,
 				BBEFB4FD2E853F7C005AEC3B /* TestEEGClearMindData.swift in Sources */,
 				BB42287E2E8547CB001E6DB9 /* TestEEGForeheadData.swift in Sources */,
 				BBEFB5122E854291005AEC3B /* TestEEGCoffeeData.swift in Sources */,
@@ -775,7 +779,7 @@
 				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -811,7 +815,7 @@
 				);
 				INFOPLIST_FILE = XvMuse/Private/Basics/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

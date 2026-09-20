@@ -190,6 +190,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //file can say which headset produced it (see didIdentifyDevice)
         didSet {
             if let deviceName { rawDataObserver?.didIdentifyDevice(deviceName) }
+            offDetector.setDevice(isAthena: deviceName == .museAthena) //measuring ceiling differs
         }
     }
     private var majorVersion:String? //"Muse"
@@ -200,6 +201,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      beat after the provisional Muse S guess, so poll on a data callback rather than caching at
      connect. */
     public var connectedDeviceName: XvDeviceName { deviceName ?? .unknown }
+
+    ///True when the headset is judged to be off the head (sensors maxed out, see HeadsetOffDetector).
+    public var isHeadsetOff: Bool { offDetector.snapshot().isOff }
     
     
     //MARK: - Private
@@ -280,6 +284,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     ///Set at the top of each processing block and read by the Athena delegate callbacks,
     ///which run synchronously inside the parser on processingQ.
     private var isDiscardingBacklog = false
+
+    ///Headset on/off detection and its log. See HeadsetOffDetector.
+    private let offDetector = HeadsetOffDetector()
     
     //grabs a timestamp when the system launches, to make timestamps easier to read
     private let _systemLaunchTime:Double = Date().timeIntervalSince1970
@@ -584,6 +591,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 let samples = _parserLegacy.getEEGSamples(from: bytes)
                 tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
                 countRawEEGSamples(samples.count, packetSensorIndex: i)
+                if let index = configSensorIndex(fromPacketIndex: i) { offDetector.addEEG(configSensorIndex: index, samples: samples) }
                 if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: i) {
                     observer.didReceiveRawEEG(
                         configSensorIndex: index,
@@ -612,6 +620,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 let samples = _parserLegacy.getPPGSamples(from: bytes)
                 tickRate("rawPPG", samples: samples.count, bytes: samples.count * 4)
                 countRawPPGSamples(samples.count)
+                if sensor == 1 { offDetector.addPPG(samples: samples) }
                 rawDataObserver?.didReceiveRawPPG(
                     channelIndex: sensor,
                     samples: samples,
@@ -716,6 +725,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                         //send up to parent
                         //print("XvMuse: didReceive heart event", ppgHeartEvent.bpm, ppgHeartEvent.sdnn, ppgHeartEvent.pulseStrength)
                         tickRate("HEART", bytes: 16) //bpm, strength, sdnn, hrvBaseline as Float32
+                        offDetector.noteHeartbeat()
                         delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
                     }
                 }
@@ -731,6 +741,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 _accelRaw = Bytes.constructInt16Array(fromUInt8Array: bytes, packetTotal: 9)
                 tickRate("rawACCEL", samples: 3, bytes: 9 * 4) //3 xyz samples (9 values) per packet
                 countRawIMUSamples(3)
+                offDetector.addAccel(x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
+                                   y: _parserLegacy.getXYZ(values: _accelRaw, start: 1),
+                                   z: _parserLegacy.getXYZ(values: _accelRaw, start: 2))
                 if let observer = rawDataObserver {
                     observer.didReceiveRawIMU(
                         x: _parserLegacy.getXYZ(values: _accelRaw, start: 0),
@@ -1086,12 +1099,25 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             }
             return p
         }
-        let rawByIndex = [
+        let modelByIndex = [
             sensorNoise(eeg.TP9),
             sensorNoise(eeg.AF7),
             sensorNoise(eeg.AF8),
             sensorNoise(eeg.TP10)
         ]
+
+        /* A MAXED-OUT PAD OVERRIDES THE MODEL. A maxed-out pad (see HeadsetOffDetector) is touching
+         nothing, yet the model scores it clean on Athena and Muse S, which let a headset
+         on a table read as four perfect sensors and fed that garbage into the adaptive
+         averages while worn. A maxed-out pad is noise 100, and a headset judged OFF is 100
+         on every pad, so the existing gates (notes, heart, quiet cap, the recorder's
+         headbandOff event) all close through the path they already use. */
+        let wear = offDetector.snapshot()
+        let rawByIndex = modelByIndex.enumerated().map { index, model in
+            (wear.isOff || wear.maxed[index]) ? 100.0 : model
+        }
+
+        offDetector.setRawNoise(modelByIndex) //the log shows the MODEL's view, to compare
 
         //asymmetric hold: up instantly, down over ~5 s; dt capped so backgrounding can't leap it
         let now = Date().timeIntervalSinceReferenceDate
@@ -1251,8 +1277,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      weighted or gated, so a missing sample would be invisible.
 
      EEG counts come back in CONFIG order (TP9, AF7, AF8, TP10) to match every other
-     per-sensor API the app sees. The Muse packet order is the reverse of that
-     (0 = TP10, 1 = AF8, 2 = TP9, 3 = AF7), so the index is flipped on the way in
+     per-sensor API the app sees. The Muse packet order is different
+     (0 = TP10, 1 = AF8, 2 = TP9, 3 = AF7), so the index is translated on the way in
      rather than leaving the caller to remember. */
     private var rawEEGSampleCounts: [Int] = [0, 0, 0, 0]
     private var rawPPGSampleCount: Int = 0
@@ -1262,7 +1288,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     ///Muse packet sensor index (0 = TP10 ... 3 = AF7) to config index (0 = TP9 ... 3 = TP10).
     private func configSensorIndex(fromPacketIndex packetIndex: Int) -> Int? {
         guard packetIndex >= 0, packetIndex <= 3 else { return nil }
-        return 3 - packetIndex
+        /* A lookup, NOT "3 - index". The packet order is not the reverse of the config
+         order: reversing gets TP10 and AF8 right and swaps TP9 with AF7. That bug was
+         live until 20 Sep 2026 and mislabelled those two channels in every raw archive
+         file and every per-sensor sample count. Caught when lifting the EAR pads maxed out
+         the channel labelled AF7. */
+        return [3, 2, 0, 1][packetIndex]  //TP10, AF8, TP9, AF7
     }
 
     internal func countRawEEGSamples(_ count: Int, packetSensorIndex: Int) {
@@ -1720,6 +1751,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
         countRawEEGSamples(samples.count, packetSensorIndex: sensor)
+        if let index = configSensorIndex(fromPacketIndex: sensor) {
+            offDetector.addEEG(configSensorIndex: index, samples: samples.map { Double($0) })
+        }
         if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: sensor) {
             observer.didReceiveRawEEG(
                 configSensorIndex: index,
@@ -1752,6 +1786,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         tickRate("rawPPG", samples: ppgPacket.samples.count, bytes: ppgPacket.samples.count * 4)
         countRawPPGSamples(ppgPacket.samples.count)
+        offDetector.addPPG(samples: ppgPacket.samples)
         rawDataObserver?.didReceiveRawPPG(
             channelIndex: ppgPacket.sensor,
             samples: ppgPacket.samples,
@@ -1781,6 +1816,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 //send up to parent
                 //print("XvMuse: Athena heart event: BPM;", ppgHeartEvent.bpm, "Str:", ppgHeartEvent.pulseStrength, "HRV SDNN", ppgHeartEvent.sdnn )
                 tickRate("HEART", bytes: 16) //bpm, strength, sdnn, hrvBaseline as Float32
+                offDetector.noteHeartbeat()
                 delegate?.didReceive(ppgHeartEvent: convert(musePPGHeartEvent: ppgHeartEvent))
             }
         }
@@ -1789,6 +1825,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     func didReceiveAthena(accelPacket: MuseAccelPacket) {
         tickRate("rawACCEL", samples: 1, bytes: 12) //one xyz sample per packet, 3 x Float32
         countRawIMUSamples(1)
+        offDetector.addAccel(x: accelPacket.x, y: accelPacket.y, z: accelPacket.z)
         rawDataObserver?.didReceiveRawIMU(
             x: accelPacket.x,
             y: accelPacket.y,
