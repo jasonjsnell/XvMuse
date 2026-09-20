@@ -21,7 +21,7 @@ import Foundation
 
 final class HeadsetOffDetector {
 
-    static var isLogEnabled = true
+    static var isLogEnabled = false //muted 21 Sep 2026; the HEADSET OFF and ON again lines still print
 
     private let lock = NSLock()
     private let windowSeconds: TimeInterval = 2.0

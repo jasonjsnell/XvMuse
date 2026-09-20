@@ -812,7 +812,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     }
                     
                     // Otherwise, broadcast the response
-                    print("XvMuse: commandResponse:", filtered)
+                    //print("XvMuse: commandResponse:", filtered) //muted 21 Sep 2026
                     delegate?.didReceive(commandResponse: filtered)
 
                     /* Battery now comes from here on Athena firmware 3.1.29.
