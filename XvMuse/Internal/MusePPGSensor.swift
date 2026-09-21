@@ -273,7 +273,13 @@ private final class RespiratorySignalProcessor {
     private let referenceRiseAlpha: Double
     private let referenceFallAlpha: Double
     private let warmupSamples: Int
-    private let outputPolarity: Double = 1.0
+    /* -1 since 21 Sep 2026: UP IS A BREATH IN. At +1 the output rose on the breath out and
+     fell on the breath in (checked live on the Athena, watching the chart while
+     breathing), which is backwards for everyone downstream: the breathing lesson tells
+     the client the sound rises as they breathe in. Flipped here, once, at the source,
+     so the chart, the breath CC, the breath detector and the recorded value all agree.
+     Breath RATE is unaffected. Not yet checked on the Muse 2 or Muse S. */
+    private let outputPolarity: Double = -1.0
     private let outputGain: Double = 0.47        // final swing around center: 0.5 ± this (rails ~0.03/0.97)
     private let phaseSoftness: Double = 1.2      // lower = more excursion per breath (tanh + clamp keep it safe)
 
