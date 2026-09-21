@@ -907,10 +907,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
          measured straight off the spectrum by XvEEGAnalysis, each against its own drifting
          resting level. Publishing all of it on the EEG cadence keeps the three in step.
 
-         Tension and blink read the CONTACT-WEIGHTED device average across the sensors: a pad
-         that has faded out for contact noise no longer fakes tension, while genuine muscle
-         tension on any well-seated sensor still registers (brow spikes 20-35 Hz just as hard
-         as jaw, so tension is never limited to one region). */
+         Tension and blink do NOT read the contact-weighted average (since 21 Sep 2026): a
+         moving face is what makes every pad look noisy, so that average faded out exactly
+         when tension was strongest and the scores froze. They read every sensor, with a
+         floor on the weight so one genuinely loose pad is still outvoted. See
+         XvmEEG.updateTensionFeed. A headset judged OFF the head scores zero. */
         latestTensionPct = eeg.analysis.tension
         latestBlinkPct = eeg.analysis.blink
 
@@ -1113,6 +1114,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
          on every pad, so the existing gates (notes, heart, quiet cap, the recorder's
          headbandOff event) all close through the path they already use. */
         let wear = offDetector.snapshot()
+        eeg.isHeadsetWorn = !wear.isOff //floating pads are not muscle: no tension scores or notes
         let rawByIndex = modelByIndex.enumerated().map { index, model in
             (wear.isOff || wear.maxed[index]) ? 100.0 : model
         }
