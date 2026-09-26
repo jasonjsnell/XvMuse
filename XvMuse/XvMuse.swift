@@ -1653,6 +1653,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      is per-device anchored and already smoothed. */
     private let quietTensionDampOnset: Double = 20.0
     private let quietTensionDampFull: Double = 60.0
+    /* Blink damping reads a SLOW average of the blink score, not the instant value
+     (26 Sep 2026). The instant value hits 100 on every ordinary blink, which zeroed the
+     quiet target and dropped a settled reading from the 70s to the teens in two seconds,
+     several times a minute. A single blink barely moves the average; only sustained eye
+     movement climbs past the onset. So quiet now describes the state and not the twitch. */
+    private var blinkForQuietDamp: Double = 0
+    private let blinkForQuietDampSmoothing: Double = 0.03
     private let quietBlinkDampOnset: Double = 30.0
     private let quietBlinkDampFull: Double = 80.0
     private let quietGammaDampOnset: Double = 30.0
@@ -1677,7 +1684,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         //facial stress is not a quiet mind — see the damping comment above
         let tensionDamp = stressDamp(latestTensionPct, onset: quietTensionDampOnset, full: quietTensionDampFull)
-        let blinkDamp = stressDamp(latestBlinkPct, onset: quietBlinkDampOnset, full: quietBlinkDampFull)
+        blinkForQuietDamp += blinkForQuietDampSmoothing * (latestBlinkPct - blinkForQuietDamp)
+        let blinkDamp = stressDamp(blinkForQuietDamp, onset: quietBlinkDampOnset, full: quietBlinkDampFull)
         let gammaDamp = stressDamp(latestPublishedGammaPct, onset: quietGammaDampOnset, full: quietGammaDampFull)
         quiet *= tensionDamp * blinkDamp * gammaDamp
 
