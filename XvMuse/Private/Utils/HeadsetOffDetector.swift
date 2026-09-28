@@ -21,7 +21,10 @@ import Foundation
 
 final class HeadsetOffDetector {
 
-    static var isLogEnabled = false //muted 21 Sep 2026; the HEADSET OFF and ON again lines still print
+    /* ON again 28 Sep 2026: a fitted Athena read HEADSET OFF (all four pads maxed
+     out, no heartbeat) and took minutes to recover; the per-sensor uV and PPG
+     levels are needed to see why. Mute again once that is understood. */
+    static var isLogEnabled = true
 
     private let lock = NSLock()
     private let windowSeconds: TimeInterval = 2.0
