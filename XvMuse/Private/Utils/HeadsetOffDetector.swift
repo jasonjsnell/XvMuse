@@ -21,10 +21,10 @@ import Foundation
 
 final class HeadsetOffDetector {
 
-    /* ON again 28 Sep 2026: a fitted Athena read HEADSET OFF (all four pads maxed
-     out, no heartbeat) and took minutes to recover; the per-sensor uV and PPG
-     levels are needed to see why. Mute again once that is understood. */
-    static var isLogEnabled = true
+    /* Muted again 28 Sep 2026 after a fitted Athena read HEADSET OFF for minutes:
+     the log showed it was contact (pads at the ceiling, no pulse), not code. Turn
+     on to see per-sensor uV, PPG level, beat age and movement every 2 s. */
+    static var isLogEnabled = false
 
     private let lock = NSLock()
     private let windowSeconds: TimeInterval = 2.0
