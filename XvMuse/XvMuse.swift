@@ -204,6 +204,32 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
     ///True when the headset is judged to be off the head (sensors maxed out, see HeadsetOffDetector).
     public var isHeadsetOff: Bool { offDetector.snapshot().isOff }
+
+    /* How many of the four sensors are maxed out right now: touching nothing (see
+     HeadsetOffDetector). 0 on a fitted head, whatever the face is doing; 3 or 4 as the
+     headset comes off, a few seconds before isHeadsetOff. Judged every 2 seconds.
+     Added 30 Sep 2026, additive. */
+    public var maxedOutSensorCount: Int { offDetector.snapshot().maxed.filter { $0 }.count }
+
+    /* How many sensors were at the ceiling through the whole of the last 2 seconds, not
+     just for a moment. A hard clench can max a sensor out briefly; only a sensor touching
+     nothing (or swamped by interference) stays pinned. Added 30 Sep 2026, additive. */
+    public var pinnedSensorCount: Int { offDetector.pinnedCount() }
+
+    /* Seconds since the headset last sent anything at all (counted from the moment of
+     connection until the first data), or nil when it is not connected. A headset that has switched itself off or hung can stay
+     "connected" for minutes before iOS gives up on it; this shows it within seconds.
+     Added 30 Sep 2026, additive. */
+    public var secondsSinceLastData: TimeInterval? {
+        dataClockLock.lock(); defer { dataClockLock.unlock() }
+        guard connected, lastDataUptime > 0 else { return nil }
+        return ProcessInfo.processInfo.systemUptime - lastDataUptime
+    }
+    private let dataClockLock = NSLock()
+    private var lastDataUptime: TimeInterval = 0
+    private func setLastDataUptime(_ uptime: TimeInterval) {
+        dataClockLock.lock(); lastDataUptime = uptime; dataClockLock.unlock()
+    }
     
     
     //MARK: - Private
@@ -481,6 +507,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
         let callbackUUID = bluetoothCharacteristic.uuid
         let callbackUptime = ProcessInfo.processInfo.systemUptime
+        setLastDataUptime(callbackUptime) //see secondsSinceLastData
 
         /* The value MUST be copied here, synchronously, inside the Bluetooth callback.
 
@@ -1995,6 +2022,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     public func didConnect() {
     
         connected = true
+        setLastDataUptime(ProcessInfo.processInfo.systemUptime) //the clock starts at connection, so a headset that never sends is seen too
         resetBatteryStateForConnection()
         
         //communication protocol
@@ -2037,12 +2065,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     public func didDisconnect() {
         connected = false
+        setLastDataUptime(0)
         resetBatteryStateForConnection()
         delegate?.museDidDisconnect()
     }
     
     public func didLoseConnection() {
         connected = false
+        setLastDataUptime(0)
         resetBatteryStateForConnection()
         delegate?.museLostConnection()
     }

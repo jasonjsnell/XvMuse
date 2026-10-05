@@ -24,7 +24,7 @@ final class HeadsetOffDetector {
     /* Muted again 28 Sep 2026 after a fitted Athena read HEADSET OFF for minutes:
      the log showed it was contact (pads at the ceiling, no pulse), not code. Turn
      on to see per-sensor uV, PPG level, beat age and movement every 2 s. */
-    static var isLogEnabled = false
+    static var isLogEnabled = true //on again 30 Sep 2026: a fitted Athena streamed but read every pad maxed out
 
     private let lock = NSLock()
     private let windowSeconds: TimeInterval = 2.0
@@ -63,6 +63,27 @@ final class HeadsetOffDetector {
     private var maxLevel: Double = 2000
     private(set) var maxedPads: [Bool] = [false, false, false, false]
     private(set) var isOff = false
+    /* PINNED (30 Sep 2026, additive): a pad at the ceiling through the WHOLE 2 second window,
+     in every quarter of it. A maxed-out pad only has to touch the ceiling once, which a
+     hard clench or a head movement can do for a moment; a pad touching nothing stays
+     there. For callers that must tell a moving face from a headset coming off. The
+     off/on rules above do not use it. */
+    private(set) var pinnedPads: [Bool] = [false, false, false, false]
+
+    func pinnedCount() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return pinnedPads.filter { $0 }.count
+    }
+
+    private static func isPinned(_ samples: [Double], ceiling: Double) -> Bool {
+        let quarter = samples.count / 4
+        guard quarter >= 16 else { return false }
+        for index in 0..<4 {
+            let part = samples[(index * quarter)..<((index + 1) * quarter)]
+            guard (part.max() ?? 0) - (part.min() ?? 0) >= ceiling else { return false }
+        }
+        return true
+    }
     private var offWindows = 0
     private var onWindows = 0
 
@@ -165,6 +186,8 @@ final class HeadsetOffDetector {
         //MAX marks a maxed-out pad (touching nothing); otherwise the number is the
         //signal size in uV
         updateDetector(p2p: p2p)
+        pinnedPads = eeg.map { Self.isPinned($0, ceiling: maxLevel * 0.9) }
+        let pinnedTotal = pinnedPads.filter { $0 }.count
         let maxed = maxedPads
         guard Self.isLogEnabled else { resetWindow(); return }
         let pads = zip(labels, zip(rms, maxed)).map { label, pad in
@@ -173,8 +196,15 @@ final class HeadsetOffDetector {
         let maxedCount = maxed.filter { $0 }.count
         let guess = isOff ? "OFF" : (maxedCount == 0 ? "on" : "on, \(maxedCount) maxed out")
 
-        print(String(format: "HEADSET | %@ | maxed out %d/4 | ppg %.2f beat %.0fs | move %.3f | %@",
-                     pads, maxedCount, ppgDC, beatAge, moveSD, guess))
+        /* MAINS HUM (30 Sep 2026): how much of the signal is the wall socket's 60 Hz (or 50 Hz),
+         averaged over the four pads, as a share of the whole. A body touching something that
+         is plugged in picks mains up like an aerial, and it can swamp the sensors on a
+         well fitted head. Near 0% on a clean signal; tens of percent means interference. */
+        let hum60 = centered.map { Self.toneShare($0, hz: 60) }.reduce(0, +) / 4 * 100
+        let hum50 = centered.map { Self.toneShare($0, hz: 50) }.reduce(0, +) / 4 * 100
+
+        print(String(format: "HEADSET | %@ | maxed out %d/4 pinned %d/4 | hum 60Hz %.0f%% 50Hz %.0f%% | ppg %.2f beat %.0fs | move %.3f | %@",
+                     pads, maxedCount, pinnedTotal, hum60, hum50, ppgDC, beatAge, moveSD, guess))
         _ = (corr, ppgAC, n) //kept computed; drop from the line until they earn a place
 
         resetWindow()
@@ -193,6 +223,22 @@ final class HeadsetOffDetector {
         guard !values.isEmpty else { return [] }
         let mean = values.reduce(0, +) / Double(values.count)
         return values.map { $0 - mean }
+    }
+
+    ///The share (0-1) of a signal's power that sits at one frequency. EEG arrives at 256 Hz.
+    private static func toneShare(_ centeredValues: [Double], hz: Double, sampleRate: Double = 256) -> Double {
+        let count = Double(centeredValues.count)
+        guard count > 16 else { return 0 }
+        let total = centeredValues.reduce(0) { $0 + $1 * $1 } / count
+        guard total > 0 else { return 0 }
+        var re = 0.0, im = 0.0
+        let step = 2 * Double.pi * hz / sampleRate
+        for (index, value) in centeredValues.enumerated() {
+            re += value * cos(step * Double(index))
+            im += value * sin(step * Double(index))
+        }
+        let amplitude = 2 * (re * re + im * im).squareRoot() / count
+        return min((amplitude * amplitude / 2) / total, 1)
     }
 
     private static func rms(_ centeredValues: [Double]) -> Double {
