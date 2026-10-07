@@ -64,6 +64,8 @@ public protocol XvMuseDelegate:AnyObject {
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double)
     func didReceiveStateTuningReadout(_ readout: [String: Double])
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger)
+    ///A band trigger's note off (7 Oct 2026, additive; see XvEEGNoteTriggerDelegate).
+    func didReceiveEEGNoteOff(band: XvEEGBand)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
     
     //brainwaves
@@ -100,6 +102,7 @@ public extension XvMuseDelegate {
     func didReceive(detailLinearSpectrum:[Double]) {}
     func didReceiveBrainwaveDimensions(tiltHz: Double, steadiness: Double, intensity: Double, spreadHz: Double, confidence: Double, rhythmHz: Double, rhythmSlowHz: Double) {}
     func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {}
+    func didReceiveEEGNoteOff(band: XvEEGBand) {}
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
 }
@@ -1771,6 +1774,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
     public func didReceiveEEGNoteTrigger(_ trigger: XvEEGNoteTrigger) {
         delegate?.didReceiveEEGNoteTrigger(trigger)
+    }
+
+    public func didReceiveEEGNoteOff(band: XvEEGBand) {
+        delegate?.didReceiveEEGNoteOff(band: band)
     }
     
     //MARK: - Athena
