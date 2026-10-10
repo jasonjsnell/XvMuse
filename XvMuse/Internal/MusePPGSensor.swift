@@ -279,7 +279,11 @@ private final class RespiratorySignalProcessor {
      the client the sound rises as they breathe in. Flipped here, once, at the source,
      so the chart, the breath CC, the breath detector and the recorded value all agree.
      Breath RATE is unaffected. Not yet checked on the Muse 2 or Muse S. */
-    private let outputPolarity: Double = -1.0
+    /* BACK TO +1 on 9 Oct 2026: on the Athena, with the breaths marked by hand in the log,
+       the output fell through every breath in and rose through every breath out at -1. If
+       it reads backwards again, check the headset fit first: the sign of the baseline's
+       swing with breathing may depend on where the light sits. */
+    private let outputPolarity: Double = 1.0
     private let outputGain: Double = 0.47        // final swing around center: 0.5 ± this (rails ~0.03/0.97)
     private let phaseSoftness: Double = 1.2      // lower = more excursion per breath (tanh + clamp keep it safe)
 

@@ -24,7 +24,7 @@ final class HeadsetOffDetector {
     /* Muted again 28 Sep 2026 after a fitted Athena read HEADSET OFF for minutes:
      the log showed it was contact (pads at the ceiling, no pulse), not code. Turn
      on to see per-sensor uV, PPG level, beat age and movement every 2 s. */
-    static var isLogEnabled = true //on again 30 Sep 2026: a fitted Athena streamed but read every pad maxed out
+    static var isLogEnabled = false //muted 9 Oct 2026 (the screen's icon shows the same); on 30 Sep 2026 for a fitted Athena reading every pad maxed out
 
     private let lock = NSLock()
     private let windowSeconds: TimeInterval = 2.0
