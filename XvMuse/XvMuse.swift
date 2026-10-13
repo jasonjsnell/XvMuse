@@ -563,6 +563,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             guard let self = self else { return }
             //the copy taken in the callback, never bluetoothCharacteristic.value (see above)
             guard let _data:Data = characteristicValue else { return }
+            /* NAMED FOR THE PROFILER (Odyssey, 13 Oct 2026, additive): dispatch threads carry no
+             name, so this work showed as an unnamed thread at 75% of a core on the iPad 6. The
+             thread is named each time it picks up a block (cheap), and the time spent in each
+             block is summed and printed every two seconds (XvMuse.logProcessingLoad). */
+            pthread_setname_np("xvmuse processing")
+            let blockStart = ProcessInfo.processInfo.systemUptime
+            defer { self.noteProcessingTime(since: blockStart) }
 
             /* Mock data yields to the real thing. Test packets never come through here — they are
              injected straight into processAndPublishEEGData — so any characteristic arriving in
@@ -2088,6 +2095,25 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //MARK: - Thread -
     // Single lane for all DSP + parsing (keeps _fft/history thread-safe)
     private let processingQ = DispatchQueue(label: "com.primaryassembly.xvmuse.processing", qos: .userInitiated)
+
+    //MARK: Processing load (Odyssey, 13 Oct 2026, additive, testing)
+    ///MUSE LOAD | console log: seconds of the last two spent parsing and analysing, and the packets it took. Off by default.
+    public static var logProcessingLoad = false
+    private var processingSeconds: Double = 0
+    private var processingBlocks = 0
+    private var processingWindowStart: Double = 0
+
+    private func noteProcessingTime(since start: Double) {
+        guard Self.logProcessingLoad else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        processingSeconds += now - start
+        processingBlocks += 1
+        if processingWindowStart == 0 { processingWindowStart = now }
+        let window = now - processingWindowStart
+        guard window >= 2 else { return }
+        print(String(format: "MUSE LOAD | %.2f s of %.1f s on the processing queue (%.0f%% of a core), %d packets", processingSeconds, window, processingSeconds / window * 100, processingBlocks))
+        processingSeconds = 0; processingBlocks = 0; processingWindowStart = now
+    }
     
     //MARK: - MOCK DATA -
     //if the muse disconnects, this pipes in test EEG data until the muse can reconnect
