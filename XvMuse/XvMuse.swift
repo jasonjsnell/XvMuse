@@ -557,12 +557,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             _athenaLastRXUptime = callbackUptime
         }
         
+        let enqueuedAt = ProcessInfo.processInfo.systemUptime //MUSE LOAD: the wait in the queue (13 Oct 2026)
         processingQ.async { [weak self] in
 
             //safety checks
             guard let self = self else { return }
             //the copy taken in the callback, never bluetoothCharacteristic.value (see above)
             guard let _data:Data = characteristicValue else { return }
+            self.noteQueueWait(ProcessInfo.processInfo.systemUptime - enqueuedAt)
             /* NAMED FOR THE PROFILER (Odyssey, 13 Oct 2026, additive): dispatch threads carry no
              name, so this work showed as an unnamed thread at 75% of a core on the iPad 6. The
              thread is named each time it picks up a block (cheap), and the time spent in each
@@ -596,12 +598,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             // Special-case Athena main stream BEFORE legacy parsing
             if bluetoothCharacteristic.uuid == XvMuseConstants.CHAR_ATHENA_MAIN {
                 let bytes = [UInt8](_data)
-                _parserAthena.parse(
-                    bytes: bytes,
-                    timestamp: timestamp,
-                    rxSequence: athenaRXSequence,
-                    ingressDeltaMS: athenaIngressDeltaMS
-                )
+                timed("parse") {
+                    self._parserAthena.parse(
+                        bytes: bytes,
+                        timestamp: timestamp,
+                        rxSequence: athenaRXSequence,
+                        ingressDeltaMS: athenaIngressDeltaMS
+                    )
+                }
                 //results are returned by delegate callbacks below
                 return
             }
@@ -902,7 +906,17 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             _eegPublishWindowStart = now
         }
 
-        eeg.process(eegPacket: eegPacket)
+        let publishStart = ProcessInfo.processInfo.systemUptime
+        let publishInnerBefore = (stageSeconds["eeg analysis"] ?? 0) + (stageSeconds["ml"] ?? 0) + (stageSeconds["state"] ?? 0)
+        defer { //what is left of the publish once the analysis, ML and state are taken out is the app's delegate work
+            if Self.logProcessingLoad {
+                let total = ProcessInfo.processInfo.systemUptime - publishStart
+                let inner = (stageSeconds["eeg analysis"] ?? 0) + (stageSeconds["ml"] ?? 0) + (stageSeconds["state"] ?? 0)
+                    - (publishInnerBefore)
+                stageSeconds["app delegates", default: 0] += max(0, total - inner)
+            }
+        }
+        timed("eeg analysis") { eeg.process(eegPacket: eegPacket) }
         delegate?.didReceiveEEGPosition(
             deltaPan: eeg.position.panDelta,
             thetaPan: eeg.position.panTheta,
@@ -936,7 +950,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let mlDriveSpectrum = !eeg.linearSpectrum.isEmpty
             ? eeg.linearSpectrum
             : (eeg.sensors.first(where: { $0.hasValidSpectrum })?.linearSpectrum ?? [])
-        _mlManager.process(linearSpectrum: mlDriveSpectrum)
+        timed("ml") { _mlManager.process(linearSpectrum: mlDriveSpectrum) }
 
         /* Signal quality is emitted from here rather than from the ML callback, because only one
          of its three parts comes from the model. Noise is the BEST enabled sensor's held score
@@ -952,11 +966,13 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         latestTensionPct = eeg.analysis.tension
         latestBlinkPct = eeg.analysis.blink
 
-        _stateAnalyzer.updateSignalQuality(
-            clean: latestCleanPct,
-            tension: latestTensionPct,
-            blink: latestBlinkPct
-        )
+        timed("state") {
+            _stateAnalyzer.updateSignalQuality(
+                clean: latestCleanPct,
+                tension: latestTensionPct,
+                blink: latestBlinkPct
+            )
+        }
 
         delegate?.didReceiveML(
             noise: latestNoisePct,
@@ -1803,14 +1819,16 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
         countRawEEGSamples(samples.count, packetSensorIndex: sensor)
         if let index = configSensorIndex(fromPacketIndex: sensor) {
-            offDetector.addEEG(configSensorIndex: index, samples: samples.map { Double($0) })
+            timed("off detector") { offDetector.addEEG(configSensorIndex: index, samples: samples.map { Double($0) }) }
         }
         if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: sensor) {
-            observer.didReceiveRawEEG(
-                configSensorIndex: index,
-                samples: samples.map { Double($0) },
-                deviceTime: timestamp
-            )
+            timed("raw record") {
+                observer.didReceiveRawEEG(
+                    configSensorIndex: index,
+                    samples: samples.map { Double($0) },
+                    deviceTime: timestamp
+                )
+            }
         }
 
         //recorded above, analysed only if this is live data rather than a backlog burst
@@ -1823,7 +1841,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             samples: samples.map { Double($0) }
         )
 
-        _eeg.update(withFFTResultSet: _fft.process(eegPacket: eegPacket))
+        timed("fft") { _eeg.update(withFFTResultSet: _fft.process(eegPacket: eegPacket)) }
 
         // AF7 is the final sensor in the legacy publish cycle.
         if sensor == 3 {
@@ -1833,7 +1851,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     
     //Athena parser creates and sends a Muse PPG packet
     //includes the sensor num, timestamp, and with a single sample or array of samples
-    func didReceiveAthena(ppgPacket: MusePPGPacket) {
+    func didReceiveAthena(ppgPacket: MusePPGPacket) { timed("ppg") { handleAthena(ppgPacket: ppgPacket) } }
+    private func handleAthena(ppgPacket: MusePPGPacket) {
 
         tickRate("rawPPG", samples: ppgPacket.samples.count, bytes: ppgPacket.samples.count * 4)
         countRawPPGSamples(ppgPacket.samples.count)
@@ -1873,7 +1892,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         }
     }
     
-    func didReceiveAthena(accelPacket: MuseAccelPacket) {
+    func didReceiveAthena(accelPacket: MuseAccelPacket) { timed("accel") { handleAthena(accelPacket: accelPacket) } }
+    private func handleAthena(accelPacket: MuseAccelPacket) {
         tickRate("rawACCEL", samples: 1, bytes: 12) //one xyz sample per packet, 3 x Float32
         countRawIMUSamples(1)
         offDetector.addAccel(x: accelPacket.x, y: accelPacket.y, z: accelPacket.z)
@@ -2102,6 +2122,33 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var processingSeconds: Double = 0
     private var processingBlocks = 0
     private var processingWindowStart: Double = 0
+    private var longestQueueWait: Double = 0
+    private var latestQueueWait: Double = 0
+
+    /* STAGES (13 Oct 2026, testing, additive): seconds per window spent in each part of the
+     processing block, so the MUSE LOAD line says where the time goes. All on the processing
+     queue, so no locking. Off with logProcessingLoad. */
+    private var stageSeconds: [String: Double] = [:]
+    private let stageOrder = ["parse", "fft", "eeg analysis", "ml", "state", "app delegates", "ppg", "accel", "off detector", "raw record"]
+
+    @inline(__always) private func timed<T>(_ stage: String, _ body: () -> T) -> T {
+        guard Self.logProcessingLoad else { return body() }
+        let start = ProcessInfo.processInfo.systemUptime
+        let result = body()
+        stageSeconds[stage, default: 0] += ProcessInfo.processInfo.systemUptime - start
+        return result
+    }
+
+    private var stagesLine: String {
+        stageOrder.compactMap { name in stageSeconds[name].map { String(format: "%@ %.2f", name, $0) } }.joined(separator: ", ")
+    }
+
+    ///How long a packet sat in the queue before its turn: the lag the whole app inherits.
+    private func noteQueueWait(_ seconds: Double) {
+        guard Self.logProcessingLoad else { return }
+        latestQueueWait = seconds
+        longestQueueWait = max(longestQueueWait, seconds)
+    }
 
     private func noteProcessingTime(since start: Double) {
         guard Self.logProcessingLoad else { return }
@@ -2111,8 +2158,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         if processingWindowStart == 0 { processingWindowStart = now }
         let window = now - processingWindowStart
         guard window >= 2 else { return }
-        print(String(format: "MUSE LOAD | %.2f s of %.1f s on the processing queue (%.0f%% of a core), %d packets", processingSeconds, window, processingSeconds / window * 100, processingBlocks))
-        processingSeconds = 0; processingBlocks = 0; processingWindowStart = now
+        print(String(format: "MUSE LOAD | %.2f s of %.1f s on the processing queue (%.0f%% of a core), %d packets | queue wait: latest %.2f s, longest %.2f s | stages (s): %@", processingSeconds, window, processingSeconds / window * 100, processingBlocks, latestQueueWait, longestQueueWait, stagesLine))
+        processingSeconds = 0; processingBlocks = 0; processingWindowStart = now; longestQueueWait = 0; stageSeconds = [:]
     }
     
     //MARK: - MOCK DATA -
