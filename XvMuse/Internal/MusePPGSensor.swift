@@ -95,9 +95,19 @@ internal class MusePPGSensor {
     private var legacyChannelNormalizers: [StreamNormalizer] = []
     private var legacyChannelLatestValues: [Double?] = []
 
+    ///How many accepted respiration samples between breath-rate recomputes (13 Oct 2026). 1 = every sample, as before.
+    internal func setRespirationRecomputeEverySamples(_ n: Int) {
+        respRateEstimator.recomputeEverySamples = max(1, n)
+    }
+
+    /* buildStreams false (13 Oct 2026): the caller will not publish this packet's waveforms, so
+     the two ring copies (bloodFlow, resp) are skipped and come back empty. Everything else
+     runs as before: the normalizers, the respiration filters and estimator, the beat samples
+     in newSamples and the readiness gate. */
     internal func getStreams(
         from packet: MusePPGPacket,
-        allowsRespMetrics: Bool = true
+        allowsRespMetrics: Bool = true,
+        buildStreams: Bool = true
     ) -> MusePPGStreams? {
         
         //need to know which device is being used before processing streams
@@ -169,8 +179,8 @@ internal class MusePPGSensor {
             }
         }
 
-        let bloodFlow = bloodFlowSamples.toArray()
-        let resp = allowsRespMetrics ? baselineAveragedFirstSamples.toArray() : []
+        let bloodFlow = buildStreams ? bloodFlowSamples.toArray() : []
+        let resp = (allowsRespMetrics && buildStreams) ? baselineAveragedFirstSamples.toArray() : []
 
         guard allowsRespMetrics else {
             /* Metrics are gated (noisy forehead), so the waveform has a hole in it.
@@ -179,8 +189,9 @@ internal class MusePPGSensor {
             return MusePPGStreams(bloodFlow: bloodFlow, resp: resp, newSamples: newSamples)
         }
 
-        //block until the resp stream has at least one populated value
-        guard let firstResp = resp.first, firstResp != 0.0 else { return nil }
+        //block until the resp stream has at least one populated value: the OLDEST value in the
+        //ring, which is what resp.first was (now read in O(1), built or not)
+        guard let firstResp = baselineAveragedFirstSamples.first, firstResp != 0.0 else { return nil }
 
         let respReading = respRateEstimator.current
         return MusePPGStreams(

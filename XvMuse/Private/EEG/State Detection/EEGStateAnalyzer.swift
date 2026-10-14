@@ -66,7 +66,9 @@ final class EEGStateAnalyzer {
     //MARK: - Diagnostics
 
     //set false to silence the per-second state log
-    private let logStates: Bool = true
+    //off (13 Oct 2026): every per-state switch below is false, so nothing printed anyway and
+    //the sample bookkeeping behind it was dead work on every score publish
+    private let logStates: Bool = false
     private let logInterval: TimeInterval = 1.0
 
     /* Short headset tag for the summary lines, set by XvMuse at device identification, so a

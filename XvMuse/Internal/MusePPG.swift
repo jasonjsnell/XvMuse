@@ -115,6 +115,11 @@ internal class MusePPG {
     internal var sensor: MusePPGSensor = MusePPGSensor(id: 0)
     private let _ppgAnalyzer: PPGAnalyzer = PPGAnalyzer()
     
+    ///Forwarded to the respiration estimator (13 Oct 2026). 1 = recompute on every accepted sample, as before.
+    internal func setRespirationRecomputeEverySamples(_ n: Int) {
+        sensor.setRespirationRecomputeEverySamples(n)
+    }
+    
     // Peak detection state
     private var lastSample: Double = 0.0
     private var lastTimestamp: Double = 0.0
@@ -165,16 +170,20 @@ internal class MusePPG {
 
     private var _detPrintCounter: Int = 0
     
+    //buildStreams false (13 Oct 2026): beats are still detected from every sample, but the
+    //waveform arrays in the returned streams are left empty. See MusePPGSensor.getStreams.
     internal func update(
         withPPGPacket: MusePPGPacket,
         allowsHeartMetrics: Bool = true,
-        allowsRespMetrics: Bool = true
+        allowsRespMetrics: Bool = true,
+        buildStreams: Bool = true
     ) -> MusePPGResult? {
 
         //are the streams valid? if not, no streams or heart events are returned
         guard let streams = sensor.getStreams(
             from: withPPGPacket,
-            allowsRespMetrics: allowsRespMetrics
+            allowsRespMetrics: allowsRespMetrics,
+            buildStreams: buildStreams
         ) else {
             return nil
         }

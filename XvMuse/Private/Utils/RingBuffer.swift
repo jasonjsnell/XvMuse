@@ -47,4 +47,34 @@ internal struct RingBuffer<Element> {
         guard n < arr.count else { return arr }
         return Array(arr[(arr.count - n)..<arr.count])
     }
+
+    // Newest element, nil when empty. O(1), the same value toArray().last gives (13 Oct 2026).
+    var last: Element? {
+        guard count > 0 else { return nil }
+        return storage[(head - 1 + capacity) % capacity]
+    }
+
+    // Oldest element, nil when empty. O(1), the same value toArray().first gives (13 Oct 2026).
+    var first: Element? {
+        guard count > 0 else { return nil }
+        return count < capacity ? storage[0] : storage[head]
+    }
+
+    // Writes every element, oldest first, into `out`: the same order toArray() returns, with no
+    // intermediate arrays. `out` must have room for `count` elements. The destination is treated
+    // as uninitialised memory (EpochGenerator passes the closure buffer of
+    // Array(unsafeUninitializedCapacity:)), so each slot is initialised rather than assigned.
+    // For a trivial Element such as Double the write is the same either way (13 Oct 2026).
+    func copyChronological(into out: UnsafeMutableBufferPointer<Element>) {
+        guard count > 0, let base = out.baseAddress else { return }
+        precondition(out.count >= count, "RingBuffer.copyChronological: destination too small")
+        if count < capacity {
+            for i in 0..<count { (base + i).initialize(to: storage[i]) }
+            return
+        }
+        // When full, oldest element is at `head`.
+        var written = 0
+        for i in head..<capacity { (base + written).initialize(to: storage[i]); written += 1 }
+        for i in 0..<head { (base + written).initialize(to: storage[i]); written += 1 }
+    }
 }

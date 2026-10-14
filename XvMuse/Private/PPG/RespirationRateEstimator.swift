@@ -46,11 +46,20 @@ internal class RespirationRateEstimator {
     ///its neighbouring troughs to count.
     private let prominenceFraction: Double = 0.15
 
+    /* Recompute throttle (13 Oct 2026). The reading is 60 over the median breath interval, which
+     can only change when a breath peak enters or leaves the window, every few seconds; the
+     search over the whole window ran on every accepted sample. Every sample is still appended
+     and the window still trimmed; only the search is spaced out. 1 = every sample, as before.
+     The first accepted sample after a reset always recomputes. XvMuse sets this. */
+    internal var recomputeEverySamples: Int = 1
+
     //MARK: - State
 
     private var samples: [(t: Double, x: Double)] = []
     private var peakTimes: [Double] = []
     private var lastReading = RespirationRateReading(rateBpm: nil, quality: 0)
+    private var acceptedSinceRecompute: Int = 0
+    private var hasRecomputedSinceReset: Bool = false
 
     //MARK: - Input
 
@@ -65,7 +74,13 @@ internal class RespirationRateEstimator {
 
         samples.append((t: time, x: sample))
         trim(before: time - windowSeconds)
-        recompute(now: time)
+
+        acceptedSinceRecompute += 1
+        if !hasRecomputedSinceReset || acceptedSinceRecompute >= max(1, recomputeEverySamples) {
+            acceptedSinceRecompute = 0
+            hasRecomputedSinceReset = true
+            recompute(now: time)
+        }
     }
 
     ///Latest reading. Safe to call at any cadence, including once per bundle.
@@ -77,6 +92,8 @@ internal class RespirationRateEstimator {
         samples.removeAll(keepingCapacity: true)
         peakTimes.removeAll(keepingCapacity: true)
         lastReading = RespirationRateReading(rateBpm: nil, quality: 0)
+        acceptedSinceRecompute = 0
+        hasRecomputedSinceReset = false
     }
 
     //MARK: - Estimation

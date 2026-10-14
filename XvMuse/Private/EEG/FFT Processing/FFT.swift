@@ -35,6 +35,16 @@ class FFT {
     // Coherent gain (sum(window)/N) and Equivalent Noise Bandwidth in bins
     private var coherentGain: Double = 1.0
     
+    /* SCRATCH BUFFERS (13 Oct 2026). Owned by the instance and reused on every transform, so a
+     transform no longer allocates the padded input, the split-complex pair and the power array,
+     and no longer copies the epoch to validate it. One FFT object serves one queue
+     (XvMuse.processingQ), so nothing contends for them. The maths runs in the same order on the
+     same routines as before, so the spectrum is bit for bit what it was. */
+    private var paddedInput:[Double]   // N: the validated, hum-cleaned, windowed epoch, then zeros
+    private var realScratch:[Double]   // N/2
+    private var imagScratch:[Double]   // N/2
+    private var powerScratch:[Double]  // N/2
+
     
     
     //MARK: - Init
@@ -60,6 +70,11 @@ class FFT {
         //set up FFT
         //The calls are expensive and should be performed rarely.
         fftSetup = vDSP_create_fftsetupD(LOG_N, FFTRadix(kFFTRadix2))!
+
+        paddedInput = [Double](repeating: 0.0, count: N)
+        realScratch = [Double](repeating: 0.0, count: N/2)
+        imagScratch = [Double](repeating: 0.0, count: N/2)
+        powerScratch = [Double](repeating: 0.0, count: N/2)
     }
     
     deinit {
@@ -80,17 +95,25 @@ class FFT {
     public func transform(samples:[Double], fromSensor:Int) -> FFTResult? {
         
         //MARK: Validation
-        //validate incoming samples
-        var samples:[Double] = validate(samples: samples)
-        
         //validate length — the epoch is W long, not N; the padding is added below
         if (samples.count != W){
             print("FFT: Error: incoming epoch array does not have", W, "samples")
             return nil
         }
         
+        //copy the epoch into the scratch input, replacing any NaN or infinite value with zero
+        //(what validate() did on a copy of the array)
+        paddedInput.withUnsafeMutableBufferPointer { input in
+            samples.withUnsafeBufferPointer { source in
+                for index in 0..<W {
+                    let value = source[index]
+                    input[index] = (value.isNaN || value.isInfinite) ? 0 : value
+                }
+            }
+        }
+
         //MARK: Remove mains hum
-        if Self.removesMainsHum { removeMainsHum(from: &samples) }
+        if Self.removesMainsHum { removeMainsHum(from: &paddedInput, count: W) }
 
         //MARK: Apply Hamming window
         
@@ -111,88 +134,91 @@ class FFT {
             enbwBins = (sumW2 / (coherentGain * coherentGain)) / Double(W) // ≈1.36 for Hamming
         }
         
-        // Apply the window to incoming samples
-        vDSP_vmulD(samples, 1, hammingWindow, 1, &samples, 1, UInt(samples.count))
-
-        //zero-pad out to the FFT length. Zeros carry no energy, so the amplitude calibration
-        //below stays anchored to the window rather than to N.
-        if W < N {
-            samples.append(contentsOf: [Double](repeating: 0.0, count: N - W))
-        }
-        
-        
-        // MARK: Create the split complex buffer
-        
-        // one for real numbers (x-axis)
-        // and one for imaginary numbere (y-axis)
-        var realComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
-        var imagComplexBuffer:[Double] = [Double](repeating: 0.0, count: N/2)
-        
-        var splitComplex:DSPDoubleSplitComplex?
-
-        //Safe way to create these is with buffer pointers
-        realComplexBuffer.withUnsafeMutableBufferPointer { realBP in
-            imagComplexBuffer.withUnsafeMutableBufferPointer { imagBP in
-                
-                splitComplex = DSPDoubleSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
+        // Apply the window to the real samples in place, then zero-pad out to the FFT length.
+        // Zeros carry no energy, so the amplitude calibration below stays anchored to the
+        // window rather than to N.
+        let realCount = W
+        let paddedCount = N
+        paddedInput.withUnsafeMutableBufferPointer { input in
+            vDSP_vmulD(input.baseAddress!, 1, hammingWindow, 1, input.baseAddress!, 1, UInt(realCount))
+            if realCount < paddedCount {
+                for index in realCount..<paddedCount { input[index] = 0.0 }
             }
         }
         
-        if (splitComplex != nil) {
+        // 2) Normalize for FFT length (vDSP is unnormalized) and window coherent gain
+        //scale against the WINDOW length, so a padded and an un-padded transform of the
+        //same epoch report the same amplitude
+        let nSquared = Double(W * W)
+        let windowPow = coherentGain * coherentGain
+        let baseScale = 1.0 / (nSquared * windowPow)
+        let half = N / 2
             
-            //MARK: Real array to even-odd array
-            // This formats the array for the FFT
+        // MARK: Split complex, forward FFT, power spectrum
+        // The pointers live only inside these closures (the old code kept them past the end of
+        // the closure that made them).
+        paddedInput.withUnsafeBufferPointer { input in
+            realScratch.withUnsafeMutableBufferPointer { real in
+                imagScratch.withUnsafeMutableBufferPointer { imag in
+                    powerScratch.withUnsafeMutableBufferPointer { out in
         
-            var valuesAsComplex:UnsafeMutablePointer<DSPDoubleComplex>? = nil
+                        // one for real numbers (x-axis) and one for imaginary numbers (y-axis)
+                        var splitComplex = DSPDoubleSplitComplex(realp: real.baseAddress!, imagp: imag.baseAddress!)
             
-            samples.withUnsafeMutableBytes {
-                valuesAsComplex = $0.baseAddress?.bindMemory(to: DSPDoubleComplex.self, capacity: N)
+                        //MARK: Real array to even-odd array
+                        // This formats the array for the FFT
+                        input.baseAddress!.withMemoryRebound(to: DSPDoubleComplex.self, capacity: half) { asComplex in
+                            vDSP_ctozD(asComplex, 2, &splitComplex, 1, N2)
+                        }
+
+                        // MARK: Perform forward FFT
+                        // The Accelerate FFT is packed, meaning that all FFT results after the frequency N/2 are automatically discarded
+                        // N bins becomes N/2 + 1 bins
+                        // 256 --> 128 + 1 = 129 bins
+                        vDSP_fft_zripD(fftSetup, &splitComplex, 1, LOG_N, FFTDirection(FFT_FORWARD))
+
+                        // --- POWER SPECTRUM (one-sided), properly scaled ---
+                        // 1) Unscaled power = Re^2 + Im^2 per bin
+                        vDSP_zvmagsD(&splitComplex, 1, out.baseAddress!, 1, N2)
+
+                        // 2) scale (vDSP_vsmulD, as vDSP.multiply(scalar, vector) called before)
+                        var scale = baseScale
+                        vDSP_vsmulD(out.baseAddress!, 1, &scale, out.baseAddress!, 1, N2)
+
+                        // 3) One-sided correction: double interior bins (keep DC at index 0 as-is).
+                        // In place; multiplying by 2.0 is exact.
+                        if half > 1 {
+                            var two = 2.0
+                            vDSP_vsmulD(out.baseAddress! + 1, 1, &two, out.baseAddress! + 1, 1, vDSP_Length(half - 1))
+                        }
+
+                        // 4) validate in place: any NaN or infinite bin becomes zero
+                        for index in 0..<half {
+                            let value = out[index]
+                            if value.isNaN || value.isInfinite { out[index] = 0 }
+                        }
+                    }
+                }
             }
-            
-            vDSP_ctozD(valuesAsComplex!, 2, &splitComplex!, 1, N2)
-
-            // MARK: Perform forward FFT
-            // The Accelerate FFT is packed, meaning that all FFT results after the frequency N/2 are automatically discarded
-            // N bins becomes N/2 + 1 bins
-            // 256 --> 128 + 1 = 129 bins
-            vDSP_fft_zripD(fftSetup, &splitComplex!, 1, LOG_N, FFTDirection(FFT_FORWARD))
-            
-           
-            
-            // --- POWER SPECTRUM (one-sided), properly scaled ---
-            // 1) Unscaled power = Re^2 + Im^2 per bin
-            var power = [Double](repeating: 0.0, count: N/2)
-            vDSP_zvmagsD(&splitComplex!, 1, &power, 1, N2)
-            
-            // 2) Normalize for FFT length (vDSP is unnormalized) and window coherent gain
-            //scale against the WINDOW length, so a padded and an un-padded transform of the
-            //same epoch report the same amplitude
-            let nSquared = Double(W * W)
-            let windowPow = coherentGain * coherentGain
-            let baseScale = 1.0 / (nSquared * windowPow)
-            vDSP.multiply(baseScale, power, result: &power)
-            
-
-            // 3) One-sided correction: double interior bins (keep DC at index 0 as-is)
-            if N/2 > 1 {
-                var interior = Array(power[1..<(N/2)])
-                vDSP.multiply(2.0, interior, result: &interior)
-                power.replaceSubrange(1..<(N/2), with: interior)
-            }
-            
-
-            // 4) Save linear power and its dB view (10*log10(power))
-            power = validate(samples: power)
-            
-            return FFTResult(
-                sensor: fromSensor,
-                power: power
-            )
- 
-        } else {
-            print("FFT: Error: Split Complex object is nil")
-            return nil
         }
+            
+        /* NEW STORAGE ON EVERY TRANSFORM. XvEEG tells whether a sensor's spectrum changed by
+         array identity (Swift's == takes an O(1) fast path when two arrays share a buffer), so
+         the result must never alias the scratch buffer or a previous result. */
+        let power = [Double](unsafeUninitializedCapacity: half) { buffer, initializedCount in
+            initializedCount = 0
+            guard half > 0, let destination = buffer.baseAddress else { return }
+            powerScratch.withUnsafeBufferPointer { source in
+                guard let origin = source.baseAddress else { return }
+                destination.initialize(from: origin, count: half)
+                initializedCount = half
+            }
+        }
+
+        return FFTResult(
+            sensor: fromSensor,
+            power: power
+        )
     }
     
     //MARK: - MAINS HUM
@@ -213,49 +239,54 @@ class FFT {
      amplifier's ceiling. Set false to switch it off. */
     public static var removesMainsHum = true
     private static let mainsHz: [Double] = [50.0, 60.0]
-    private var humTables: [(cosine: [Double], sine: [Double])] = []
 
-    private func removeMainsHum(from samples: inout [Double]) {
-        let count = samples.count
-        guard count > 16 else { return }
+    /* One tone's tables plus the sums that depend only on the tables (13 Oct 2026). cc, ss, cs
+     and the determinant used to be re-summed on every epoch; they are summed once here, in
+     the same index order the per-epoch loop used, so the values are identical. */
+    private struct HumTable {
+        let cosine: [Double]
+        let sine: [Double]
+        let cc: Double
+        let ss: Double
+        let cs: Double
+        let determinant: Double
+    }
+    private var humTables: [HumTable] = []
+
+    //operates on the first `count` entries of `buffer` (the real samples ahead of the padding)
+    private func removeMainsHum(from buffer: inout [Double], count: Int) {
+        guard count > 16, count <= buffer.count else { return }
         if humTables.first?.cosine.count != count {
             humTables = Self.mainsHz.map { hz in
                 let step = 2.0 * Double.pi * hz / XvMuseConstants.SAMPLING_RATE
-                return (cosine: (0..<count).map { cos(step * Double($0)) },
-                        sine: (0..<count).map { sin(step * Double($0)) })
+                let cosine = (0..<count).map { cos(step * Double($0)) }
+                let sine = (0..<count).map { sin(step * Double($0)) }
+                var cc = 0.0, ss = 0.0, cs = 0.0
+                for index in 0..<count {
+                    let c = cosine[index], s = sine[index]
+                    cc += c * c; ss += s * s; cs += c * s
+                }
+                return HumTable(cosine: cosine, sine: sine, cc: cc, ss: ss, cs: cs, determinant: cc * ss - cs * cs)
             }
         }
-        let mean = vDSP.mean(samples) //the fit ignores the signal's resting offset
+        //the fit ignores the signal's resting offset (vDSP_meanvD, as vDSP.mean called before)
+        var mean = 0.0
+        buffer.withUnsafeBufferPointer { p in
+            vDSP_meanvD(p.baseAddress!, 1, &mean, vDSP_Length(count))
+        }
         for table in humTables {
+            guard abs(table.determinant) > 1e-9 else { continue }
             //least squares: the amounts of cosine and sine that best match the epoch
-            var cc = 0.0, ss = 0.0, cs = 0.0, xc = 0.0, xs = 0.0
+            var xc = 0.0, xs = 0.0
             for index in 0..<count {
-                let c = table.cosine[index], s = table.sine[index], x = samples[index] - mean
-                cc += c * c; ss += s * s; cs += c * s
+                let c = table.cosine[index], s = table.sine[index], x = buffer[index] - mean
                 xc += x * c; xs += x * s
             }
-            let determinant = cc * ss - cs * cs
-            guard abs(determinant) > 1e-9 else { continue }
-            let a = (xc * ss - xs * cs) / determinant
-            let b = (xs * cc - xc * cs) / determinant
+            let a = (xc * table.ss - xs * table.cs) / table.determinant
+            let b = (xs * table.cc - xc * table.cs) / table.determinant
             for index in 0..<count {
-                samples[index] -= a * table.cosine[index] + b * table.sine[index]
+                buffer[index] -= a * table.cosine[index] + b * table.sine[index]
             }
         }
-    }
-
-     //MARK: - HELPERS
-    
-    private func validate(samples:[Double]) -> [Double] {
-        
-        var validSamples:[Double] = samples
-        
-        //replace any NaN or infinite values with zero
-        validSamples = validSamples.map {
-            if ($0.isNaN || $0.isInfinite) { return 0 }
-            return $0
-        }
-        
-        return validSamples
     }
 }

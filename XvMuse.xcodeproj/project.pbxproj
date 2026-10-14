@@ -71,6 +71,7 @@
 		BBD1DF0B306013E70059E635 /* HeadsetOffDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */; };
 		BBD265222EDD986100D0AA47 /* ParserAthena.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD265212EDD985D00D0AA47 /* ParserAthena.swift */; };
 		BBD741612857789500857B78 /* TestEEGGammaBurstsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD741602857789500857B78 /* TestEEGGammaBurstsData.swift */; };
+		BBE4577F307ED9A800869DB0 /* ProcessingLoadGovernor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE4577E307ED9A800869DB0 /* ProcessingLoadGovernor.swift */; };
 		BBEFB4E32E834077005AEC3B /* TestEEGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E22E83406B005AEC3B /* TestEEGSleepingData.swift */; };
 		BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */; };
 		BBEFB4E72E8344C7005AEC3B /* TestEEGFallingAsleepData.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEFB4E62E8344BA005AEC3B /* TestEEGFallingAsleepData.swift */; };
@@ -157,6 +158,7 @@
 		BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetOffDetector.swift; sourceTree = "<group>"; };
 		BBD265212EDD985D00D0AA47 /* ParserAthena.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParserAthena.swift; sourceTree = "<group>"; };
 		BBD741602857789500857B78 /* TestEEGGammaBurstsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGGammaBurstsData.swift; sourceTree = "<group>"; };
+		BBE4577E307ED9A800869DB0 /* ProcessingLoadGovernor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingLoadGovernor.swift; sourceTree = "<group>"; };
 		BBEFB4E22E83406B005AEC3B /* TestEEGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGSleepingData.swift; sourceTree = "<group>"; };
 		BBEFB4E42E834134005AEC3B /* MockPPGSleepingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPPGSleepingData.swift; sourceTree = "<group>"; };
 		BBEFB4E62E8344BA005AEC3B /* TestEEGFallingAsleepData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEEGFallingAsleepData.swift; sourceTree = "<group>"; };
@@ -367,6 +369,7 @@
 				BB7741E124CA1F27004B8AE5 /* JSON.swift */,
 				BB4E77942F4775CF001E2BF8 /* RingBuffer.swift */,
 				BBD1DF0A306013E70059E635 /* HeadsetOffDetector.swift */,
+				BBE4577E307ED9A800869DB0 /* ProcessingLoadGovernor.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -560,6 +563,7 @@
 				BB7741E224CA1F27004B8AE5 /* JSON.swift in Sources */,
 				BB7741EB24CA2087004B8AE5 /* BluetoothUtils.swift in Sources */,
 				BBEFB4E52E834139005AEC3B /* MockPPGSleepingData.swift in Sources */,
+				BBE4577F307ED9A800869DB0 /* ProcessingLoadGovernor.swift in Sources */,
 				BBEFB5002E853FD5005AEC3B /* MockPPGClearMindData.swift in Sources */,
 				BBEFB50C2E85416C005AEC3B /* TestEEGArousalData.swift in Sources */,
 				BBFD8FE4305BE8DE00C46C0C /* RespirationRateEstimator 2.swift in Sources */,

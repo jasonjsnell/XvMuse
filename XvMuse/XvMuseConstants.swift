@@ -215,6 +215,10 @@ public class XvMuseConstants {
      FrequencyManager or multiply by SAMPLING_RATE / EEG_FFT_BINS. */
     public static let EEG_FFT_BINS:Int = 512
     public static let EPOCH_REFRESH_TIME:Double = 0.1 //in seconds, so 0.1 seconds = 100 milliseconds
+    /* Sample-count epoch gate (13 Oct 2026), for XvMuse.setEpochGate(.samples(...)). 24 is every
+     second 12-sample packet: 10.67 spectra per second per sensor live, 10 on the 50 ms test timer,
+     matching the time gate's nominal rate without depending on the clock. */
+    public static let EPOCH_REFRESH_SAMPLES:Int = 24
     /* Detail window: the clean slice of spectrum the brainwave states are measured from.
      Low edge sits at 8 on Penijean's recommendation: it takes in the whole alpha band, including
      the slower 8-10 Hz peaks that a good share of people have. A 10 Hz edge cut those people off

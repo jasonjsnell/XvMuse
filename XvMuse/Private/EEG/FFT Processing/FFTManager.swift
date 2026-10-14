@@ -46,6 +46,8 @@ internal struct DataStream {
     public var sensor:Int // same as data packet
     public var samples:RingBuffer<Double> // streaming samples of EEG sensor data
     public var timestamps:RingBuffer<Double> //series of recent timestamps
+    // Every sample this stream has ever been handed, counted in Buffer.add (13 Oct 2026).
+    public var samplesSeen: Int = 0
 }
 
 /* This is a snapshot of data from the data stream, containing values in a specific window of time. This object is released from the Epoch Manager every X milliseconds and has a bin length equal to the Buffer */
@@ -92,6 +94,19 @@ internal class FFTManager {
     private var _detailFilters:[FFTFilter] = []
     internal weak var delegate:FFTManagerDelegate?
     private var _lastPublishedBufferSamples:Int = -1
+    // Set once every buffer holds a full window; the progress can no longer change after that (13 Oct 2026).
+    private var buffersAreFull:Bool = false
+
+    // Epoch gate forwarders (13 Oct 2026). Default is the time gate, as before.
+    internal var epochGate: EpochGenerator.EpochGate {
+        get { _epochGenerator.gate }
+        set { _epochGenerator.gate = newValue }
+    }
+    // 1 = normal. 2 or 4 releases epochs half or a quarter as often (the lean levels).
+    internal var epochGateMultiplier: Int {
+        get { _epochGenerator.gateMultiplier }
+        set { _epochGenerator.gateMultiplier = newValue }
+    }
     
     internal init() {
         
@@ -112,10 +127,14 @@ internal class FFTManager {
 
     internal func resetBufferProgress() {
         _lastPublishedBufferSamples = -1
+        buffersAreFull = false
     }
     
-    //An eeg data packet is sent in from the XvMuse class
-    internal func process(eegPacket:MuseEEGPacket) -> FFTResultSet? {
+    //An eeg data packet is sent in from the XvMuse class.
+    //allowEpoch false (13 Oct 2026): the samples still go into the window, so it stays
+    //contiguous, but no epoch is released and nothing is transformed. Used while a delivery
+    //burst or a processing backlog is being worked off.
+    internal func process(eegPacket:MuseEEGPacket, allowEpoch:Bool = true) -> FFTResultSet? {
         
         //make sure this is one of the main 4 sensors (2 forehead, 2 ears, not an AUX)
         let s = eegPacket.sensor
@@ -131,7 +150,11 @@ internal class FFTManager {
             //send the data stream to the epoch manager
             
             //once the epoch interval is complete...
-            if let epoch:Epoch = _epochGenerator.getEpoch(from: dataStream) {
+            if let epoch:Epoch = _epochGenerator.getEpoch(
+                from: dataStream,
+                newSampleCount: eegPacket.samples.count,
+                allowed: allowEpoch
+            ) {
                 
                 // Full Window: current unfiltered spectrum.
                 let fullResult:FFTResult? = _fullFFT.transform(epoch: epoch)
@@ -164,11 +187,17 @@ internal class FFTManager {
     }
 
     private func publishBufferProgressIfNeeded() {
+        //once every window is full the value never changes again, so stop measuring (13 Oct 2026)
+        guard !buffersAreFull else { return }
         guard let total = _buffers.map({ $0.samplesMax }).min(), total > 0 else { return }
 
         let samples = _buffers
             .map { min($0.samplesCount, total) }
             .min() ?? 0
+
+        if samples == total && _buffers.allSatisfy({ $0.samplesCount == $0.samplesMax }) {
+            buffersAreFull = true
+        }
 
         guard samples != _lastPublishedBufferSamples else { return }
 
@@ -180,6 +209,11 @@ internal class FFTManager {
 final class FFTFilter {
     private let coefficients:[Double]
     private let sampleRate:Double
+    /* The epoch with half a filter length of zeros on each side (13 Oct 2026). The edges stay
+     zero for the life of the buffer; only the middle is rewritten per call. Reading a zero
+     where the old loop skipped a tap adds an exact 0.0 to the sum, so the output is bit for
+     bit what the bounds-checked loop produced. */
+    private var padded:[Double] = []
 
     init(sampleRate:Double, lowCutHz:Double, highCutHz:Double, tapCount:Int = 101) {
         let oddTapCount = tapCount % 2 == 0 ? tapCount + 1 : tapCount
@@ -229,16 +263,35 @@ final class FFTFilter {
         guard !samples.isEmpty else { return [] }
 
         let half = coefficients.count / 2
-        var output:[Double] = Array(repeating: 0.0, count: samples.count)
+        let count = samples.count
+        let tapCount = coefficients.count
 
-        for i in 0..<samples.count {
-            var y = 0.0
-            for tap in 0..<coefficients.count {
-                let sampleIndex = i + tap - half
-                guard sampleIndex >= 0 && sampleIndex < samples.count else { continue }
-                y += samples[sampleIndex] * coefficients[tap]
+        //same accumulation order as the old loop (tap 0 upward per output sample); the taps
+        //that used to be skipped now read a padding zero, which is exact
+        let paddedCount = count + 2 * half
+        if padded.count != paddedCount {
+            padded = Array(repeating: 0.0, count: paddedCount)
+        }
+        padded.withUnsafeMutableBufferPointer { p in
+            samples.withUnsafeBufferPointer { s in
+                for i in 0..<count { p[half + i] = s[i] }
             }
-            output[i] = y
+        }
+
+        var output:[Double] = Array(repeating: 0.0, count: count)
+        padded.withUnsafeBufferPointer { p in
+            coefficients.withUnsafeBufferPointer { c in
+                output.withUnsafeMutableBufferPointer { o in
+                    for i in 0..<count {
+                        var y = 0.0
+                        for tap in 0..<tapCount {
+                            //padded index i + tap is sample index i + tap - half
+                            y += p[i + tap] * c[tap]
+                        }
+                        o[i] = y
+                    }
+                }
+            }
         }
 
         return output

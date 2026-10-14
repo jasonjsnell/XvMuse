@@ -46,6 +46,15 @@ public enum XvMuseBluetoothState: Equatable {
     }
 }
 
+/* How the FFT decides when a sensor's next epoch is due (13 Oct 2026, additive). See
+ XvMuse.setEpochGate. The default, .time(seconds: XvMuseConstants.EPOCH_REFRESH_TIME), is
+ what every app had before. .samples(n) releases an epoch every n samples, which makes the
+ FFT cadence a function of the data alone (XvMuseConstants.EPOCH_REFRESH_SAMPLES). */
+public enum XvMuseEpochGate {
+    case time(seconds: Double)
+    case samples(Int)
+}
+
 //another object or a view controller that can listen to this class's updates
 public protocol XvMuseDelegate:AnyObject {
     
@@ -67,6 +76,9 @@ public protocol XvMuseDelegate:AnyObject {
     ///A band trigger's note off (7 Oct 2026, additive; see XvEEGNoteTriggerDelegate).
     func didReceiveEEGNoteOff(band: XvEEGBand)
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double)
+    ///The processing load level changed (13 Oct 2026, additive): 0 full, 1 lean x2, 2 lean x4,
+    ///3 catch-up. See XvMuse.processingLoadLevel. Called on the processing queue.
+    func didChangeProcessingLoadLevel(_ level: Int, queueWaitSeconds: Double)
     
     //brainwaves
     func didReceiveBrainwave(delta: Double, theta: Double, alpha: Double, beta: Double, gamma: Double)
@@ -105,6 +117,7 @@ public extension XvMuseDelegate {
     func didReceiveEEGNoteOff(band: XvEEGBand) {}
     func didReceiveEEGBufferProgress(samples: Int, total: Int, progress: Double) {}
     func didReceiveBluetoothState(_ bluetoothState: XvMuseBluetoothState, message: String) {}
+    func didChangeProcessingLoadLevel(_ level: Int, queueWaitSeconds: Double) {}
 }
 
 //MARK: - PACKETS -
@@ -314,6 +327,22 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     ///which run synchronously inside the parser on processingQ.
     private var isDiscardingBacklog = false
 
+    /* LOAD GOVERNOR (13 Oct 2026). See ProcessingLoadGovernor. The wait every block measures
+     (now minus when it was enqueued) is turned into a level: full, lean (epochs released less
+     often) or catch-up (ingest only: every sample still reaches the raw archive, the off
+     detector and the FFT window, but no epochs, no analysis, no publishes). A machine that
+     keeps up never leaves full. Everything here is touched on processingQ except
+     publishedLoadLevel, which the public getter reads under its lock. */
+    private let governor = ProcessingLoadGovernor()
+    ///Set at the top of each processing block from the governor's level and read by the
+    ///delegate callbacks, like isDiscardingBacklog. Separate from the burst flag.
+    private var isCatchingUp = false
+    private var lastLoadLevel: ProcessingLoadGovernor.Level = .full
+    private let loadLevelLock = NSLock()
+    private var publishedLoadLevel: Int = 0
+    ///MUSE LOAD line: epochs released for sensor 3 (AF7) in the window.
+    private var epochsForSensor3 = 0
+
     ///Headset on/off detection and its log. See HeadsetOffDetector.
     private let offDetector = HeadsetOffDetector()
     
@@ -499,8 +528,74 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     //MARK: Start streaming
     public func startMuse(){
         print("XvMuse: Start streaming Muse data")
-        _fft.resetBufferProgress()
+        //the reset lands on the processing queue ahead of the first data block, so the
+        //buffer progress flags are only ever touched there (13 Oct 2026)
+        processingQ.async { [weak self] in self?._fft.resetBufferProgress() }
         bluetooth.startStreaming()
+    }
+
+    //MARK: - Processing load API (13 Oct 2026, additive)
+
+    /* Epoch gate: time (the default, as always) or a sample count. Applied on the processing
+     queue. Odyssey uses .samples(XvMuseConstants.EPOCH_REFRESH_SAMPLES). */
+    public func setEpochGate(_ gate: XvMuseEpochGate) {
+        processingQ.async { [weak self] in
+            guard let self else { return }
+            switch gate {
+            case .time(let seconds): self._fft.epochGate = .time(seconds)
+            case .samples(let count): self._fft.epochGate = .samples(count)
+            }
+        }
+    }
+
+    ///Set false to keep the pipeline at full on every block, whatever the queue wait.
+    public static var isProcessingLoadGovernorEnabled: Bool = true
+
+    ///0 full, 1 lean x2, 2 lean x4, 3 catch-up. Readable from any thread.
+    public var processingLoadLevel: Int {
+        loadLevelLock.lock(); defer { loadLevelLock.unlock() }
+        return publishedLoadLevel
+    }
+
+    ///How many accepted respiration samples pass between breath-rate recomputes. 1 (the
+    ///default) recomputes on every sample, as before. Applied on the processing queue.
+    public func setRespirationRecomputeEverySamples(_ n: Int) {
+        processingQ.async { [weak self] in
+            guard let self else { return }
+            self._ppg.setRespirationRecomputeEverySamples(n)
+            self._testPPG.setRespirationRecomputeEverySamples(n)
+        }
+    }
+
+    ///Once per block, before any work: the governor turns the block's queue wait into a level,
+    ///the level sets the epoch gate and the catch-up flag, and a change is logged and published.
+    private func applyProcessingLoad(queueWait: Double, now: Double) {
+        let level: ProcessingLoadGovernor.Level = Self.isProcessingLoadGovernorEnabled
+            ? governor.observe(queueWait: queueWait, now: now)
+            : .full
+        isCatchingUp = (level == .catchUp)
+        _fft.epochGateMultiplier = level.epochGateMultiplier
+        guard level != lastLoadLevel else { return }
+        if Self.logProcessingLoad { //quiet unless the load log is on (14 Oct 2026); the delegate still hears every change
+            print(String(format: "MUSE LOAD LEVEL | %@ -> %@ (queue wait %.2f s)", lastLoadLevel.name, level.name, queueWait))
+        }
+        lastLoadLevel = level
+        loadLevelLock.lock(); publishedLoadLevel = level.code; loadLevelLock.unlock()
+        delegate?.didChangeProcessingLoadLevel(level.code, queueWaitSeconds: queueWait)
+    }
+
+    ///Connect, disconnect, test data start or stop. On processingQ.
+    private func resetProcessingLoad() {
+        let now = ProcessInfo.processInfo.systemUptime
+        governor.reset(now: now)
+        applyProcessingLoad(queueWait: 0, now: now)
+    }
+
+    ///The FFT path for one packet. Counts AF7 (sensor 3) epochs for the MUSE LOAD line.
+    private func processFFT(_ packet: MuseEEGPacket, allowEpoch: Bool) -> FFTResultSet? {
+        let result = _fft.process(eegPacket: packet, allowEpoch: allowEpoch)
+        if Self.logProcessingLoad, packet.sensor == 3, result != nil { epochsForSensor3 += 1 }
+        return result
     }
     
     
@@ -511,6 +606,12 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let callbackUUID = bluetoothCharacteristic.uuid
         let callbackUptime = ProcessInfo.processInfo.systemUptime
         setLastDataUptime(callbackUptime) //see secondsSinceLastData
+
+        /* ARRIVAL TIME (13 Oct 2026). The packet timestamp used to be taken inside the processing
+         block, so whenever the queue was behind it was processing time, late by the queue wait.
+         Taken here, on the delivery thread, it is when the notification arrived. The packets,
+         the FFT window and the raw archive all carry it. Smaller number: launch time is removed. */
+        let arrivalTimestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
 
         /* The value MUST be copied here, synchronously, inside the Bluetooth callback.
 
@@ -564,7 +665,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             guard let self = self else { return }
             //the copy taken in the callback, never bluetoothCharacteristic.value (see above)
             guard let _data:Data = characteristicValue else { return }
-            self.noteQueueWait(ProcessInfo.processInfo.systemUptime - enqueuedAt)
+            let queueWait = ProcessInfo.processInfo.systemUptime - enqueuedAt
+            self.noteQueueWait(queueWait)
             /* NAMED FOR THE PROFILER (Odyssey, 13 Oct 2026, additive): dispatch threads carry no
              name, so this work showed as an unnamed thread at 75% of a core on the iPad 6. The
              thread is named each time it picks up a block (cheap), and the time spent in each
@@ -572,6 +674,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             pthread_setname_np("xvmuse processing")
             let blockStart = ProcessInfo.processInfo.systemUptime
             defer { self.noteProcessingTime(since: blockStart) }
+            //the governor sees every block, logging on or off (13 Oct 2026)
+            self.applyProcessingLoad(queueWait: queueWait, now: blockStart)
 
             /* Mock data yields to the real thing. Test packets never come through here — they are
              injected straight into processAndPublishEEGData — so any characteristic arriving in
@@ -587,12 +691,14 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 DispatchQueue.main.async { self.stopTestData() }
             }
             
-            //get a current timestamp, and substract the system launch time so it's a smaller, more readable number
-            let timestamp:Double = Date().timeIntervalSince1970 - _systemLaunchTime
+            //the notification's arrival time, captured on the delivery thread (see arrivalTimestamp)
+            let timestamp:Double = arrivalTimestamp
             
             //the Athena delegate callbacks run synchronously inside the parser, so this
             //flag is how they learn whether to analyse this notification or only record it
             self.isDiscardingBacklog = isBacklog
+            //legacy path: analyse this notification's EEG, or only ingest it (burst or catch-up)
+            let analyse = !isBacklog && !self.isCatchingUp
 
             //MARK: route Athena data to parser
             // Special-case Athena main stream BEFORE legacy parsing
@@ -694,23 +800,24 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             //1 AF08: right forehead
             //2 TP09: left ear
             //3 AF07: left forehead
-            //_makeEEGPacket also feeds the raw archive, so it always runs; only the analysis
-            //after it is skipped while a backlog burst is being delivered
+            //_makeEEGPacket also feeds the raw archive, so it always runs, and the samples always
+            //go into the FFT window so it stays contiguous; epochs and the publish are skipped
+            //while a backlog burst is being delivered or a backlog is being worked off
             case XvMuseConstants.CHAR_TP10:
                  let packet = _makeEEGPacket(i: 0)
-                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
+                 _eeg.update(withFFTResultSet: processFFT(packet, allowEpoch: analyse))
             case XvMuseConstants.CHAR_AF8:
                  let packet = _makeEEGPacket(i: 1)
-                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
+                 _eeg.update(withFFTResultSet: processFFT(packet, allowEpoch: analyse))
             case XvMuseConstants.CHAR_TP9:
                  let packet = _makeEEGPacket(i: 2)
-                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
+                 _eeg.update(withFFTResultSet: processFFT(packet, allowEpoch: analyse))
             case XvMuseConstants.CHAR_AF7:
                  let packet = _makeEEGPacket(i: 3)
-                 if !isBacklog { _eeg.update(withFFTResultSet: _fft.process(eegPacket: packet)) }
+                 _eeg.update(withFFTResultSet: processFFT(packet, allowEpoch: analyse))
                  
                  //only broadcast the MuseEEG object once per cycle, giving each sensor the chance to input its new sensor data
-                 if !isBacklog { processAndPublishEEGData(from: convert(museEEG: _eeg)) }
+                 if analyse { processAndPublishEEGData(from: convert(museEEG: _eeg)) }
                 
                 //MARK: PPG
             case XvMuseConstants.CHAR_PPG1, XvMuseConstants.CHAR_PPG2, XvMuseConstants.CHAR_PPG3:
@@ -747,14 +854,18 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
 
                 //_makePPGPacket feeds the raw archive, so it always runs
                 let ppgPacket = _makePPGPacket(sensor: ppgSensorIndex)
+                //catch-up (13 Oct 2026): beats are still detected from every sample and heart
+                //events still go out; the waveform arrays are neither built nor delivered
+                let buildPPGStreams = !self.isCatchingUp
                 if !isBacklog, let ppgResult:MusePPGResult = _ppg.update(
                     withPPGPacket: ppgPacket,
                     allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
-                    allowsRespMetrics: heartGateNoisePct <= 35.0
+                    allowsRespMetrics: heartGateNoisePct <= 35.0,
+                    buildStreams: buildPPGStreams
                 ) {
 
                     //if streams are valid...
-                    if let ppgStreams:MusePPGStreams = ppgResult.streams {
+                    if buildPPGStreams, let ppgStreams:MusePPGStreams = ppgResult.streams {
 
                         //send blood flow and resp streams to parent
                         tickRate("PPG", bytes: (ppgStreams.bloodFlow.count + ppgStreams.resp.count) * 4)
@@ -794,7 +905,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                     )
                 }
 
-                if !isBacklog {
+                //skipped during a burst and, since 13 Oct 2026, during catch-up
+                if !isBacklog && !self.isCatchingUp {
                     let _accelPacket:XvAccelPacket = convert(
                         museAccelPacket: _accel.update(
                             withAccelPacket: MuseAccelPacket(
@@ -1004,25 +1116,29 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             delegate?.didReceive(frontLinearSpectrum: frontalSpectrum)
 
             //Quiet: absolute low activity across the bandwidth, now frontal-only
+            //(the "state" stage now also times the analyzer's band and spectrum work, gatedQuiet
+            //and the gamma focus smoothing, so "app delegates" reports the app alone, 13 Oct 2026)
             let rawQuiet = frontal.analysis.quiet
-            let quiet = gatedQuiet(fromRawQuiet: rawQuiet, levelDb: frontal.analysis.quietLevelDb)
+            let quiet = timed("state") { gatedQuiet(fromRawQuiet: rawQuiet, levelDb: frontal.analysis.quietLevelDb) }
             delegate?.didReceiveQuiet(quiet)
 
             /* Focus and meditation are measured from the clean detail-window shape. Alpha/beta use
              the detail-window bands, which are already forehead-only (DETAIL_EEG_SENSOR_IDS). Theta
              and quiet now come from the frontal region for the same reason; delta and gamma stay
              broadband because they serve as artifact context rather than as states themselves. */
-            _stateAnalyzer.updateBands(
-                delta: eeg.delta.decibel,
-                theta: frontal.theta.decibel,
-                alpha: eeg.detailAlpha.decibel,
-                beta: eeg.detailBeta.decibel,
-                gamma: eeg.gamma.decibel,
-                //raw, not gated — the gated value already carries tension damping, which dreamy
-                //applies separately, and double-counting it would suppress dreamy twice over
-                quiet: frontal.analysis.quiet,
-                quietDb: frontal.analysis.quietLevelDb
-            )
+            timed("state") {
+                _stateAnalyzer.updateBands(
+                    delta: eeg.delta.decibel,
+                    theta: frontal.theta.decibel,
+                    alpha: eeg.detailAlpha.decibel,
+                    beta: eeg.detailBeta.decibel,
+                    gamma: eeg.gamma.decibel,
+                    //raw, not gated — the gated value already carries tension damping, which dreamy
+                    //applies separately, and double-counting it would suppress dreamy twice over
+                    quiet: frontal.analysis.quiet,
+                    quietDb: frontal.analysis.quietLevelDb
+                )
+            }
 
             /* Ear pair (TP9+TP10) — now feeds meditation's alpha gate, routed by ear
              confidence (see EEGStateAnalyzer.updateEarBands). The level gap between the ear and
@@ -1049,28 +1165,38 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
                 if eeg.TP10.hasValidSpectrum && heldSensorNoise[3] < sensorWeightNoiseFull {
                     earNoises.append(heldSensorNoise[3])
                 }
-                _stateAnalyzer.updateEarBands(
-                    delta: sides.delta.decibel,
-                    theta: sides.theta.decibel,
-                    alpha: sides.alpha.decibel,
-                    beta: sides.beta.decibel,
-                    gamma: sides.gamma.decibel,
-                    noisePct: earNoises.max() ?? 100.0
-                )
+                timed("state") {
+                    _stateAnalyzer.updateEarBands(
+                        delta: sides.delta.decibel,
+                        theta: sides.theta.decibel,
+                        alpha: sides.alpha.decibel,
+                        beta: sides.beta.decibel,
+                        gamma: sides.gamma.decibel,
+                        noisePct: earNoises.max() ?? 100.0
+                    )
+                }
             } else {
-                _stateAnalyzer.earBandsUnavailable()
+                timed("state") { _stateAnalyzer.earBandsUnavailable() }
             }
 
             /* Theta PROMINENCE has to read the same spectrum theta's amplitude came from, or dreamy
              would score its size from the forehead and its shape from the whole head. */
-            _stateAnalyzer.processFrontalSpectrum(frontalSpectrum)
+            timed("state") { _stateAnalyzer.processFrontalSpectrum(frontalSpectrum) }
         }
 
-        //the dominant-rhythm tracker stays on the broadband, where it was tuned
-        _stateAnalyzer.processFullSpectrum(eeg.linearSpectrum)
-        _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
+        //the dominant-rhythm tracker stays on the broadband, where it was tuned.
+        //MUSE LOAD note: processDetailSpectrum is also where the analyzer publishes its state,
+        //dimensions and tuning readout (about four times a second), so the app's handlers for
+        //those three calls are counted under "state", not "app delegates" (13 Oct 2026)
+        timed("state") {
+            _stateAnalyzer.processFullSpectrum(eeg.linearSpectrum)
+            _stateAnalyzer.processDetailSpectrum(eeg.detailLinearSpectrum)
+        }
 
-        publishGammaFocus(gammaDb: eeg.gamma.decibel)
+        //the smoothing is "state" work; the delegate call stays outside the stage so
+        //"app delegates" reports the app alone (13 Oct 2026)
+        let gammaFocus: Double? = timed("state") { updateGammaFocus(gammaDb: eeg.gamma.decibel) }
+        if let gammaFocus = gammaFocus { delegate?.didReceiveGammaFocus(gammaFocus) }
         delegate?.didReceiveBrainwave(
             delta: eeg.delta.decibel,
             theta: eeg.theta.decibel,
@@ -1679,8 +1805,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
     private var gammaTensionGateOnset: Double = 30.0
     private var gammaTensionGateFull: Double = 70.0
 
-    private func publishGammaFocus(gammaDb: Double) {
-        guard gammaDb.isFinite else { return }
+    /* Steps the gamma focus smoothing and returns the clamped 0-100 value, or nil when the
+     input is not finite (then nothing is published, as before). The delegate call lives at
+     the call site so the "state" stage times only the smoothing (13 Oct 2026). */
+    private func updateGammaFocus(gammaDb: Double) -> Double? {
+        guard gammaDb.isFinite else { return nil }
 
         let span = max(gammaFocusHighDb - gammaFocusLowDb, 1e-6)
         let raw = min(max((gammaDb - gammaFocusLowDb) / span, 0.0), 1.0)
@@ -1690,7 +1819,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         let target = raw * (1.0 - tensionAmount) * 100.0
 
         latestPublishedGammaPct += gammaFocusSmoothing * (target - latestPublishedGammaPct)
-        delegate?.didReceiveGammaFocus(min(max(latestPublishedGammaPct, 0.0), 100.0))
+        return min(max(latestPublishedGammaPct, 0.0), 100.0)
     }
 
     /* Facial-stress damping ramps for quiet (Sep 2026, by request): tension, blinking, and
@@ -1816,35 +1945,41 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             return
         }
 
+        //one Float to Double conversion for all three consumers; none of them mutates it (13 Oct 2026)
+        let doubles:[Double] = samples.map { Double($0) }
+
         tickRate("rawEEG", samples: samples.count, bytes: samples.count * 4)
         countRawEEGSamples(samples.count, packetSensorIndex: sensor)
         if let index = configSensorIndex(fromPacketIndex: sensor) {
-            timed("off detector") { offDetector.addEEG(configSensorIndex: index, samples: samples.map { Double($0) }) }
+            timed("off detector") { offDetector.addEEG(configSensorIndex: index, samples: doubles) }
         }
         if let observer = rawDataObserver, let index = configSensorIndex(fromPacketIndex: sensor) {
             timed("raw record") {
                 observer.didReceiveRawEEG(
                     configSensorIndex: index,
-                    samples: samples.map { Double($0) },
+                    samples: doubles,
                     deviceTime: timestamp
                 )
             }
         }
 
-        //recorded above, analysed only if this is live data rather than a backlog burst
-        guard !isDiscardingBacklog else { return }
+        /* Recorded above. The samples always go into the FFT window so it stays contiguous;
+         epochs, transforms and the publish run only for live data the machine is keeping up
+         with: not during a delivery burst, and not while a backlog is being worked off
+         (13 Oct 2026). */
+        let analyse = !isDiscardingBacklog && !isCatchingUp
 
         let eegPacket = MuseEEGPacket(
             packetIndex: UInt16(packetIndex),
             sensor: sensor,
             timestamp: timestamp,
-            samples: samples.map { Double($0) }
+            samples: doubles
         )
 
-        timed("fft") { _eeg.update(withFFTResultSet: _fft.process(eegPacket: eegPacket)) }
+        timed("fft") { _eeg.update(withFFTResultSet: processFFT(eegPacket, allowEpoch: analyse)) }
 
         // AF7 is the final sensor in the legacy publish cycle.
-        if sensor == 3 {
+        if sensor == 3 && analyse {
             processAndPublishEEGData(from: convert(museEEG: _eeg))
         }
     }
@@ -1866,15 +2001,20 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //recorded above, analysed only if this is live data rather than a backlog burst
         guard !isDiscardingBacklog else { return }
 
+        /* Catch-up (13 Oct 2026): the beat detector still sees every sample and heart events
+         still go out, but the waveform arrays are neither built nor delivered. */
+        let buildStreams = !isCatchingUp
+
         // Feed Athena PPG packet into MusePPG processor to detect blood flow, resp, and heart beats
         if let ppgResult:MusePPGResult = _ppg.update(
             withPPGPacket: ppgPacket,
             allowsHeartMetrics: heartGateNoisePct <= 35.0 && latestTensionPct < heartTensionThreshold,
-            allowsRespMetrics: heartGateNoisePct <= 35.0
+            allowsRespMetrics: heartGateNoisePct <= 35.0,
+            buildStreams: buildStreams
         ) {
             
             //if streams are valid...
-            if let ppgStreams:MusePPGStreams = ppgResult.streams {
+            if buildStreams, let ppgStreams:MusePPGStreams = ppgResult.streams {
 
                 //send blood flow and resp streams to parent
                 tickRate("PPG", bytes: (ppgStreams.bloodFlow.count + ppgStreams.resp.count) * 4)
@@ -1903,8 +2043,9 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             z: accelPacket.z,
             deviceTime: Date().timeIntervalSince1970
         )
-        //recorded above, analysed only if this is live data rather than a backlog burst
-        guard !isDiscardingBacklog else { return }
+        //recorded above, analysed only if this is live data rather than a backlog burst,
+        //and not while a backlog is being worked off (13 Oct 2026)
+        guard !isDiscardingBacklog, !isCatchingUp else { return }
 
         //receive muse accel, convert to xvaccel, and send to parent
         let _accelPacket = convert(museAccelPacket: _accel.update(withAccelPacket: accelPacket))
@@ -1986,6 +2127,11 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         return _testEEGData[dataID].getName()
     }
     public func getTestEEG(id:Int) -> XvEEGPacket {
+        return getTestEEG(id: id, allowEpoch: true)
+    }
+
+    ///allowEpoch false (13 Oct 2026): the test samples go into the FFT window, nothing is transformed.
+    internal func getTestEEG(id:Int, allowEpoch:Bool) -> XvEEGPacket {
         
         //keep in bounds
         var dataID:Int = id-1
@@ -1997,7 +2143,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         //loop through all four sensors, getting test data and processing it via FFT
         for i:Int in 0..<4 {
             let testEEGPacket:MuseEEGPacket = _testEEGData[dataID].getPacket(for: i)
-            _testEEG.update(withFFTResultSet: _fft.process(eegPacket: testEEGPacket))
+            _testEEG.update(withFFTResultSet: processFFT(testEEGPacket, allowEpoch: allowEpoch))
         }
         //after the four sensors are processed, return the object to use by the application
         return convert(museEEG: _testEEG)
@@ -2058,6 +2204,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         connected = true
         setLastDataUptime(ProcessInfo.processInfo.systemUptime) //the clock starts at connection, so a headset that never sends is seen too
         resetBatteryStateForConnection()
+        processingQ.async { [weak self] in self?.resetProcessingLoad() } //load governor back to full, with grace (13 Oct 2026)
         
         //communication protocol
         //https://sites.google.com/a/interaxon.ca/muse-developer-site/muse-communication-protocol
@@ -2101,6 +2248,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         connected = false
         setLastDataUptime(0)
         resetBatteryStateForConnection()
+        processingQ.async { [weak self] in self?.resetProcessingLoad() } //(13 Oct 2026)
         delegate?.museDidDisconnect()
     }
     
@@ -2108,6 +2256,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         connected = false
         setLastDataUptime(0)
         resetBatteryStateForConnection()
+        processingQ.async { [weak self] in self?.resetProcessingLoad() } //(13 Oct 2026)
         delegate?.museLostConnection()
     }
     
@@ -2158,8 +2307,8 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         if processingWindowStart == 0 { processingWindowStart = now }
         let window = now - processingWindowStart
         guard window >= 2 else { return }
-        print(String(format: "MUSE LOAD | %.2f s of %.1f s on the processing queue (%.0f%% of a core), %d packets | queue wait: latest %.2f s, longest %.2f s | stages (s): %@", processingSeconds, window, processingSeconds / window * 100, processingBlocks, latestQueueWait, longestQueueWait, stagesLine))
-        processingSeconds = 0; processingBlocks = 0; processingWindowStart = now; longestQueueWait = 0; stageSeconds = [:]
+        print(String(format: "MUSE LOAD | %.2f s of %.1f s on the processing queue (%.0f%% of a core), %d packets | queue wait: latest %.2f s, longest %.2f s | level %@ | epochs/sensor %d | stages (s): %@", processingSeconds, window, processingSeconds / window * 100, processingBlocks, latestQueueWait, longestQueueWait, lastLoadLevel.name, epochsForSensor3, stagesLine))
+        processingSeconds = 0; processingBlocks = 0; processingWindowStart = now; longestQueueWait = 0; stageSeconds = [:]; epochsForSensor3 = 0
     }
     
     //MARK: - MOCK DATA -
@@ -2177,6 +2326,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         print("MuseHelper: startTestData: Set", set)
         testDataSet = set
         isTestDataRunning = true
+        processingQ.async { [weak self] in self?.resetProcessingLoad() } //load governor back to full, with grace (13 Oct 2026)
 
         eegTestDataLoop.invalidate()
         eegTestDataLoop = Timer.scheduledTimer(timeInterval: 0.05, target: self, selector: #selector(generateTestEEGData), userInfo: nil, repeats: true)
@@ -2190,10 +2340,21 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
      mutate on processingQ — so the work is dispatched onto processingQ to keep the "single
      lane for all DSP + parsing" rule true during test playback and the test/live handoff. */
     @objc public func generateTestEEGData() {
+        let enqueuedAt = ProcessInfo.processInfo.systemUptime //the wait in the queue (13 Oct 2026)
         processingQ.async { [weak self] in
             guard let self else { return }
-            //grabs pre-recorded EEG data from muse framework
-            self.processAndPublishEEGData(from: self.getTestEEG(id: self.testDataSet))
+            let now = ProcessInfo.processInfo.systemUptime
+            let queueWait = now - enqueuedAt
+            self.noteQueueWait(queueWait)
+            //the governor sees test ticks the same way; test data has no burst flag
+            self.applyProcessingLoad(queueWait: queueWait, now: now)
+            if self.isCatchingUp {
+                //ingest only: the samples keep the FFT window contiguous, nothing is published
+                _ = self.getTestEEG(id: self.testDataSet, allowEpoch: false)
+            } else {
+                //grabs pre-recorded EEG data from muse framework
+                self.processAndPublishEEGData(from: self.getTestEEG(id: self.testDataSet))
+            }
         }
     }
     @objc func generateTestPPGData() {
@@ -2208,6 +2369,7 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
         eegTestDataLoop.invalidate()
         ppgTestDataLoop.invalidate()
         isTestDataRunning = false
+        processingQ.async { [weak self] in self?.resetProcessingLoad() } //(13 Oct 2026)
     }
 
     

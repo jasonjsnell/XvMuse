@@ -25,6 +25,10 @@ final class EEGMLManager {
     private let model: MLModel?
     private let mlEveryN: Int = 3
     private var mlCounter: Int = 0
+    /* The feature names the model was trained on, built once (13 Oct 2026). Each prediction
+     used to interpolate all 46 of them again. */
+    private static let featureKeyCount = 46
+    private let binKeys: [String] = (0..<EEGMLManager.featureKeyCount).map { "bin\($0)" }
 
     init() {
         do {
@@ -38,44 +42,20 @@ final class EEGMLManager {
     }
 
     func process(linearSpectrum: [Double]) {
-        let linearSpectrum = Self.oneHzSpectrum(from: linearSpectrum)
-        guard linearSpectrum.count >= 48 else { return }
+        //the same three guards as before: enough one-hertz bins, the every-third cadence, a model
+        guard Self.oneHzCount(forBinCount: linearSpectrum.count) >= 48 else { return }
 
         mlCounter += 1
         guard mlCounter % mlEveryN == 0 else { return }
-        guard let model else { return }
+        guard model != nil else { return }
 
-        do {
-            let usable = usableBins(from: linearSpectrum)
-            var dict: [String: MLFeatureValue] = [:]
-            dict.reserveCapacity(usable.count)
-
-            for (i, value) in usable.enumerated() {
-                dict["bin\(i)"] = MLFeatureValue(double: value)
-            }
-
-            let provider = try MLDictionaryFeatureProvider(dictionary: dict)
-            let out = try model.prediction(from: provider)
-            let probs = out.featureValue(for: "labelProbability")?.dictionaryValue as? [String: Double] ?? [:]
-
-            func prob(_ key: String) -> Double {
-                let lower = key.lowercased()
-                for (label, value) in probs where label.lowercased() == lower {
-                    return value
-                }
-                return 0.0
-            }
-
-            /* "noise" and "loose" both mean the same thing here: this is not usable brain
-             signal. Whichever the model is more confident about is the one that counts.
-             Every other label, tension and jaw included, is deliberately ignored. */
-            let noiseScore = max(prob("noise"), prob("loose")) * 100.0
-            let cleanScore = max(0.0, 100.0 - noiseScore)
-
-            delegate?.didReceiveMLNoise(noise: noiseScore, clean: cleanScore)
-        } catch {
-            print("❌ EEGMLManager: prediction failed:", error)
-        }
+        /* DEVICE-LEVEL PREDICTION SKIPPED (13 Oct 2026). XvMuse.didReceiveMLNoise never reads
+         the two numbers it is handed: it judges each of the four sensors itself through
+         noiseProbability and takes the device score from the best of them. The prediction was
+         a fifth of the CoreML cost for a result nobody used, so the callback now fires on the
+         same cadence, under the same guards, with a placeholder pair. The one difference: a
+         device prediction that would have thrown no longer skips that cycle's callback. */
+        delegate?.didReceiveMLNoise(noise: 0.0, clean: 100.0)
     }
 
     /// Runs the model on a single sensor's spectrum and returns its raw noise score (0–100),
@@ -89,7 +69,7 @@ final class EEGMLManager {
             var dict: [String: MLFeatureValue] = [:]
             dict.reserveCapacity(usable.count)
             for (i, value) in usable.enumerated() {
-                dict["bin\(i)"] = MLFeatureValue(double: value)
+                dict[i < binKeys.count ? binKeys[i] : "bin\(i)"] = MLFeatureValue(double: value)
             }
             let provider = try MLDictionaryFeatureProvider(dictionary: dict)
             let out = try model.prediction(from: provider)
@@ -117,6 +97,15 @@ final class EEGMLManager {
         let binsPerHz = Int((Double(XvMuseConstants.EEG_FFT_BINS) / XvMuseConstants.SAMPLING_RATE).rounded())
         guard binsPerHz > 1 else { return spectrum }
         return stride(from: 0, to: spectrum.count, by: binsPerHz).map { spectrum[$0] }
+    }
+
+    /* How many bins oneHzSpectrum would return, without building it (13 Oct 2026): the number
+     of values stride(from: 0, to: count, by: binsPerHz) yields, which is count / binsPerHz
+     rounded up. Lets process() keep its bin-count guard without the allocation. */
+    private static func oneHzCount(forBinCount binCount: Int) -> Int {
+        let binsPerHz = Int((Double(XvMuseConstants.EEG_FFT_BINS) / XvMuseConstants.SAMPLING_RATE).rounded())
+        guard binsPerHz > 1 else { return binCount }
+        return (binCount + binsPerHz - 1) / binsPerHz
     }
 
     private func usableBins(from spectrum: [Double]) -> [Double] {

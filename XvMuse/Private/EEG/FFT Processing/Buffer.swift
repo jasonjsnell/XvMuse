@@ -88,6 +88,7 @@ class Buffer {
         for s in packet.samples {
             _dataStream.samples.append(s)
         }
+        _dataStream.samplesSeen += packet.samples.count //running total, see DataStream (13 Oct 2026)
         
         //MARK: Timestamps
         //add the time stamp of the first sensor in the packet to the data stream's timestamp array
