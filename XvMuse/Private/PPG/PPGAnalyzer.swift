@@ -483,7 +483,17 @@ class PPGAnalyzer {
 
         var candidate = raw
 
+        /* WARM-UP IS SILENCE, NOT A CEILING (15 Oct 2026). Until initialHRVClampIntervals beats
+           are in, the first readings were clamped to initialClamp, and the clamp itself was
+           published: a session's first minute of HRV read exactly 100 ms in the record, a
+           number that was never measured. Now nothing is published until the warm-up is
+           over (0 means "not ready", as it does below the minimum), so the first HRV a
+           session records is a real one. The clamp still bounds the first value after the
+           warm-up, so the smoothing below never starts from a spike. */
         if sampleCount < initialHRVClampIntervals {
+            return 0.0
+        }
+        if published <= 0 {
             candidate = min(candidate, initialClamp)
         }
 
