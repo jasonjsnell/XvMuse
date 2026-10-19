@@ -688,6 +688,10 @@ class ParserAthena {
                         x: Double(last[0]),
                         y: Double(last[1]),
                         z: Double(last[2]),
+                        //the gyroscope rides in the same packet, channels 3 to 5 (18 Oct 2026, additive)
+                        gyroX: Double(last[3]),
+                        gyroY: Double(last[4]),
+                        gyroZ: Double(last[5])
                     )
                 )
             }

@@ -13,12 +13,23 @@ struct MuseAccelPacket{
     var y:Double
     var z:Double
     var movement:Double
-    
+    ///The gyroscope's turn rates about the same axes, degrees per second (18 Oct 2026, additive; 0 unless given).
+    var gyroX:Double = 0
+    var gyroY:Double = 0
+    var gyroZ:Double = 0
+
     init(x:Double, y:Double, z:Double) {
         self.x = x
         self.y = y
         self.z = z
         movement = 0;
+    }
+
+    init(x:Double, y:Double, z:Double, gyroX:Double, gyroY:Double, gyroZ:Double) {
+        self.init(x: x, y: y, z: z)
+        self.gyroX = gyroX
+        self.gyroY = gyroY
+        self.gyroZ = gyroZ
     }
 }
 

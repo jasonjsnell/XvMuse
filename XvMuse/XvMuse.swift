@@ -2434,7 +2434,10 @@ public class XvMuse:MuseBluetoothObserver, ParserAthenaDelegate, EEGMLManagerDel
             x: museAccelPacket.x,
             y: museAccelPacket.y,
             z: museAccelPacket.z,
-            movement: museAccelPacket.movement
+            movement: museAccelPacket.movement,
+            gyroX: museAccelPacket.gyroX, //the gyroscope too (18 Oct 2026, additive)
+            gyroY: museAccelPacket.gyroY,
+            gyroZ: museAccelPacket.gyroZ
         )
     }
 
